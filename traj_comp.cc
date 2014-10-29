@@ -44,6 +44,7 @@ TrajCompAlgo::~TrajCompAlgo()
 
 void FreqSubt::train(const std::string training_traj_file_name)
 {
+	//TODO
 	std::list<Trajectory*>* trajectories = Trajectory::read_trajectories(training_traj_file_name, net);
 	
 	for(std::list<Trajectory*>::iterator it = trajectories->begin();
@@ -59,6 +60,7 @@ void FreqSubt::train(const std::string training_traj_file_name)
 
 const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 {
+	//TODO
 	return 0;
 }
 
