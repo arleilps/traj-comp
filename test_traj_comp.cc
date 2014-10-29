@@ -12,7 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 **/
 
 /**
- *	FILE test_moving_obj.cc: Test moving object functionalities
+ *	FILE test_traj_comp.cc: Testing trajectory compression
 **/
 
 
