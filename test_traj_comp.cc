@@ -32,18 +32,79 @@ const bool test_traj_comp_freq_subt()
 {
 	std::cout << "Testing frequent sub-trajectory based compression" << std::endl;
 	std::cout << "Creating a road network" << std::endl;
-	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt");
+	RoadNet* net;
+	//FIXME: net = new RoadNet("../data/greater_sfo_adj.txt");
 	std::cout << "Road network created" << std::endl;
 
-	std::cout << "Training the compression model" << std::endl;
-	TrajCompAlgo* alg = new  FreqSubt(0, net);
-	alg->train("../data/small_cab_stream_sfo.txt");
-	std::cout << "Training finished" << std::endl;
+	FreqSubt* fs = new  FreqSubt(2, net);
+	
+	Trajectory* traj;
 
+	/*0, 1, 2, 3, 4*/
+	traj = new Trajectory();
+	//An update is a pair segment id, timestamp, but here the timestamps don't matter.
+	traj->add_update(0, 0);
+	traj->add_update(1, 1);
+	traj->add_update(2, 2);
+	traj->add_update(3, 3);
+	traj->add_update(4, 4);
+
+	fs->add_trajectory(traj);
+	
+	/*2, 3, 4*/
+	traj = new Trajectory();
+	traj->add_update(2, 0);
+	traj->add_update(3, 1);
+	traj->add_update(4, 2);
+	
+	fs->add_trajectory(traj);
+	
+	/*2, 3*/
+	traj = new Trajectory();
+	traj->add_update(2, 1);
+	traj->add_update(3, 2);
+	
+	fs->add_trajectory(traj);
+
+	/*4*/
+	traj = new Trajectory();
+	traj->add_update(4, 0);
+	
+	fs->add_trajectory(traj);
+	
+	/*4, 3, 2*/
+	traj = new Trajectory();
+	traj->add_update(4, 3);
+	traj->add_update(3, 4);
+	traj->add_update(2, 5);
+	
+	fs->add_trajectory(traj);
+
+	//Printing the tree and the frequency of the respective substrings
+	fs->print();
+
+	//Gets all frequent sub-trajectories (minimum support 2)
+	std::list<Trajectory*> fsts;
+	fs->freq_sub_traj(fsts);
+
+	for(std::list<Trajectory*>::iterator it = fsts.begin(); it != fsts.end(); ++it)
+	{
+		traj = *it;
+		
+		//Prints a trajectory
+		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
+		{
+			std::cout << "<seg: " << (*traj_it)->segment <<
+				" time: " << (*traj_it)->time << ">" << std::endl;
+		}
+
+		std::cout << std::endl;
+	}
+/*
 	std::cout << "Deleting road network";
 	delete net;
 	std::cout << "Road network deleted";
-	
+*/	
 	std::cout << "Test finished" << std::endl;
 	return true;
 }

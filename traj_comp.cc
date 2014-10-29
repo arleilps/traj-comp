@@ -54,7 +54,6 @@ void FreqSubt::train(const std::string training_traj_file_name)
 
 	Trajectory::delete_trajectories(trajectories);
 
-	//FIXME:
 	print_tree(tree);
 }
 
@@ -78,6 +77,8 @@ void FreqSubt::add_trajectory(Trajectory::iterator it, Trajectory* traj, Node* t
 		else
 		{
 			tree->children[(*it)->segment] = new Node;
+			tree->children[(*it)->segment]->freq = 0;
+			tree->children[(*it)->segment]->seg = (*it)->segment;
 			add_trajectory(++it, traj, tree->children[(*it)->segment]);
 		}
 	}
@@ -86,6 +87,7 @@ void FreqSubt::add_trajectory(Trajectory::iterator it, Trajectory* traj, Node* t
 void FreqSubt::add_trajectory(Trajectory* traj)
 {
 	Trajectory::iterator itj;
+	
 	for(Trajectory::iterator iti = traj->begin();
 		iti != traj->end(); ++iti)
 	{
@@ -107,24 +109,63 @@ void FreqSubt::delete_tree(Node* node)
 
 void FreqSubt::print_tree(Node* node)
 {
-	std::string str = "";
+	std::string str;
 	
 	for(std::map<unsigned int, Node*>::iterator it = node->children.begin(); 
 		it != node->children.end(); ++it)
 	{
+		str = to_string(it->first);
 		print_tree(it->second, str);
 	}
 }
 
 void FreqSubt::print_tree(Node* node, const std::string str) 
 {
-	std::string new_str = str + to_string(node->seg);
-	std::cout << new_str << " " << node->freq << std::endl;
+	std::string new_str;
+	
+	std::cout << str << " " << node->freq << std::endl;
 
 	for(std::map<unsigned int, Node*>::iterator it = node->children.begin(); 
 		it != node->children.end(); ++it)
 	{
+		new_str = str + to_string(it->first);
 		print_tree(it->second, new_str);
 	}
 }
 
+void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajectory* traj)
+{
+	if(node->freq >= min_sup)
+	{
+		if(traj == NULL)
+		{
+			traj = new Trajectory();
+		}
+
+		traj->add_update(node->seg, 0);
+		fsts.push_back(traj);
+
+		Trajectory* new_traj;
+
+		for(std::map<unsigned int, Node*>::iterator it = node->children.begin(); 
+			it != node->children.end(); ++it)
+		{
+			new_traj = new Trajectory(*traj);
+			freq_sub_traj(fsts, it->second, new_traj);
+		}
+	}
+}
+
+void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts)
+{
+	for(std::map<unsigned int, Node*>::iterator it = tree->children.begin(); 
+		it != tree->children.end(); ++it)
+	{
+		freq_sub_traj(fsts, it->second);
+	}
+}
+
+void FreqSubt::print()
+{
+	print_tree(tree);
+}

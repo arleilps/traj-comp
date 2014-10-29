@@ -28,7 +28,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "database.h"
 
 #include "test_road_net.h"
-#include "test_database.h"
 #include "test_moving_obj.h"
 #include "test_traj_comp.h"
 

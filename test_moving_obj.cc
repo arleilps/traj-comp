@@ -361,46 +361,77 @@ const bool test_moving_obj()
 	return true;
 }
 
+std::vector < std::string > read_matched_trajectories(std::string input_file_name)
+{
+	std::vector < std::string > matched_traj;
+	
+	std::ifstream input_file(input_file_name.c_str(), std::ios::in);
+	std::string line_str;
+	std::vector< std:: string > line_vec;
+	std::getline(input_file, line_str);
+	std::string id;
+	std::string time;
+	std::string edge;
+
+	while(! input_file.eof())
+	{
+		line_vec = split(line_str,',');
+
+		id = line_vec[0];
+		time = line_vec[1];
+		edge = line_vec[2];
+
+		matched_traj.push_back(edge);
+		
+		std::getline(input_file, line_str);
+	}
+
+	return matched_traj;
+}
+
 const bool test_moving_obj_file()
 {
 	/*Creating a road network*/
 	std::cout << "Creating a road network" << std::endl;
-	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt");
+//	RoadNet* net = new RoadNet("../data/wa_adj.txt", "road_net_wa.csv");
+	RoadNet* net = new RoadNet("road_net_wa.csv");
 	std::cout << "Road network created" << std::endl;
 
-	std::cout << "Reading trajectories from file" << std::endl;
-	std::list<Trajectory*>* trajectories = Trajectory::read_trajectories("../data/small_cab_stream_sfo.txt", net);
-	std::cout << "Reading trajectories from file" << std::endl;
-
-	std::cout << "Printing trajectories:" << std::endl;
+	std::list<Trajectory*>* trajectories;
+	std::vector < std::string > matched_traj;
+	double accuracy = 0;
+	unsigned int num = 0;
 	
-	Trajectory* trajectory;
-
-	for(std::list<Trajectory*>::iterator it = trajectories->begin(); 
-		it != trajectories->end(); ++it)
+	for(unsigned int i = 0; i < 10; i++)
 	{
-		trajectory = *it;
-
-		for(Trajectory::iterator traj_it = trajectory->begin(); traj_it != trajectory->end(); ++traj_it)
-		{
-			std::cout << "<" << (*traj_it)->segment <<
-				"," << (*traj_it)->time << "> ";
-		}
+		trajectories = Trajectory::read_trajectories("../data/wa_stream_" + to_string(i) + ".txt", net);
 		
-		std::cout << std::endl;
+		for(std::list<Trajectory*>::iterator it = trajectories->begin();
+			it != trajectories->end(); ++it) 
+		{
+			matched_traj = read_matched_trajectories("../data/wa_matched_stream_" + to_string(i) + ".txt");
+		
+			for(Trajectory::iterator traj_it = (*it)->begin(); traj_it != (*it)->end(); ++traj_it)
+			{
+				if(matched_traj.at((*traj_it)->time) == net->seg_name((*traj_it)->segment))
+				{
+					accuracy = accuracy + 1;
+				}
+
+				num++;
+			}
+		}
+	
+		Trajectory::delete_trajectories(trajectories);
 	}
 	
-	std::cout << "Finished printing trajectories" << std::endl;
-	
-	std::cout << "Deleting trajectories" << std::endl;
-	
-	Trajectory::delete_trajectories(trajectories);
-	
-	std::cout << "Finished deleting trajectories" << std::endl;
+	accuracy = (double) accuracy / num;
 
-	std::cout << "Deleting road network";
+	std::cout << "accuracy = " << accuracy << std::endl;
+	
+	std::cout << "Deleting road network" << std::endl;
 	delete net;
-	std::cout << "Road network deleted";
+	std::cout << "Road network deleted" << std::endl;
 
 	std::cout << "Test finished" << std::endl;
 

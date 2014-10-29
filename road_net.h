@@ -35,9 +35,17 @@ typedef struct t_segment
 	double latit_end;
 	double longit_begin;
 	double longit_end;
+	
+	double proj_latit_begin;
+	double proj_latit_end;
+	double proj_longit_begin;
+	double proj_longit_end;
+	
 	unsigned int p_begin;
 	unsigned int p_end;
 	bool double_way;
+	double length;
+	std::string name;
 }segment;
 
 typedef struct t_point
@@ -49,7 +57,9 @@ typedef struct t_point
 point* new_point(const double latit, const double longit);
 
 segment* new_segment(const double latit_begin, const double latit_end, const double longit_begin, 
-	const double longit_end, const unsigned int p_begin, const unsigned int p_end,
+	const double longit_end, const double proj_latit_begin, const double proj_latit_end, 
+	const double proj_longit_begin, const double proj_longit_end,
+	const unsigned int p_begin, const unsigned int p_end,
 	const bool double_way);
 
 /**
@@ -86,6 +96,19 @@ class SegIndex
 		{
 			return 0;
 		}
+
+		virtual const bool create()
+		{
+			return false;
+		}
+
+		virtual const bool project(const double latit, const double longit, 
+			double& x, double& y)
+		{
+			return false;
+		}
+
+		virtual void drop(){};
 };
 
 /**
@@ -110,6 +133,14 @@ class PostGisIndex: public SegIndex
 		const double distance_points(const double latit_one,  
 			const double latit_two, const double longit_one,  
 			const double longit_two);
+
+		const bool create();
+		
+		void drop();
+
+		const bool project(const double latit, const double longit, 
+			double& x, double& y);
+
 	private:
 		pqxx::connection* conn;
 		static const std::string database_name;
@@ -133,13 +164,10 @@ class PostGisIndex: public SegIndex
 class RoadNet
 {
 	public:
-		/**
-		  * RoadNet constructor:
-		  * @param input_file_name file with road segments
-		  * @return
-		  * @throws
-		  **/
 		RoadNet(const std::string& input_file_name);
+		
+		RoadNet(const std::string& input_file_name, 
+			const std::string& output_file_name);
 		
 		virtual ~RoadNet();
 
@@ -158,10 +186,13 @@ class RoadNet
 			const unsigned int start_seg, const unsigned int end_seg, 
 			const double threshold) const;
 		
+		const double shortest_path(const unsigned int s1, 
+			const unsigned int s2, const double threshold) const;
+		
 		/*inlines*/
 		inline const std::string seg_name(const unsigned int& seg) const
 		{
-			return seg_names.at(seg);
+			return segments.at(seg)->name;
 		}
 		
 		inline const double seg_latit_begin(const unsigned int& seg) const
@@ -186,15 +217,35 @@ class RoadNet
 		
 		inline const double segment_length(const unsigned int& seg) const
 		{
-			//FIXME: length shold be a field of segment
-			return lengths.at(seg);
+			return segments.at(seg)->length;
+		}
+
+		inline const bool project(const double latit, const double longit, 
+			double& x, double& y) const
+		{
+			return seg_index->project(latit, longit, x, y);
+		}
+
+		inline segment* get_segment(const unsigned int& seg) const
+		{
+			return segments.at(seg);
+		}
+
+		inline const double distance_points(const double latit_one,  
+			const double latit_two, const double longit_one,  
+			const double longit_two) const 
+		{
+			return seg_index->distance_points(latit_one, latit_two, longit_one, longit_two);
+		}
+
+		inline const unsigned int size() const
+		{
+			return segments.size();
 		}
 	private:
 		std::vector<std::list<unsigned int>*> adj_list;
-		std::vector<std::string> seg_names;
 		std::map<std::string, unsigned int> seg_ids;
 		std::vector<segment*> segments;
-		std::vector<double> lengths;
 		unsigned int seg_id;
 		unsigned int n_segments;
 		SegIndex* seg_index;
@@ -206,14 +257,22 @@ class RoadNet
 			const double longit_begin, const double longit_end, const unsigned int p_begin, 
 			const unsigned int p_end, const bool double_way);
 		
-		const bool read_road_net(const std::string& input_file_name) throw (std::ios_base::failure);
 		void build_adjacency_list();
 		void index_segments();
-		const double shortest_path(const unsigned int s1, 
-			const unsigned int s2, const double threshold) const;
 		const bool double_way(const unsigned int seg) const;
 		const unsigned int flip_segment(const unsigned int seg) const;
 		void compute_segment_lengths();
+		void project_segments();
+		
+		const bool create(const std::string& input_file_name,
+			const std::string& output_file_name) 
+			throw (std::ios_base::failure);
+		const bool write(const std::string& output_file_name) 
+			throw (std::ios_base::failure);
+		 const bool build(const std::string& input_file_name) 
+		 	throw (std::ios_base::failure);
+		 const bool read(const std::string& input_file_name)
+			throw (std::ios_base::failure);
 };
 
 #endif

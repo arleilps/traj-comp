@@ -46,6 +46,16 @@ class DataSeg
 		
 		virtual ~DataSeg(){};
 		
+		virtual const bool create()
+		{
+			return false;
+		}
+
+		virtual const bool drop()
+		{
+			return false;
+		}
+		
 		virtual const bool insert(const std::string object, 
 			const std::string segment, 
 			const std::string time)
@@ -63,35 +73,6 @@ class DataSeg
 };
 
 /**
- * Database for points
-**/
-class DataPoints
-{
-	public:
-		DataPoints(){};
-		
-		virtual ~DataPoints(){};
-	
-		virtual const bool insert(const std::string object, 
-			const std::string latit, 
-			const std::string longit,
-			const std::string time)
-		{
-			return false;
-		}
-		
-		virtual const unsigned int select(std::list<query_result*>& results,
-			const std::string latit,
-			const std::string longit,
-			const std::string distance,
-			const std::string time_begin="",
-			const std::string time_end="")
-		{
-			return false;
-		}
-};
-
-/**
  * Postgresql database for segments
 **/
 class DataSegPostgresql: public DataSeg
@@ -101,6 +82,10 @@ class DataSegPostgresql: public DataSeg
 		
 		virtual ~DataSegPostgresql();
 		
+		const bool create();
+		
+		const bool drop();
+
 		const bool insert(const std::string object, 
 			const std::string segment, 
 			const std::string time);
@@ -121,45 +106,7 @@ class DataSegPostgresql: public DataSeg
 
 		const bool connect();
 		void disconnect();
-		const bool create_table();
-		void drop_table();
 };
 
-/**
- * Postgresql database for points
-**/
-class DataPointsPostgresql: public DataPoints
-{
-	public:
-		DataPointsPostgresql();
-		
-		virtual ~DataPointsPostgresql();
-	
-		const bool insert(const std::string object, 
-			const std::string latit, 
-			const std::string longit,
-			const std::string time);
-		
-		const unsigned int select(std::list<query_result*>& results,
-			const std::string latit,
-			const std::string longit,
-			const std::string distance,
-			const std::string time_begin="",
-			const std::string time_end="");
-	private:	
-		pqxx::connection* conn;
-		static const std::string database_name;
-		static const std::string table_name;
-		static const std::string host;
-		static const std::string port;
-		static const std::string user;
-		static const std::string password;
-		static const std::string spatial_ref;
-		
-		const bool connect();
-		void disconnect();
-		const bool create_table();
-		void drop_table();
-};
 
 #endif

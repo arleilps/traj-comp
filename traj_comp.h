@@ -75,15 +75,20 @@ class FreqSubt: public TrajCompAlgo
 
 		const unsigned int test(const std::string test_traj_file_name);
 
+		void add_trajectory(Trajectory* traj);
+		void add_trajectory(Trajectory::iterator it, Trajectory* traj, Node* tree);
+
+		void freq_sub_traj(std::list<Trajectory*>& fsts);
+
+		void print();
 	private:
 		double min_sup;
 		Node* tree;
 		
-		void add_trajectory(Trajectory* traj);
-		void add_trajectory(Trajectory::iterator it, Trajectory* traj, Node* tree);
 		void print_tree(Node* node);
 		void print_tree(Node* node, const std::string str);
 		void delete_tree(Node* node);
+		void freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajectory* traj=NULL);
 };
 #endif
 

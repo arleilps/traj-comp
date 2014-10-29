@@ -12,7 +12,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 **/
 
 /**
- *	FILE test_traj_comp.h: Testing trajectory compression functionalities
+ *	FILE test_traj_comp.h: Testing trajectory compression
 **/
 
 #ifndef TESTTRAJCOMP_H

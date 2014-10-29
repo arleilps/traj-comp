@@ -33,11 +33,15 @@ typedef struct t_update
 {
 	double latit;
 	double longit;
+	double proj_latit;
+	double proj_longit;
 	std::string object;
 	unsigned int time;
 }update;
 
-update* new_update(const std::string obj, const double latit, const double longit, unsigned int itme);
+update* new_update(const std::string obj, const double latit, const double longit, unsigned int time);
+update* new_update(const std::string obj, const double latit, const double longit, const double proj_latit, 
+	const double proj_longit, unsigned int time);
 
 typedef struct t_seg_time
 {
@@ -54,6 +58,8 @@ class Trajectory
 {
 	public:
 		Trajectory();
+
+		Trajectory(const Trajectory& traj);
 		
 		virtual ~Trajectory();
 
@@ -73,7 +79,6 @@ class Trajectory
 
 		void print()  const;
 		
-		
 		typedef std::list< seg_time* >::iterator iterator;
 		
 		inline iterator begin()
@@ -85,13 +90,31 @@ class Trajectory
 		{
 			return seg_time_lst.end();
 		}
+
+		inline seg_time* back()
+		{
+			return seg_time_lst.back();
+		}
 	private:
 		static const double max_speed;
 		static const double min_speed;
 		std::list< seg_time* > seg_time_lst;
 		unsigned int size_traj;
+		double prob;
+
+		static const double time_div;
+		static const double beta_const;
+		static const double sigma;
 
 		void regression_timestamps(const RoadNet* net);
+		static const double transition_prob(const unsigned int seg_from, 
+			const unsigned int seg_to,
+			const double latit_from, const double latitt_to,
+			const double longit_from, const double longit_to,
+			const unsigned int time_from, const unsigned int time_to,
+			const RoadNet* net);
+		static std::vector < std::pair < unsigned int, double > * >
+			cand_seg_probs(const update* up, const RoadNet* net);
 };
 
 #endif

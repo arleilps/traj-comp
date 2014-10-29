@@ -37,8 +37,8 @@ const std::string PostGisIndex::host = "127.0.0.1";
 const std::string PostGisIndex::port = "5432";
 const std::string PostGisIndex::user = "traj_comp";
 const std::string PostGisIndex::password="traj_comp";
-const std::string PostGisIndex::spatial_ref = "4326";
 const std::string PostGisIndex::srid = "26943";
+const std::string PostGisIndex::spatial_ref = "4326";
 const unsigned int RoadNet::num_neigh_match = 20;
 
 /**
@@ -59,7 +59,7 @@ point* new_point(const double latit, const double longit)
 segment* new_segment(const double latit_begin, const double latit_end, 
 	const double longit_begin, const double longit_end,
 	const unsigned int p_begin, const unsigned int p_end,
-	const bool double_way)
+	const bool double_way, const std::string& name)
 {
 	segment* seg = new segment;
 	seg->latit_begin = latit_begin;
@@ -69,6 +69,7 @@ segment* new_segment(const double latit_begin, const double latit_end,
 	seg->p_begin = p_begin;
 	seg->p_end = p_end;
 	seg->double_way = double_way;
+	seg->name = name;
 
 	return seg;
 }
@@ -84,34 +85,261 @@ RoadNet::RoadNet(const std::string& input_file_name)
 	seg_id = 0;
 	n_segments = 0;
 	seg_index = new PostGisIndex();
-	try
-	{
-		if(read_road_net(input_file_name))
-		{
-			build_adjacency_list();
-	//		index_segments();
-			compute_segment_lengths();
-		}
-		else
-		{
-			std::cerr << "Error: empty road network" << input_file_name << std::endl << std::endl;
-		}
-	}
-	catch(const std::ios_base::failure &e)
-	{
-		std::cerr << "Error: Could not read road network file" << input_file_name 
-			<< std::endl << std::endl;
-		std::cerr << e.what() << std::endl;
-	}
+	read(input_file_name);
 }
 
 /**
- * read_road_net: Reads a road network
+ * RoadNet constructor:
  * @param input_file_name file with road segments
  * @return
  * @throws io_base::failure
  **/
-const bool RoadNet::read_road_net(const std::string& input_file_name) throw (std::ios_base::failure)
+RoadNet::RoadNet(const std::string& input_file_name,
+	const std::string& output_file_name)
+{
+	seg_id = 0;
+	n_segments = 0;
+	seg_index = new PostGisIndex();
+	create(input_file_name, output_file_name);
+}
+
+const bool RoadNet::read(const std::string& input_file_name)
+	throw (std::ios_base::failure)
+{
+	std::ifstream road_net_file(input_file_name.c_str(), std::ios::in);
+       	std::string line_str;
+       	std::vector< std:: string > line_vec;
+
+        if(! road_net_file.is_open())
+       	{
+        	std::cerr << "Error: Could not open road network file" 
+			<< input_file_name << std::endl << std::endl;
+		
+		return false;
+        }       
+
+	std::getline(road_net_file, line_str);
+	line_vec = split(line_str,',');
+
+	//First line should contain the number of segments
+	if(line_vec.size() != 1)
+	{
+		std::cerr << "Error: Invalid road network file format, check the README file -- " 
+			<< input_file_name << std::endl << std::endl;
+		road_net_file.close();
+		
+		return false;
+	}
+	else
+	{
+		 n_segments = atoi(line_vec[0].c_str());
+	}
+
+	segments.reserve(n_segments);
+	adj_list.reserve(n_segments);
+	length_longest_segment = 0;
+
+	unsigned int s = 0;
+	segment* seg;
+	int double_way;
+
+	//Reading segments
+	while(s < n_segments)
+	{
+		std::getline(road_net_file, line_str);
+		line_vec = split(line_str,',');
+
+		if(line_vec.size() != 12)
+		{
+			std::cerr << "Error: Invalid road network file format, check the README file -- " 
+				<< input_file_name << std::endl << std::endl;
+			road_net_file.close();
+
+			return false;
+		}
+		else
+		{
+			seg = new segment;
+			
+			seg->latit_begin = atof(line_vec[1].c_str());
+			seg->latit_end = atof(line_vec[2].c_str());
+			seg->longit_begin = atof(line_vec[3].c_str());
+			seg->longit_end = atof(line_vec[4].c_str());
+			
+			seg->proj_latit_begin = atof(line_vec[5].c_str());
+			seg->proj_latit_end = atof(line_vec[6].c_str());
+			seg->proj_longit_begin = atof(line_vec[7].c_str());
+			seg->proj_longit_end = atof(line_vec[8].c_str());
+			
+			//default
+			seg->p_begin = 0;
+			seg->p_end = 0;
+
+			double_way = atoi(line_vec[9].c_str());
+
+			if(double_way == 0)
+			{
+				seg->double_way = false;
+			}
+			else
+			{
+				seg->double_way = true;
+			}
+
+			seg->length = atof(line_vec[10].c_str());
+	
+			if(seg->length > length_longest_segment)
+			{
+				length_longest_segment = seg->length;
+			}
+
+			seg->name = line_vec[11];
+
+			segments.push_back(seg);
+
+			s++;
+		}
+	}
+	
+	std::list<unsigned int>* neighbors;
+	std::getline(road_net_file, line_str);
+
+	while(! road_net_file.eof())
+	{
+		line_vec = split(line_str,',');
+		
+		neighbors = new std::list<unsigned int>;
+
+		for(unsigned int i = 1; i < line_vec.size(); i++)
+		{
+			neighbors->push_back(atoi(line_vec[i].c_str()));
+		}
+
+		adj_list.push_back(neighbors);
+		
+		std::getline(road_net_file, line_str);
+	}
+
+	road_net_file.close();
+
+	std::cout << segments.size() << " " << adj_list.size() << std::endl;
+
+	return true;
+}
+
+/**
+ * create: Reads road network data (segments) and 
+ * writes road network into output_file
+ * @param input_file_name file with road segments
+ * @param output_file_name output file
+ * @return true if success, false otherwise
+ * @throws io_base::failure
+ **/
+const bool RoadNet::create(const std::string& input_file_name,
+	const std::string& output_file_name) throw (std::ios_base::failure)
+{
+	try
+	{
+		if(build(input_file_name))
+		{
+			build_adjacency_list();
+			index_segments();
+			compute_segment_lengths();
+			project_segments();
+			write(output_file_name);
+		}
+		else
+		{
+			std::cerr << "Error: empty road network" 
+				<< input_file_name << std::endl << std::endl;
+			return false;
+		}
+	}
+	catch(const std::ios_base::failure &e)
+	{
+		std::cerr << "Error: Could not read road network file" 
+			<< input_file_name 
+			<< std::endl << std::endl;
+		std::cerr << e.what() << std::endl;
+
+		return false;
+	}
+
+	return false;
+}
+
+void print_segment(segment* seg, const unsigned int id,
+	std::ofstream& road_net_file)
+{
+	road_net_file << id << "," 
+		<< seg->latit_begin << "," 
+		<< seg->latit_end << ","
+		<< seg->longit_begin << ","
+		<< seg->longit_end << ","
+		
+		<< seg->proj_latit_begin << "," 
+		<< seg->proj_latit_end << ","
+		<< seg->proj_longit_begin << ","
+		<< seg->proj_longit_end << ",";
+	
+	if(seg->double_way)
+	{
+		road_net_file << "1,";
+	}
+	else
+	{
+		road_net_file << "0,";
+	}
+
+	road_net_file << seg->length << ","
+		<< seg->name << "\n";
+}
+
+const bool RoadNet::write(const std::string& output_file_name) throw (std::ios_base::failure)
+{
+	std::ofstream road_net_file(output_file_name.c_str(), std::ios::out);
+
+        if(! road_net_file.is_open())
+       	{
+        	std::cerr << "Error: Could not open road network file" 
+			<< output_file_name << std::endl << std::endl;
+		
+		return false;
+        }       
+	
+	road_net_file << n_segments << "\n";
+
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		print_segment(segments.at(s), s, road_net_file);
+	}
+	
+	for(unsigned int s = 0; s < adj_list.size(); s++)
+	{
+		road_net_file << s;
+
+		for(std::list<unsigned int>::iterator it = adj_list.at(s)->begin();
+			it != adj_list.at(s)->end(); ++it)
+		{
+			road_net_file << "," << *it;
+		}
+
+		road_net_file << "\n";
+	}
+
+	road_net_file.close();
+
+	return true;
+}
+
+/**
+ * build: Builds the road network from data
+ * @param input_file_name file with road segments
+ * @return true if success, false otherwise
+ * @throws io_base::failure
+ **/
+const bool RoadNet::build(const std::string& input_file_name) 
+	throw (std::ios_base::failure)
 {
 	std::ifstream road_net_file(input_file_name.c_str(), std::ios::in);
        	std::string line_str;
@@ -133,7 +361,7 @@ const bool RoadNet::read_road_net(const std::string& input_file_name) throw (std
 	//First line should contain the number of points and segments
 	if(line_vec.size() != 2)
 	{
-		std::cerr << "Error: Invalid road network file format, check the README file" 
+		std::cerr << "Error: Invalid road network file format, check the README file -- " 
 			<< input_file_name << std::endl << std::endl;
 		road_net_file.close();
 		
@@ -141,14 +369,12 @@ const bool RoadNet::read_road_net(const std::string& input_file_name) throw (std
 	}
 	else
 	{
-		 n_points = atof(line_vec[0].c_str());
-		 n_segments = atof(line_vec[1].c_str());
+		 n_points = atoi(line_vec[0].c_str());
+		 n_segments = atoi(line_vec[1].c_str());
 	}
 
 	adj_list.reserve(2*n_segments);
-	seg_names.reserve(2*n_segments);
 	segments.reserve(2*n_segments);
-	lengths.reserve(2*n_segments);
 
 	std::map<std::string, point*> points;
 	std::map<std::string, unsigned int> point_ids;
@@ -167,7 +393,7 @@ const bool RoadNet::read_road_net(const std::string& input_file_name) throw (std
 		//Line: 40984,37.7401044,-122.4337842,49449
 		if(line_vec.size() < 3)
 		{
-			std::cerr << "Error: Invalid road network file format, check the README file" 
+			std::cerr << "Error: Invalid road network file format, check the README file -- " 
 				<< input_file_name << std::endl << std::endl;
 			road_net_file.close();
 
@@ -197,10 +423,9 @@ const bool RoadNet::read_road_net(const std::string& input_file_name) throw (std
 		std::getline(road_net_file, line_str);
 		line_vec = split(line_str,',');
 		
-		//Line: 40984,37.7401044,-122.4337842,49449
 		if(line_vec.size() < 3)
 		{
-			std::cerr << "Error: Invalid road network file format, check the README file" 
+			std::cerr << "Error: Invalid road network file format, check the README file -- " 
 				<< input_file_name << std::endl << std::endl;
 			road_net_file.close();
                		
@@ -254,6 +479,7 @@ const bool RoadNet::read_road_net(const std::string& input_file_name) throw (std
 
 /**
  * Builds an adjacency list for segments
+ * FIXME: this could be done faster using an index
 **/
 void RoadNet::build_adjacency_list()
 {
@@ -294,10 +520,9 @@ void RoadNet::add_segment(const std::string id, const double latit_begin, const 
 	const double longit_begin, const double longit_end, const unsigned int p_begin,
 	const unsigned int p_end, const bool double_way)
 {
-	seg_names.push_back(id);
 	seg_ids[id] = seg_id;
 	segments.push_back(new_segment(latit_begin, latit_end, longit_begin, longit_end, 
-		p_begin, p_end, double_way));	
+		p_begin, p_end, double_way, id));	
 
 	seg_id++;
 }
@@ -307,6 +532,8 @@ void RoadNet::add_segment(const std::string id, const double latit_begin, const 
 **/
 void RoadNet::index_segments()
 {
+	seg_index->create();
+	
 	for(unsigned int s = 0; s < segments.size(); s++)
 	{
 		seg_index->insert(segments.at(s), s);
@@ -320,7 +547,7 @@ const bool RoadNet::double_way(const unsigned int seg) const
 
 const unsigned int RoadNet::flip_segment(const unsigned int seg) const
 {
-	std::string flip_id = "-1" + seg_names.at(seg);
+	std::string flip_id = "-1" + segments.at(seg)->name;
 	std::map<std::string, unsigned int>::const_iterator it = seg_ids.find(flip_id);
 	return it->second;	
 }
@@ -466,6 +693,39 @@ const bool PostGisIndex::connect()
 	return true;
 }
 
+const bool PostGisIndex::project(const double latit, const double longit,
+	double& x, double& y)
+{
+	std::string sql;
+
+	try
+	{
+		sql = "select st_x(ST_Transform(ST_GeomFromText('POINT(" +
+			to_string(longit) + " " + to_string(latit) + ")', " + spatial_ref + ")," + srid + "))," + 
+			"st_y(ST_Transform(ST_GeomFromText('POINT(" +
+			to_string(longit) + " " + to_string(latit) + ")', " + spatial_ref + ")," + srid + "))";
+
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r) 
+		{
+			x = r[0].as<double>();
+			y = r[1].as<double>();
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+
+		return false;
+	}
+
+	return true;
+}
+
 const bool PostGisIndex::create_table()
 {
 	std::string sql;
@@ -526,6 +786,7 @@ const bool PostGisIndex::insert(const segment* seg, const unsigned int id)
 {
 	//PostGis is long-lat
 	std::string sql;
+	
 	try
 	{
 		sql = "INSERT INTO " + table_name + 
@@ -564,10 +825,12 @@ const unsigned int PostGisIndex::within_distance(std::list<unsigned int>& ids,
 			" WHERE ST_DWithin(ST_Transform(segment," + srid + "),ST_Transform(ST_GeomFromText('POINT(" + 
 			to_string(longit) + " " + to_string(latit) + ")', " + spatial_ref + ")," + srid + ")," + 
 			to_string(distance) + ")";
-	
+		
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
 		ids.clear();
+
+		std::cout << "sql = " << sql << std::endl;
 
 		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r) 
 		{
@@ -658,17 +921,23 @@ const unsigned int PostGisIndex::k_nearest(std::list<unsigned int>& ids,
 
 PostGisIndex::PostGisIndex()
 {
-	if(connect())
-	{
-		//FIXME
-		//create_table();
-	}
+	connect();
+}
+
+const bool PostGisIndex::create()
+{
+	drop_table();
+	
+	return create_table();
+}
+
+void PostGisIndex::drop()
+{
+	drop_table();
 }
 
 PostGisIndex::~PostGisIndex()
 {
-	//FIXME
-	//drop_table();
 	disconnect();
 	delete conn;
 }
@@ -732,7 +1001,7 @@ const double RoadNet::shortest_path(const unsigned int from, const unsigned int 
 			it != adj_list[u]->end(); ++it)
 		{
 			z = *it;
-			dist = distances[u] + lengths.at(u);
+			dist = distances[u] + segments.at(u)->length;
 			
 			if(distances[z] > dist
 				&& dist <= threshold)
@@ -805,7 +1074,7 @@ const double RoadNet::shortest_path(std::list<unsigned int>& short_path,
 			it != adj_list[u]->end(); ++it)
 		{
 			z = *it;
-			dist = distances[u] + lengths.at(u);
+			dist = distances[u] + segments.at(u)->length;
 			
 			if(distances[z] > dist
 				&& dist <= threshold)
@@ -837,19 +1106,31 @@ const double RoadNet::shortest_path(std::list<unsigned int>& short_path,
 
 void RoadNet::compute_segment_lengths()
 {
-	double length;
 	length_longest_segment = 0;
 	
 	for(unsigned int s = 0; s < segments.size(); s++)
 	{
-		length = seg_index->distance_points(segments.at(s)->latit_begin, 
+		segments.at(s)->length = seg_index->distance_points(segments.at(s)->latit_begin, 
 			segments.at(s)->latit_end, segments.at(s)->longit_begin,
 			segments.at(s)->longit_end);
-		lengths.push_back(length);
 
-		if(length > length_longest_segment)
+		if(segments.at(s)->length > length_longest_segment)
 		{
-			length_longest_segment = length;
+			length_longest_segment = segments.at(s)->length;
 		}
 	}
 }
+
+void RoadNet::project_segments()
+{
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		project(segments.at(s)->latit_begin, segments.at(s)->longit_begin,
+			segments.at(s)->proj_latit_begin, segments.at(s)->proj_longit_begin);
+		
+		project(segments.at(s)->latit_end, segments.at(s)->longit_end,
+			segments.at(s)->proj_latit_end, segments.at(s)->proj_longit_end);
+	}
+}
+
+

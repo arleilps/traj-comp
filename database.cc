@@ -35,13 +35,6 @@ const std::string DataSegPostgresql::user = "traj_comp";
 const std::string DataSegPostgresql::password="traj_comp";
 const std::string DataSegPostgresql::spatial_ref = "4326";
 
-const std::string DataPointsPostgresql::database_name = "test";
-const std::string DataPointsPostgresql::table_name = "points_traj";
-const std::string DataPointsPostgresql::host = "127.0.0.1";
-const std::string DataPointsPostgresql::port = "5432";
-const std::string DataPointsPostgresql::user = "traj_comp";
-const std::string DataPointsPostgresql::password="traj_comp";
-const std::string DataPointsPostgresql::spatial_ref = "4326";
 
 query_result* new_query_result(const std::string object, const std::string time)
 {
@@ -53,207 +46,13 @@ query_result* new_query_result(const std::string object, const std::string time)
 	return res;
 }
 
-DataPointsPostgresql::DataPointsPostgresql()
-{
-	if(connect())
-	{
-		create_table();
-	}
-}
-
-DataPointsPostgresql::~DataPointsPostgresql()
-{
-	 //FIXME
-	 drop_table();
-	 disconnect();
-	 delete conn;
-}
-
-const bool DataPointsPostgresql::insert(const std::string object,
-	const std::string latit,
-	const std::string longit,
-	const std::string time)
-{
-	std::string sql;
-	try
-	{
-		sql = "INSERT INTO " + table_name +
-			"(id, time, point, speed) VALUES ('" + object +
-			"', TO_TIMESTAMP("+ time +")\
-			, ST_GeomFromText('POINT(" +
-			longit + " " +
-			latit + ")', " +
-			spatial_ref + "), 0);";
-	
-			pqxx::work work (*conn);
-			work.exec(sql.c_str());
-			work.commit();
-	}
-	catch(const pqxx::sql_error& e)
-	{
-		std::cerr << "Error: Failed query:" << std::endl;
-		std::cerr << sql << std::endl;
-		std::cerr << e.what() << std::endl;
-	
-		return false;
-	}
-
-	return true;
-}
-
-const unsigned int DataPointsPostgresql::select(std::list<query_result*>& results,
-	const std::string latit,
-	const std::string longit,
-	const std::string distance,
-        const std::string time_begin,
-        const std::string time_end)
-{
-	std::string sql;
-	try
-	{
-		if(time_begin != "" and time_end != "")
-		{
-			sql = "SELECT id, time FROM " + table_name +
-				" WHERE ST_DWithin(point, ST_GeomFromText('POINT(" +
-				longit + " " + latit + ")', " + spatial_ref + ")," +
-				distance + 
-				") AND time >= TO_TIMESTAMP("+time_begin+") AND time <= TO_TIMESTAMP("+time_end+");";
-		}
-		else
-		{
-			sql = "SELECT id, time FROM " + table_name +
-				" WHERE ST_DWithin(point, ST_GeomFromText('POINT(" +
-				longit + " " + latit + ")', " + spatial_ref + ")," +
-				distance + ");";
-			
-			std::cout << "query: " << sql << std::endl;
-		}
-
-		pqxx::nontransaction work(*conn);
-		pqxx::result res(work.exec(sql.c_str()));
-		results.clear();
-		query_result* result;
-	
-		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
-		{
-			result = new_query_result(r[0].as<std::string>(), r[1].as<std::string>());
-			results.push_back(result);
-		}
-	}
-	catch(const pqxx::sql_error& e)
-	{
-		std::cerr << "Error: Failed query:" << std::endl;
-		std::cerr << sql << std::endl;
-		std::cerr << e.what() << std::endl;
-
-		return 0;
-	}
-
-	return results.size();
-}
-
-const bool DataPointsPostgresql::connect()
-{
-	std::string conn_str = "dbname=" + database_name
-		+ " user=" + user
-		+ " password=" + password
-		+ " hostaddr=" + host
-		+ " port=" + port;
-
-	try
-	{
-		conn = new pqxx::connection(conn_str.c_str());
-
-		if(conn->is_open())
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	catch(const pqxx::broken_connection &e)
-	{
-		std::cerr << "Error: Cannot connect to the database "
-			<< database_name << " with user "
-			<< user << " host " << host << " port "
-			<< port << std::endl << std::endl;
-		std::cerr << conn_str << std::endl;
-		std::cerr << e.what() << std::endl;
-		return false;
-	}
-
-	return true;
-}
-
-void DataPointsPostgresql::disconnect()
-{
-	conn->disconnect();
-}
-
-const bool DataPointsPostgresql::create_table()
-{
-	std::string sql;
-
-	try
-	{
-		sql = "CREATE TABLE " + table_name +
-			"(id varchar(60) PRIMARY KEY, \
-			time timestamp, \
-			point geometry(POINT, " + spatial_ref +
-			"), speed real);\
-			CREATE INDEX pt_idx ON " + table_name +
-			" USING GIST(point);\
-			CREATE INDEX t_idx ON " + table_name +
-			"(time);";
-		pqxx::work work (*conn);
-		work.exec(sql.c_str());
-		work.commit();
-	}
-	catch(const pqxx::sql_error& e)
-	{
-		std::cerr << "Error: Failed query:" << std::endl;
-		std::cerr << sql << std::endl;
-		std::cerr << e.what() << std::endl;
-
-		return false;
-	}
-
-	return true;
-}
-
-void DataPointsPostgresql::drop_table()
-{
-	std::string sql = "DROP TABLE " + table_name + ";";
-
-	try
-	{
-		sql = "DROP TABLE " + table_name + ";";
-		pqxx::work work (*conn);
-		work.exec(sql.c_str());
-		work.commit();
-	}
-	catch(const pqxx::sql_error& e)
-	{
-		std::cerr << "Error: Failed query:" << std::endl;
-		std::cerr << sql << std::endl;
-		std::cerr << e.what() << std::endl;
-	}
-}
-
 DataSegPostgresql::DataSegPostgresql()
 {
-	if(connect())
-	{
-		create_table();
-	}
+	connect();
 }
 
 DataSegPostgresql::~DataSegPostgresql()
 {
-	//FIXME
-	drop_table();
 	disconnect();
 	delete conn;
 }
@@ -368,7 +167,7 @@ void DataSegPostgresql::disconnect()
 	conn->disconnect();
 }
 
-const bool DataSegPostgresql::create_table()
+const bool DataSegPostgresql::create()
 {
 	std::string sql;
 
@@ -399,7 +198,7 @@ const bool DataSegPostgresql::create_table()
 	return true;
 }
 
-void DataSegPostgresql::drop_table()
+const bool DataSegPostgresql::drop()
 {
 	std::string sql = "DROP TABLE " + table_name + ";";
 
@@ -415,6 +214,10 @@ void DataSegPostgresql::drop_table()
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
+
+		return false;
 	}
+
+	return true;
 }
 

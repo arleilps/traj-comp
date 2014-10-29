@@ -37,7 +37,8 @@ const bool test_road_net()
 	
 	/*Creating a road network*/
 	std::cout << "Creating a road network" << std::endl;
-	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt");
+	//RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net.csv");
+	RoadNet* net = new RoadNet("road_net.csv");
 	std::cout << "Road network created" << std::endl;
 
 	double latit;
@@ -106,7 +107,7 @@ const bool test_road_net()
 		" to (" << latit << 
 		"," << longit << ") is " << net->seg_name(new_seg) <<
 		std::endl;
-
+	
 	/*Deleting road network*/
 	std::cout << "Deleting a road network" << std::endl;
 	delete net;
