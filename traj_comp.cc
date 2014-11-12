@@ -44,16 +44,16 @@ TrajCompAlgo::~TrajCompAlgo()
 
 void FreqSubt::train(const std::string training_traj_file_name)
 {
-	//TODO
-	std::list<Trajectory*>* trajectories = Trajectory::read_trajectories(training_traj_file_name, net);
+	std::list<Trajectory*> trajectories;
+	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
 	
-	for(std::list<Trajectory*>::iterator it = trajectories->begin();
-		it != trajectories->end(); ++it)
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
 	{
 		add_trajectory(*it);
-	}
 
-	Trajectory::delete_trajectories(trajectories);
+		delete *it;
+	}
 
 	print_tree(tree);
 }

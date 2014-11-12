@@ -26,6 +26,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <pqxx/pqxx>
 #include <queue>
 #include <boost/heap/fibonacci_heap.hpp>
+#include <stdlib.h>
 
 /*my includes*/
 #include "road_net.h"
@@ -221,8 +222,6 @@ const bool RoadNet::read(const std::string& input_file_name)
 	}
 
 	road_net_file.close();
-
-	std::cout << segments.size() << " " << adj_list.size() << std::endl;
 
 	return true;
 }
@@ -545,108 +544,13 @@ const bool RoadNet::double_way(const unsigned int seg) const
 	return segments.at(seg)->double_way;
 }
 
-const unsigned int RoadNet::flip_segment(const unsigned int seg) const
+const unsigned int RoadNet::closest_segment(const double latit, const double longit) const
 {
-	std::string flip_id = "-1" + segments.at(seg)->name;
-	std::map<std::string, unsigned int>::const_iterator it = seg_ids.find(flip_id);
-	return it->second;	
-}
+	std::list<unsigned int> points;
 
-const double RoadNet::match_segment(const double latit_first, 
-	const double latit_second, const double longit_first,
-	const double longit_second) const
-{
-	std::list<unsigned int> point_close_first;
-	seg_index->k_nearest(point_close_first, latit_first, longit_first, 
-		num_neigh_match);
+	seg_index->k_nearest(points, latit, longit, 1);
 
-	std::list<unsigned int> point_close_second;
-	seg_index->k_nearest(point_close_second, latit_second, 
-	longit_second, num_neigh_match);
-
-	unsigned int closest_seg = point_close_first.back();
-	double closest_dist = (n_segments + 1) * length_longest_segment;
-	double threshold = n_segments * length_longest_segment;
-	double dist;
-	
-	for(std::list<unsigned int>::iterator it_first = point_close_first.begin();
-		it_first != point_close_first.end(); ++it_first)
-	{
-		for(std::list<unsigned int>::iterator it_second = point_close_second.begin();
-			it_second != point_close_second.end(); ++it_second)
-		{
-			dist = shortest_path(*it_first, *it_second, threshold);
-
-			if(dist < closest_dist)
-			{
-				closest_dist = dist;
-				closest_seg = *it_first;
-				threshold = dist;
-			}
-		}	
-	}
-	
-	/*Fixing direction in case of a single segment*/
-	if(closest_dist == 0 && double_way(closest_seg))
-	{
-		double dist_first_end_one = seg_index->distance_points(latit_first, 
-			segments.at(closest_seg)->latit_begin, longit_first, 
-			segments.at(closest_seg)->longit_begin);
-		
-		double dist_first_end_two = seg_index->distance_points(latit_first, 
-			segments.at(closest_seg)->latit_end, longit_first, 
-			segments.at(closest_seg)->longit_end);
-
-		double dist_second_end_one = seg_index->distance_points(latit_second, 
-			segments.at(closest_seg)->latit_begin, longit_second, 
-			segments.at(closest_seg)->longit_begin);
-		
-		double dist_second_end_two = seg_index->distance_points(latit_second, 
-			segments.at(closest_seg)->latit_end, longit_second, 
-			segments.at(closest_seg)->longit_end);
-
-		if(dist_first_end_one + dist_second_end_two > 
-			dist_second_end_one + dist_first_end_two)
-		{
-			closest_seg = flip_segment(closest_seg);
-		}
-	}
-
-	return closest_seg;
-}
-
-const double RoadNet::match_segment(const double latit, const double longit,
-	const unsigned int prev_seg, const double max_distance) const
-{
-	std::list<unsigned int> point_neighbors;
-	seg_index->k_nearest(point_neighbors, latit, longit, 
-	num_neigh_match);
-	
-	unsigned int closest_seg = point_neighbors.back();
-	double closest_dist = (n_segments + 1) * length_longest_segment;
-	double dist;
-	double threshold = n_segments * length_longest_segment;
-	
-	for(std::list<unsigned int>::iterator it = point_neighbors.begin();
-		it != point_neighbors.end(); ++it)
-	{
-		dist = shortest_path(prev_seg, *it, threshold);
-		
-		if(dist < closest_dist)
-		{
-			closest_dist = dist;
-			closest_seg = *it;
-			threshold = dist;
-		}
-		
-		if(closest_dist <= max_distance)
-		{
-			break;
-		}
-
-	}
-	
-	return closest_seg;
+	return points.front();
 }
 
 const unsigned int RoadNet::segments_within_distance(std::list<unsigned int>& ids,
@@ -701,9 +605,11 @@ const bool PostGisIndex::project(const double latit, const double longit,
 	try
 	{
 		sql = "select st_x(ST_Transform(ST_GeomFromText('POINT(" +
-			to_string(longit) + " " + to_string(latit) + ")', " + spatial_ref + ")," + srid + "))," + 
+			to_string_prec(longit) + " " + to_string_prec(latit) + ")', " 
+			+ spatial_ref + ")," + srid + "))," + 
 			"st_y(ST_Transform(ST_GeomFromText('POINT(" +
-			to_string(longit) + " " + to_string(latit) + ")', " + spatial_ref + ")," + srid + "))";
+			to_string_prec(longit) + " " + to_string_prec(latit) + 
+			")', " + spatial_ref + ")," + srid + "))";
 
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
@@ -792,10 +698,10 @@ const bool PostGisIndex::insert(const segment* seg, const unsigned int id)
 		sql = "INSERT INTO " + table_name + 
 			"(id, segment) VALUES (" + to_string(id) +
 			", ST_GeomFromText('LINESTRING(" +
-			to_string(seg->longit_begin) + " " + 
-			to_string(seg->latit_begin) + "," +
-			to_string(seg->longit_end) + " " + 
-			to_string(seg->latit_end) + ")', " + 
+			to_string_prec(seg->longit_begin) + " " + 
+			to_string_prec(seg->latit_begin) + "," +
+			to_string_prec(seg->longit_end) + " " + 
+			to_string_prec(seg->latit_end) + ")', " + 
 			spatial_ref+"));";
 	
 		pqxx::work work (*conn);
@@ -823,14 +729,13 @@ const unsigned int PostGisIndex::within_distance(std::list<unsigned int>& ids,
 	{
 		sql = "SELECT id FROM " + table_name + 
 			" WHERE ST_DWithin(ST_Transform(segment," + srid + "),ST_Transform(ST_GeomFromText('POINT(" + 
-			to_string(longit) + " " + to_string(latit) + ")', " + spatial_ref + ")," + srid + ")," + 
-			to_string(distance) + ")";
+			to_string_prec(longit) + " " + to_string_prec(latit) + ")', " 
+			+ spatial_ref + ")," + srid + ")," + 
+			to_string_prec(distance) + ")";
 		
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
 		ids.clear();
-
-		std::cout << "sql = " << sql << std::endl;
 
 		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r) 
 		{
@@ -855,16 +760,49 @@ const double PostGisIndex::distance_points(const double latit_one,
 {
 	std::string sql; 
 
-	return 1;
-
 	double distance = 0;
+	
 	try
 	{
-		sql = "SELECT ST_Distance(ST_Transform(ST_GeomFromText('POINT(" + to_string(longit_one) + 
-			" " + to_string(latit_one) + ")', " + 
+		sql = "SELECT ST_Distance(ST_Transform(ST_GeomFromText('POINT(" + 
+			to_string_prec(longit_one) + 
+			" " + to_string_prec(latit_one) + ")', " + 
 			spatial_ref + ")," + srid + "), ST_Transform(ST_GeomFromText('POINT(" + 
-			to_string(longit_two) + " " + to_string(latit_two) + 
+			to_string_prec(longit_two) + " " + to_string_prec(latit_two) + 
 			")', " + spatial_ref + ")," + srid + "));";
+	
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r) 
+		{
+			distance = r[0].as<double>();
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+	}
+
+	return distance;
+}
+
+const double PostGisIndex::distance_point_segment(const unsigned int seg,
+	const double latit, const double longit) const 
+{
+	std::string sql; 
+
+	double distance = 0;
+	
+	try
+	{
+		sql = "SELECT ST_Distance(ST_Transform(ST_GeomFromText('POINT(" + 
+			to_string_prec(longit) + 
+			" " + to_string_prec(latit) + ")', " + 
+			spatial_ref + ")," + srid + "), ST_Transform(segment," + srid + 
+			")) FROM "+ table_name +" WHERE id = " + to_string(seg) + ";";
 	
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
@@ -892,9 +830,9 @@ const unsigned int PostGisIndex::k_nearest(std::list<unsigned int>& ids,
 	try
 	{
 		unsigned int id;
-		std::string sql = "SELECT id FROM " + table_name + 
+		sql = "SELECT id FROM " + table_name + 
 			" ORDER BY segment <-> st_setsrid(st_makepoint(" + 
-			to_string(longit) + "," + to_string(latit) + 
+			to_string_prec(longit) + "," + to_string_prec(latit) + 
 			")," + spatial_ref + ") LIMIT " + to_string(k) + ";";
 		
 		pqxx::nontransaction work(*conn);
@@ -917,6 +855,45 @@ const unsigned int PostGisIndex::k_nearest(std::list<unsigned int>& ids,
 	}
 	
 	return ids.size();
+}
+
+const bool PostGisIndex::closest_point_segment(const unsigned int seg,
+	const double latit_p, const double longit_p,
+	double& latit_s, double& longit_s) const
+{
+	std::string sql;
+
+	try
+	{
+		//TODO
+//		SELECT ST_x(ST_ClosestPoint(ST_Transform(segment, 26943), ST_Transform(ST_GeomFromText('POINT(1 3)', 4326), 26943))) FROM seg_index WHERE id=0
+		sql = "SELECT ST_x(ST_ClosestPoint(segment, ST_GeomFromText('POINT(" +
+			to_string_prec(longit_p) + " " + to_string_prec(latit_p) + ")', " +
+			spatial_ref + "))),"  
+			" ST_y(ST_ClosestPoint(segment, ST_GeomFromText('POINT(" +
+			to_string_prec(longit_p) + " " + to_string_prec(latit_p) + ")', " +
+			spatial_ref + "))) FROM " + table_name + 
+			" WHERE id = " + to_string(seg) + ";";  
+		
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r) 
+		{
+			latit_s = r[1].as<double>();
+			longit_s = r[0].as<double>();
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+
+		return false;
+	}
+	
+	return true;
 }
 
 PostGisIndex::PostGisIndex()
@@ -950,6 +927,7 @@ struct compare_pair
 	}
 };
 
+/*
 const double RoadNet::shortest_path(const unsigned int from, const unsigned int to, 
 	const double threshold) const
 {
@@ -1013,36 +991,53 @@ const double RoadNet::shortest_path(const unsigned int from, const unsigned int 
 		}
 	}
 
-	return distances[to];
+	return distances[to] - segments.at(to)->length;
+}
+*/
+const bool RoadNet::closest_point_segment(const unsigned int seg,
+	const double latit_p, const double longit_p, 
+	double& latit_s, double& longit_s) const
+{
+	return seg_index->closest_point_segment(seg, latit_p, 
+		longit_p, latit_s, longit_s);
 }
 
-//FIXME: optimize
-const double RoadNet::shortest_path(std::list<unsigned int>& short_path, 
-	const unsigned int from, const unsigned int to, 
-	const double threshold) const
+const double RoadNet::distance_point_segment(const unsigned int seg,
+	const double latit, const double longit) const
 {
-	if(from == to)
+	return seg_index->distance_point_segment(seg, latit, longit);
+}
+
+const double RoadNet::shortest_path(const unsigned int s1, 
+	const unsigned int s2, const double latit_from,
+	const double latit_to, const double longit_from,
+	const double longit_to) const
+{
+	double proj_latit_s1;
+	double proj_longit_s1;
+	double proj_latit_s2;
+	double proj_longit_s2;
+
+	closest_point_segment(s1, latit_from, longit_from, proj_latit_s1, proj_longit_s1);
+	closest_point_segment(s2, latit_to, longit_to, proj_latit_s2, proj_longit_s2);
+	
+	if(s1 == s2)
 	{
-		short_path.clear();
-		return 0;
+		return distance_points(proj_latit_s1, proj_latit_s2, proj_longit_s1, proj_longit_s2);
 	}
 
 	std::vector<double> distances;
 	distances.reserve(n_segments);
-	std::vector<unsigned int> reverse_edges;
-	reverse_edges.reserve(n_segments);
 	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, boost::heap::compare<compare_pair> > pq;
 	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
 		boost::heap::compare<compare_pair> >::handle_type> handles;
 	handles.reserve(n_segments);
 	
-	
 	for(unsigned int s = 0; s < n_segments; s++)
 	{
 		distances.push_back(std::numeric_limits<double>::max());
-		reverse_edges.push_back(n_segments + 1);
-		
-		if(s != from)
+	
+		if(s != s1)
 		{
 			handles.push_back(pq.push(std::pair<unsigned int, double>
 				(s, std::numeric_limits<double>::max())));
@@ -1058,14 +1053,14 @@ const double RoadNet::shortest_path(std::list<unsigned int>& short_path,
 	unsigned int z;
 	double dist;
 												               
-	distances[from] = 0;
-	
+	distances[s1] = 0;
+
 	while(! pq.empty())
 	{
 		u = pq.top().first;
 		pq.pop();
-
-		if(u == to)
+		
+		if(u == s2)
 		{
 			break;
 		}
@@ -1074,34 +1069,141 @@ const double RoadNet::shortest_path(std::list<unsigned int>& short_path,
 			it != adj_list[u]->end(); ++it)
 		{
 			z = *it;
-			dist = distances[u] + segments.at(u)->length;
+
+			dist = 0;
+
+			if(u == s1)
+			{
+				dist += distance_point_segment(z, proj_latit_s1, proj_longit_s1); 
+			}
 			
-			if(distances[z] > dist
-				&& dist <= threshold)
+			if(z == s2)
+			{
+				dist += distance_point_segment(u, proj_latit_s2, proj_longit_s2); 
+			}
+			else
+			{
+				dist += segments.at(u)->length;
+			}
+
+			dist += distances[u];
+			
+			if(distances[z] > dist)
 			{
 				distances[z] = dist;
+
+				pq.increase(handles.at(z), std::pair<unsigned int, double>(z, dist));
+			}
+		}
+	}
+
+	return distances[s2];
+}
+
+const double RoadNet::shortest_path(
+	std::list<unsigned int>& short_path, const unsigned int s1, 
+	const unsigned int s2, const double latit_from,
+	const double latit_to, const double longit_from,
+	const double longit_to) const
+{
+	double proj_latit_s1;
+	double proj_longit_s1;
+	double proj_latit_s2;
+	double proj_longit_s2;
+	
+	short_path.clear();
+	std::vector<unsigned int> reverse_edges;
+	reverse_edges.reserve(n_segments);
+	closest_point_segment(s1, latit_from, longit_from, proj_latit_s1, proj_longit_s1);
+	closest_point_segment(s2, latit_to, longit_to, proj_latit_s2, proj_longit_s2);
+	
+	if(s1 == s2)
+	{
+		return distance_points(proj_latit_s1, proj_latit_s2, proj_longit_s1, proj_longit_s2);
+	}
+
+	std::vector<double> distances;
+	distances.reserve(n_segments);
+	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, boost::heap::compare<compare_pair> > pq;
+	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
+		boost::heap::compare<compare_pair> >::handle_type> handles;
+	handles.reserve(n_segments);
+	
+	for(unsigned int s = 0; s < n_segments; s++)
+	{
+		distances.push_back(std::numeric_limits<double>::max());
+		reverse_edges.push_back(0);
+
+		if(s != s1)
+		{
+			handles.push_back(pq.push(std::pair<unsigned int, double>
+				(s, std::numeric_limits<double>::max())));
+		}
+		else
+		{
+			handles.push_back(pq.push(std::pair<unsigned int, double>
+				(s, 0)));
+		}
+	}
+								
+	unsigned int u;
+	unsigned int z;
+	double dist;
+												               
+	distances[s1] = 0;
+
+	while(! pq.empty())
+	{
+		u = pq.top().first;
+		pq.pop();
+		
+		if(u == s2)
+		{
+			break;
+		}
+		
+		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
+			it != adj_list[u]->end(); ++it)
+		{
+			z = *it;
+
+			dist = 0;
+
+			if(u == s1)
+			{
+				dist += distance_point_segment(z, proj_latit_s1, proj_longit_s1); 
+			}
+			
+			if(z == s2)
+			{
+				dist += distance_point_segment(u, proj_latit_s2, proj_longit_s2); 
+			}
+			else
+			{
+				dist += segments.at(u)->length;
+			}
+
+			dist += distances[u];
+			
+			if(distances[z] > dist)
+			{
+				distances[z] = dist;
+
 				pq.increase(handles.at(z), std::pair<unsigned int, double>(z, dist));
 				reverse_edges[z] = u;
 			}
 		}
 	}
-
-
-
-	short_path.clear();
-
-	if(distances.at(to) <= threshold)
-	{
-		u = reverse_edges.at(to);
-
-		while(u != from)
-		{
-			short_path.push_front(u);
-			u = reverse_edges.at(u);
-		}
-	}
 	
-	return distances.at(to);
+	u = reverse_edges.at(s2);
+
+	while(u != s1)
+	{
+		short_path.push_front(u);
+		u = reverse_edges.at(u);
+	}
+
+	return distances[s2];
 }
 
 void RoadNet::compute_segment_lengths()

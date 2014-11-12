@@ -31,340 +31,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 const bool test_moving_obj()
 {
-	std::cout << "Testing moving object functionalities" << std::endl;
-
-	/*Creating a road network*/
-	std::cout << "Creating a road network" << std::endl;
-	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt");
-	std::cout << "Road network created" << std::endl;
-
-	/*Generating trajectories from updates*/
-	std::cout << "Generating trajectories from updates" << std::endl;
-	
-	std::string object;
-	double latit;
-	double longit;
-	unsigned int timestamp;
-	std::list<update*> updates;
-	
-	object = "aldhidd";
-
-//	aldhidd 37.75108 -122.39488 0 1213086585
-	latit = 37.75108;
-	longit = -122.39488;
-	timestamp = 1213086585;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75124 -122.39492 0 1213086636
-	latit = 37.75124;
-	longit = -122.39492;
-	timestamp = 1213086636;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75125 -122.39493 0 1213086696
-	latit = 37.7512;
-	longit = -122.39493;
-	timestamp = 1213086696;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75121 -122.39492 0 1213086757
-	latit = 37.75121;
-	longit = -122.39492;
-	timestamp = 1213086757;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75121 -122.39493 0 1213086817
-	latit = 37.75121;
-	longit = -122.39493;
-	timestamp = 1213086817;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75121 -122.39494 0 1213086877
-	latit = 37.75121;
-	longit = -122.39494;
-	timestamp = 1213086877;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75122 -122.39495 0 1213086937
-	latit = 37.75122;
-	longit = -122.39495;
-	timestamp = 1213086937;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.7512 -122.39494 0 1213086998
-	latit = 37.7512;
-	longit = -122.39494;
-	timestamp = 1213086998;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75122 -122.39508 0 1213087057
-	latit = 37.75122;
-	longit = -122.39508;
-	timestamp = 1213087057;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75122 -122.39498 0 1213087118
-	latit = 37.75122;
-	longit = -122.39498;
-	timestamp = 1213087118;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-	
-	std::cout << "updates:" << std::endl;
-	for(std::list<update*>::iterator u = updates.begin();
-		u != updates.end(); ++u)
-	{
-		std::cout  << " <" << (*u)->latit <<
-			" , " << (*u)->longit << 
-			" , " << (*u)->time << ">" << std::endl;
-	}
-
-	std::list<Trajectory*> trajectories;
-
-	unsigned int count;
-	unsigned int t;
-	count = Trajectory::build_trajectories(trajectories, updates, net);
-	t = 0;
-	std::cout << count << " trajectories:" << std::endl;
-
-	for(std::list<Trajectory*>::iterator it = trajectories.begin();
-		it != trajectories.end(); ++it) 
-	{
-		std::cout << "Trajectory: " << t << " size = " << (*it)->size() << std::endl;
-		
-		for(Trajectory::iterator traj_it = (*it)->begin(); traj_it != (*it)->end(); ++traj_it)
-		{
-			std::cout << "<seg: " << (*traj_it)->segment <<
-				" time: " << (*traj_it)->time << ">" << std::endl;
-		}
-		
-		std::cout << std::endl;
-
-		delete *it;
-		t++;
-	}
-	
-	trajectories.clear();
-	
-	/*Simulating case when timestamps are too far away*/
-	std::cout << "Simulating case when object is too slow" << std::endl;
-	
-//	aldhidd 37.75123 -122.39496 0 1213088400
-	latit = 37.75123;
-	longit = -122.39496;
-	timestamp = 1213098400;
-
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75118 -122.39492 0 1213088600
-	latit = 37.75118;
-	longit = -122.39492;
-	timestamp = 1213098600;
-
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75119 -122.39492 0 1213088800
-	latit = 37.75118;
-	longit = -122.39492;
-	timestamp = 1213098800;
-
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75131 -122.39504 0 1213089000
-	latit = 37.75131;
-	longit = -122.39504;
-	timestamp = 1213099000;
-
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75132 -122.39501 0 1213089200
-	latit = 37.75132;
-	longit = -122.39501;
-	timestamp = 1213099200;
-
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aldhidd 37.75131 -122.39497 0 1213089400
-	latit = 37.75131;
-	longit = -122.39497;
-	timestamp = 1213099400;
-
-	updates.push_back(new_update(object, latit, longit, timestamp));
-	
-	std::cout << "updates:" << std::endl;
-	for(std::list<update*>::iterator u = updates.begin();
-		u != updates.end(); ++u)
-	{
-		std::cout  << " <" << (*u)->latit <<
-			" , " << (*u)->longit << 
-			" , " << (*u)->time << ">" << std::endl;
-	}
-
-	count = Trajectory::build_trajectories(trajectories, updates, net);
-	t = 0;
-	std::cout << count << " trajectories:" << std::endl;
-
-	for(std::list<Trajectory*>::iterator it = trajectories.begin();
-		it != trajectories.end(); ++it) 
-	{
-		std::cout << "Trajectory: " << t << " size = " << (*it)->size() << std::endl;
-		
-		for(Trajectory::iterator traj_it = (*it)->begin(); traj_it != (*it)->end(); ++traj_it)
-		{
-			std::cout << "<seg: " << (*traj_it)->segment <<
-				" time: " << (*traj_it)->time << ">" << std::endl;
-		}
-		
-		std::cout << std::endl;
-
-		delete *it;
-		t++;
-	}
-	
-	trajectories.clear();
-
-	/*Simulating case when segments are too far away*/
-	std::cout << "Simulating case when object is too fast" << std::endl;
-	
-//	aydwaho 37.75118 -122.39343 0 1213089600
-	latit = 37.75118;
-	longit = -122.39343;
-	timestamp = 1213099400;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75146 -122.39525 0 1213089800
-	latit = 37.75146;
-	longit = -122.39525;
-	timestamp = 1213099401;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75141 -122.39516 0 1213081000
-	latit = 37.75141;
-	longit = -122.39516;
-	timestamp = 1213099402;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75144 -122.39512 0 1213081200
-	latit = 37.75144;
-	longit = -122.39512;
-	timestamp = 1213099403;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75138 -122.39513 0 1213081400
-	latit = 37.75138;
-	longit = -122.39513;
-	timestamp = 1213099404;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.7517 -122.39421 0 1213081600
-	latit = 37.7517;
-	longit = -122.39421;
-	timestamp = 1213091405;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75149 -122.39425 0 1213081800
-	latit = 37.75149;
-	longit = -122.39425;
-	timestamp = 1213091406;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.7515 -122.39425 0 1213082000
-	latit = 37.7515;
-	longit = -122.39425;
-	timestamp = 1213091407;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75151 -122.39425 0 1213082200
-	latit = 37.75151;
-	longit = -122.39425;
-	timestamp = 1213091408;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.75151 -122.39426 0 1213082400
-	latit = 37.75151;
-	longit = -122.39426;
-	timestamp = 1213091409;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-
-//	aydwaho 37.7515 -122.39427 0 1213082600
-	latit = 37.7515;
-	longit = -122.39427;
-	timestamp = 1213091410;
-	
-	updates.push_back(new_update(object, latit, longit, timestamp));
-	
-	std::cout << "updates:" << std::endl;
-	for(std::list<update*>::iterator u = updates.begin();
-		u != updates.end(); ++u)
-	{
-		std::cout  << " <" << (*u)->latit <<
-			" , " << (*u)->longit << 
-			" , " << (*u)->time << ">" << std::endl;
-	}
-
-	count = Trajectory::build_trajectories(trajectories, updates, net);
-	t = 0;
-	std::cout << count << " trajectories:" << std::endl;
-
-	for(std::list<Trajectory*>::iterator it = trajectories.begin();
-		it != trajectories.end(); ++it) 
-	{
-		std::cout << "Trajectory: " << t << " size = " << (*it)->size() << std::endl;
-		
-		for(Trajectory::iterator traj_it = (*it)->begin(); traj_it != (*it)->end(); ++traj_it)
-		{
-			std::cout << "<seg: " << (*traj_it)->segment <<
-				" time: " << (*traj_it)->time << ">" << std::endl;
-		}
-		
-		std::cout << std::endl;
-
-		delete *it;
-		t++;
-	}
-	
-	trajectories.clear();
-
-	/*Simulating case when segments are too far away*/
-
-	for(std::list<update*>::iterator u = updates.begin();
-		u != updates.end(); ++u)
-	{
-		delete *u;
-	}
-	
-	std::cout << "Deleting road network" << std::endl;
-	delete net;
-	std::cout << "Road network deleted" << std::endl;
-
-	std::cout << "Test finished" << std::endl;
-
 	return true;
 }
 
-std::vector < std::string > read_matched_trajectories(std::string input_file_name)
+void read_matched_trajectories(std::map<unsigned int, std::string>& matched_traj, std::string input_file_name)
 {
-	std::vector < std::string > matched_traj;
-	
 	std::ifstream input_file(input_file_name.c_str(), std::ios::in);
 	std::string line_str;
 	std::vector< std:: string > line_vec;
@@ -381,12 +52,12 @@ std::vector < std::string > read_matched_trajectories(std::string input_file_nam
 		time = line_vec[1];
 		edge = line_vec[2];
 
-		matched_traj.push_back(edge);
+		matched_traj[atoi(time.c_str())] = edge;
 		
 		std::getline(input_file, line_str);
 	}
 
-	return matched_traj;
+	input_file.close();
 }
 
 const bool test_moving_obj_file()
@@ -397,38 +68,47 @@ const bool test_moving_obj_file()
 	RoadNet* net = new RoadNet("road_net_wa.csv");
 	std::cout << "Road network created" << std::endl;
 
-	std::list<Trajectory*>* trajectories;
-	std::vector < std::string > matched_traj;
+	std::map < unsigned int, std::string > matched_traj;
 	double accuracy = 0;
 	unsigned int num = 0;
+	Trajectory* trajectory;
+	std::vector<std::list< update* > * > updates;
 	
-	for(unsigned int i = 0; i < 10; i++)
-	{
-		trajectories = Trajectory::read_trajectories("../data/wa_stream_" + to_string(i) + ".txt", net);
-		
-		for(std::list<Trajectory*>::iterator it = trajectories->begin();
-			it != trajectories->end(); ++it) 
-		{
-			matched_traj = read_matched_trajectories("../data/wa_matched_stream_" + to_string(i) + ".txt");
-		
-			for(Trajectory::iterator traj_it = (*it)->begin(); traj_it != (*it)->end(); ++traj_it)
-			{
-				if(matched_traj.at((*traj_it)->time) == net->seg_name((*traj_it)->segment))
-				{
-					accuracy = accuracy + 1;
-				}
+	std::cout << "Map-matching updates" << std::endl;
 
-				num++;
+	for(unsigned int i = 0; i < 1; i++)
+	{
+		Trajectory::read_updates(updates, "../data/wa_stream_small.txt", net); 
+		trajectory = Trajectory::map_matching(*(updates.at(0)), net);
+//		trajectory = Trajectory::read_trajectory("../data/wa_stream_" + to_string(i) + ".txt", net);
+		matched_traj.clear();
+
+		read_matched_trajectories(matched_traj, "../data/wa_matched_stream_" + to_string(i) + ".txt");
+//		read_matched_trajectories(matched_traj, "../data/wa_matched_stream_small.txt");
+		
+		for(Trajectory::iterator traj_it = trajectory->begin(); traj_it != trajectory->end(); ++traj_it)
+		{
+			if(matched_traj.at((*traj_it)->time) == net->seg_name((*traj_it)->segment))
+			{
+				accuracy = accuracy + 1;
 			}
+			
+			num++;
 		}
-	
-		Trajectory::delete_trajectories(trajectories);
+		
+		trajectory->extend_traj_shortest_paths(net);
+		trajectory->remove_repeated_segments();
+
+		trajectory->print();
+
+		delete trajectory;
+		delete_list_updates(updates.at(0));
 	}
 	
 	accuracy = (double) accuracy / num;
 
 	std::cout << "accuracy = " << accuracy << std::endl;
-	
+
 	std::cout << "Deleting road network" << std::endl;
 	delete net;
 	std::cout << "Road network deleted" << std::endl;

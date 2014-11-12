@@ -144,3 +144,12 @@ void Parameters::set_compression_algorithms(std::vector<std::string>& algorithms
 	compression_algorithms = algorithms;
 }
 
+const std::string to_string_prec(const double t)
+{
+	std::ostringstream stm;
+	stm << std::setprecision( PREC );
+	stm << t;
+
+	return stm.str() ;
+}
+

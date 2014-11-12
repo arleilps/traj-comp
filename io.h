@@ -25,9 +25,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <algorithm>
 #include <iostream>
 #include <limits.h>
+#include <iomanip>
+#include <limits>
 
 /*my includes*/
 #include "getopt_pp.h"
+
+#define PREC 10
 
 /**
  * Parameter setting exception
@@ -56,6 +60,8 @@ template < typename T > std::string to_string( const T& t)
 	
 	return stm.str() ;
 }
+
+const std::string to_string_prec(const double t);
 
 /**
  * Simple handler for the input parameters

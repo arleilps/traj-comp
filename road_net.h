@@ -56,8 +56,9 @@ typedef struct t_point
 
 point* new_point(const double latit, const double longit);
 
-segment* new_segment(const double latit_begin, const double latit_end, const double longit_begin, 
-	const double longit_end, const double proj_latit_begin, const double proj_latit_end, 
+segment* new_segment(const double latit_begin, const double latit_end, 
+	const double longit_begin, const double longit_end, 
+	const double proj_latit_begin, const double proj_latit_end, 
 	const double proj_longit_begin, const double proj_longit_end,
 	const unsigned int p_begin, const unsigned int p_end,
 	const bool double_way);
@@ -109,6 +110,19 @@ class SegIndex
 		}
 
 		virtual void drop(){};
+
+		virtual const bool closest_point_segment(const unsigned int seg, 
+			const double latit_p, const double longit_p,
+			double& latit_s, double& longit_s) const
+		{
+			return false;
+		}
+		
+		virtual const double distance_point_segment(const unsigned int seg,
+			const double latit, const double longit) const
+		{
+			return 0;
+		}
 };
 
 /**
@@ -140,7 +154,13 @@ class PostGisIndex: public SegIndex
 
 		const bool project(const double latit, const double longit, 
 			double& x, double& y);
+		
+		const bool closest_point_segment(const unsigned int seg, 
+			const double latit_p, const double longit_p,
+			double& latit_s, double& longit_s) const;
 
+		const double distance_point_segment(const unsigned int seg,
+			const double latit, const double longit) const;
 	private:
 		pqxx::connection* conn;
 		static const std::string database_name;
@@ -175,19 +195,28 @@ class RoadNet
 			const double latit, const double longit, 
 			const double distance) const;
 
-		const double match_segment(const double latit_first,
-			const double latit_second, const double longit_first,
-			const double longit_second) const;
+		const unsigned int closest_segment(const double latit, const double longit) const;
 		
-		const double match_segment(const double latit, const double longit,
-			const unsigned int prev_seg, const double max_distance) const;
-
 		const double shortest_path(std::list<unsigned int>& short_path, 
-			const unsigned int start_seg, const unsigned int end_seg, 
-			const double threshold) const;
+			const unsigned int start_seg, const unsigned int end_seg) const;
+		
+		const bool closest_point_segment(const unsigned int seg,
+			const double latit_p, const double longit_p, 
+			double& latit_s, double& longit_s) const;
 		
 		const double shortest_path(const unsigned int s1, 
-			const unsigned int s2, const double threshold) const;
+			const unsigned int s2, const double latit_from,
+			const double latit_to, const double longit_from,
+			const double longit_to) const;
+		
+		const double shortest_path(
+			std::list<unsigned int>& shortest_path, const unsigned int s1, 
+			const unsigned int s2, const double latit_from,
+			const double latit_to, const double longit_from,
+			const double longit_to) const;
+		
+		const double distance_point_segment(const unsigned int seg,
+			const double latit, const double longit) const;
 		
 		/*inlines*/
 		inline const std::string seg_name(const unsigned int& seg) const

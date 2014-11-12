@@ -82,32 +82,6 @@ const bool test_road_net()
 			net->seg_longit_end(*it) << ")" << std::endl;
 	}
 	
-	std::cout << "Map matching" << std::endl;
-	//Segment: 82654
-	double latit_one = 37.737565;
-	double latit_two = 37.73742;
-	double longit_one = -122.450356;
-	double longit_two = -122.450546;
-
-	unsigned int seg = net->match_segment(latit_one, latit_two, 
-		longit_one, longit_two);
-	
-	std::cout << "Map matching segment from (" << latit_one << 
-		"," << longit_one << ") to (" << latit_two << 
-		"," << longit_two << ") is " << net->seg_name(seg) <<
-		std::endl;
-	
-	//Segment: 82655
-	latit = 37.737304;
-	longit = -122.450736;
-	
-	unsigned int new_seg = net->match_segment(latit, longit, seg, 100);
-	
-	std::cout << "Map matching segment from previous segment" << net->seg_name(seg) << 
-		" to (" << latit << 
-		"," << longit << ") is " << net->seg_name(new_seg) <<
-		std::endl;
-	
 	/*Deleting road network*/
 	std::cout << "Deleting a road network" << std::endl;
 	delete net;

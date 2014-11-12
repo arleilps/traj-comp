@@ -42,14 +42,16 @@ typedef struct t_update
 update* new_update(const std::string obj, const double latit, const double longit, unsigned int time);
 update* new_update(const std::string obj, const double latit, const double longit, const double proj_latit, 
 	const double proj_longit, unsigned int time);
+void delete_list_updates(std::list<update*>* updates);
 
 typedef struct t_seg_time
 {
 	unsigned int segment;
 	unsigned int time;
+	const update* up;
 }seg_time;
 
-seg_time* new_seg_time(const unsigned int segment, const unsigned int time);
+seg_time* new_seg_time(const unsigned int segment, const unsigned int time, const update* up=NULL);
 
 /**
  * Trajectory
@@ -68,17 +70,26 @@ class Trajectory
 			return size_traj;
 		}
 
-		void add_update(const unsigned int segment, const unsigned int timestamp);
+		void add_update(const unsigned int segment, const unsigned int timestamp, const update* up=NULL);
 		
-		static const unsigned int build_trajectories(std::list<Trajectory*>& trajectories, 
-			const std::list<update*>& updates, const RoadNet* net);
+		static Trajectory* map_matching(const std::list<update*>& updates, const RoadNet* net);
 		
-		static std::list<Trajectory*>* read_trajectories(const std::string input_file_name, 
+		static const unsigned int read_updates(std::vector<std::list< update* > * >& updates, 
+			const std::string input_file_name, 
 			const RoadNet* net) throw (std::ios_base::failure);
+
 		static void delete_trajectories(std::list<Trajectory*>* trajectories);
+		
+		static const unsigned int read_trajectories(std::list< Trajectory * >& trajectories, 
+			const std::string input_file_name, 
+			const RoadNet* net) throw (std::ios_base::failure);
 
 		void print()  const;
 		
+		void extend_traj_shortest_paths(const RoadNet*net);
+
+		void remove_repeated_segments();
+
 		typedef std::list< seg_time* >::iterator iterator;
 		
 		inline iterator begin()
@@ -107,14 +118,17 @@ class Trajectory
 		static const double sigma;
 
 		void regression_timestamps(const RoadNet* net);
+		
 		static const double transition_prob(const unsigned int seg_from, 
 			const unsigned int seg_to,
 			const double latit_from, const double latitt_to,
 			const double longit_from, const double longit_to,
 			const unsigned int time_from, const unsigned int time_to,
 			const RoadNet* net);
-		static std::vector < std::pair < unsigned int, double > * >
-			cand_seg_probs(const update* up, const RoadNet* net);
+		
+		static void cand_seg_probs(
+			std::vector < std::pair < unsigned int, double > * >& seg_probs, 
+			const update* up, const RoadNet* net);
 };
 
 #endif
