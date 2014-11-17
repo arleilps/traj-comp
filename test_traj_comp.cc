@@ -110,3 +110,23 @@ const bool test_traj_comp_freq_subt()
 }
 
 	
+const bool test_traj_comp_freq_subt_sf_cab()
+{
+	std::cout << "Creating a road network" << std::endl;
+	//RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
+	RoadNet* net = new RoadNet("road_net_sf.csv");
+	std::cout << "Road network created" << std::endl;
+	 std::list<unsigned int> short_path;
+	 std::cout << "Map-matching updates" << std::endl;
+	 Trajectory::write_map_matched_trajectories(
+	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
+	 	//"../data/small_cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
+
+	std::cout << "Deleting road network" << std::endl;
+	delete net;
+	std::cout << "Road network deleted" << std::endl;
+	
+	std::cout << "Test finished" << std::endl;
+	
+	return true;
+}

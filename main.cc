@@ -25,7 +25,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "io.h"
 #include "road_net.h"
 #include "traj_comp.h"
-#include "database.h"
 
 #include "test_road_net.h"
 #include "test_moving_obj.h"
@@ -44,8 +43,8 @@ int main(int argc, char** argv)
 //	test_road_net();
 //	test_database();
 //	test_moving_obj();
-	test_moving_obj_file();
-//	test_traj_comp_freq_subt();
+//	test_moving_obj_traj_file();
+	test_traj_comp_freq_subt_sf_cab();
 
 	/*Setting the compression algorithms*/
 //	std::vector<std::string> compression_algorithms;

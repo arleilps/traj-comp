@@ -22,4 +22,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 const bool test_traj_comp_freq_subt();
 
+const bool test_traj_comp_freq_subt_sf_cab();
+
 #endif

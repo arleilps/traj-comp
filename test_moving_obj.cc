@@ -118,3 +118,26 @@ const bool test_moving_obj_file()
 	return true;
 }
 	
+const bool test_moving_obj_traj_file()
+{
+	/*Creating a road network*/
+	std::cout << "Creating a road network" << std::endl;
+//	RoadNet* net = new RoadNet("../data/wa_adj.txt", "road_net_wa.csv");
+	RoadNet* net = new RoadNet("road_net_wa.csv");
+	std::cout << "Road network created" << std::endl;
+
+	std::cout << "Map-matching updates" << std::endl;
+
+	Trajectory::write_map_matched_trajectories(
+		"../data/wa_stream_small.txt", "map_matched.txt", net); 
+	
+
+	std::cout << "Deleting road network" << std::endl;
+	delete net;
+	std::cout << "Road network deleted" << std::endl;
+
+	std::cout << "Test finished" << std::endl;
+
+	return true;
+}
+	

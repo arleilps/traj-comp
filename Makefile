@@ -1,4 +1,4 @@
-CFLAGS = -Wall -O3 -g -pg
+CFLAGS = -Wall -O3 -g #-pg
 
 CC = g++ $(CFLAGS) 
 
