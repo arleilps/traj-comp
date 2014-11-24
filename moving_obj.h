@@ -319,4 +319,164 @@ class Trajectory
 			);
 };
 
+class TrajDBStorage
+{
+	public:
+		TrajDBStorage(){};
+		
+		virtual ~TrajDBStorage(){};
+		
+		virtual const bool create()
+		{
+			return false;
+		}
+		
+		virtual const bool drop()
+		{
+			return false;
+		}
+
+		virtual const bool insert
+			(
+				const std::string& obj,
+				const seg_time& st 
+			)
+		{
+			return false;
+		}
+		
+		virtual const bool query_segment_time
+			(
+				const unsigned int segment,
+				std::list<std::string>& objs,
+				const unsigned int time_begin=0,
+				const unsigned int time_end=0
+			)
+				const
+		{
+			return false;
+		}
+};
+
+class TrajDBPostGis: public TrajDBStorage
+{
+	public:
+		TrajDBPostGis():TrajDBStorage()
+		{
+			connect();
+		}
+		
+		virtual ~TrajDBPostGis(){};
+		
+		const bool create();
+		
+		const bool drop();
+
+		const bool insert
+			(
+				const std::string& obj,
+				const seg_time& st 
+			);
+		
+		const bool query_segment_time
+			(
+				const unsigned int segment,
+				std::list<std::string>& objs,
+				const unsigned int time_begin=0,
+				const unsigned int time_end=0
+			)
+				const;
+	private:
+		static const std::string database_name;
+		static const std::string table_name;
+		static const std::string host;
+		static const std::string port;
+		static const std::string user;
+		static const std::string password;
+		
+		static const std::string srid;
+		static const std::string spatial_ref;
+
+		pqxx::connection* conn;
+
+		const bool connect();
+};
+
+class TrajDB
+{
+	public:
+		TrajDB(RoadNet* _net)
+		{
+			net = _net;
+			db = new TrajDBPostGis();
+		}
+		
+		virtual ~TrajDB()
+		{
+			delete db;
+		};
+		
+		virtual const bool create()
+		{
+			return db->create();
+		}
+		
+		virtual const bool drop()
+		{
+			return db->drop();
+		}
+
+		virtual const bool insert(const std::string& input_file_name);
+		
+		virtual const bool insert(const std::string& obj, const Trajectory& traj);
+		
+		virtual const bool insert
+			(
+				const std::string& obj,
+				const seg_time& st
+			);
+		
+		virtual const bool center_radius_query
+			(
+				const unsigned int lat, 
+				const unsigned int longit,
+				std::list<std::string>& res,
+				const unsigned int time_begin=0,
+				const unsigned int time_end=0
+			) 
+				const;
+
+		virtual const bool nearest_neighbor_query
+			(
+				const unsigned int lat,
+				const unsigned int longit,
+				const std::string& res,
+				const unsigned int time_begin=0,
+				const unsigned int time_end=0
+			)
+				const;
+		
+		virtual const bool when_at
+			(
+				const std::string& obj,
+				const unsigned int lat,
+				const unsigned int longit,
+				const unsigned int& timestamp
+			)
+				const;
+		
+		virtual const bool where_at
+			(
+				const std::string& obj,
+				const unsigned int timestamp,
+				const unsigned int& lat,
+				const unsigned int& longit
+			)
+				const;
+
+	protected:
+		RoadNet* net;
+		TrajDBStorage* db;
+};
+
 #endif

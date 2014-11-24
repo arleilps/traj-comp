@@ -89,6 +89,7 @@ RoadNet::RoadNet(const std::string& input_file_name)
 {
 	seg_id = 0;
 	n_segments = 0;
+	//Change the spatial index here
 	seg_index = new PostGisIndex();
 	read(input_file_name);
 
@@ -682,6 +683,7 @@ const bool PostGisIndex::create_table()
 	
 	try
 	{
+		//FIXME: CREATE INDEX sg_idx_"+ table_name +" ON " + table_name +
 		sql = "CREATE TABLE " + table_name + 
 			"(id integer PRIMARY KEY, segment geometry(LINESTRING," +
 			spatial_ref+"));\
@@ -716,7 +718,7 @@ void PostGisIndex::drop_table()
 	}
 	catch(const pqxx::sql_error& e)
 	{
-		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << "Error: Failed query: " << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 	}

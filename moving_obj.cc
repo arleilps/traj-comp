@@ -42,6 +42,15 @@ double Trajectory::sigma = SIGMA;
 double Trajectory::beta_const = BETACONST;
 double Trajectory::radius = RADIUS;
 
+const std::string TrajDBPostGis::database_name = "test";
+const std::string TrajDBPostGis::table_name = "traj";
+const std::string TrajDBPostGis::host = "127.0.0.1";
+const std::string TrajDBPostGis::port = "5432";
+const std::string TrajDBPostGis::user = "traj_comp";
+const std::string TrajDBPostGis::password = "traj_comp";
+
+const std::string TrajDBPostGis::srid = "26943";
+const std::string TrajDBPostGis::spatial_ref = "4326";
 
 update* new_update
 	(
@@ -230,23 +239,6 @@ void Trajectory::cand_seg_probs
 	std::sort(seg_probs.begin(), seg_probs.end(), compare_pair_segs);
 }
 
-/*
-void Trajectory::pairwise_shortest_paths
-	(
-		std::list<unsigned int>& from, 
-		std::list<unsigned int>& to,
-		std::map<std::pair<unsigned int, unsigned int>, double>& distances,
-		const RoadNet* net
-	)
-{
-	for(std::list<unsigned int>::iterator it_from = from.begin();
-		it_from != from.end(); ++it_from)
-	{
-		net->shortest_path(*it_from, to, latit_from, latit_to, longit_from, longit_to);
-	}
-}
-*/
-
 const double Trajectory::transition_prob
 	(
 		const unsigned int seg_from, 
@@ -278,210 +270,6 @@ const double Trajectory::transition_prob
 // Map-matching algorithm: http://www.mit.edu/~jaillet/general/hmm-based-proximity.pdf
 // Hidden markov model: http://en.wikipedia.org/wiki/Hidden_Markov_model
 // Viterbi algorithm: http://en.wikipedia.org/wiki/Viterbi_algorithm
-/*
-Trajectory* Trajectory::map_matching
-	(
-		const std::list<update*>& updates, 
-		const RoadNet* net
-	)
-{
-	std::list<update*>::const_iterator it = updates.begin();
-	update* up = *it;
-	std::vector < std::pair < unsigned int, double > * > seg_probs;
-	
-	//Identifying candidate road segments for update
-	cand_seg_probs(seg_probs, up, net);
-	
-	std::vector< std::map < unsigned int, double > * > matrix_prob;
-	std::vector< std::map < unsigned int, Trajectory* > * > matrix_traj;
-	matrix_prob.reserve(updates.size());
-	matrix_traj.reserve(updates.size());
-	
-	//Creating trajectory and probability matrix for viterbi algorithm
-	for(unsigned int u = 0; u < updates.size(); u++)
-	{
-		matrix_prob.push_back(new std::map<unsigned int, double >);
-		matrix_traj.push_back(new std::map<unsigned int, Trajectory* >);
-	}
-
-	Trajectory* traj;
-	
-	//Initializing matrices
-	for(unsigned int c = 0; c < seg_probs.size(); c++)
-	{
-		matrix_prob[0]->insert(std::pair<unsigned int, double>
-			(seg_probs.at(c)->first, -1 * log(seg_probs.at(c)->second)));
-		traj = new Trajectory;
-		traj->add_update(seg_probs.at(c)->first, up->time, up);
-		traj->prob = -1 * log(seg_probs.at(c)->second);
-		matrix_traj[0]->insert(std::pair<unsigned int, Trajectory*>
-			(seg_probs.at(c)->first, traj));
-		
-		delete seg_probs.at(c);
-	}
-
-	double max_prob;
-	unsigned int max_seg;
-	double prob;
-	unsigned int u = 1;
-	double trans_p;
-	update* prev_up;
-	unsigned int seg;
-	unsigned int prev_seg;
-	std::map<unsigned int, Trajectory*>::iterator it_traj;
-	++it;
-	
-	//Iterating over updates
-	for(; it != updates.end(); ++it)
-	{
-		std::cout << "u = " << u << std::endl;
-		prev_up = up;
-		up = *it;
-		
-		//Identifying candidate road segments for update
-		cand_seg_probs(seg_probs, up, net);
-		
-		for(unsigned int s = 0; s < seg_probs.size(); s++)
-		{
-			seg = seg_probs.at(s)->first;
-			max_prob = std::numeric_limits<double>::max();
-			max_seg = 0;
-
-			for(it_traj = matrix_traj.at(u-1)->begin(); 
-				it_traj != matrix_traj.at(u-1)->end(); ++it_traj)
-			{
-				traj = it_traj->second;
-				prev_seg = it_traj->first;
-				
-				//Computing transition probabilities
-				
-				trans_p = transition_prob
-					(
-						prev_seg, 
-						seg, 
-						prev_up->latit, 
-						up->latit, 
-						prev_up->longit, 
-						up->longit, 
-						prev_up->time, 
-						up->time, net
-					);
-			
-				try
-				{
-					//Probabilities computed using logarithms
-					//otherwise, they would approach to 0 for long
-					//sequences
-					prob = matrix_prob[u-1]->at(prev_seg) 
-						- log(trans_p)  - log(seg_probs.at(s)->second);
-				}
-				catch(const std::out_of_range& oor)
-				{
-					//FIXME: This part is not very stable yet.
-					std::cout << "error 1" << std::endl;
-					std::cout << "prev_seg = " << prev_seg << std::endl;
-					std::cout << "m = " << (matrix_prob[u-1]->begin())->first << std::endl;
-					std::cout << matrix_prob[u-1]->size() << std::endl;
-					exit(1);
-				}
-
-				if(prob <= max_prob)
-				{
-					max_prob = prob;
-					max_seg = prev_seg;
-				}
-			}
-
-			
-			matrix_prob[u]->insert(std::pair<unsigned int, double>
-				(seg, max_prob));
-
-			try
-			{
-				//Coping trajectory from last iteration
-				traj = new Trajectory(*(matrix_traj[u-1]->at(max_seg)));
-			}
-			catch(const std::out_of_range& oor)
-			{
-				//FIXME: This part is not very stable yet.
-				std::cout << "error 2" << std::endl;
-				std::cout << matrix_traj[u-1]->size() << std::endl;
-				std::cout << "max_seg = " << max_seg << std::endl;
-				std::cout << "m = " << (matrix_traj[u-1]->begin())->first << std::endl;
-				exit(1);
-			}
-
-			//Adding new update to trajectory 
-			traj->add_update(seg, up->time, up);
-			traj->prob = max_prob;
-			
-			//Inserting new computed trajectory into the matrix
-			matrix_traj[u]->insert(std::pair<unsigned int, Trajectory*>
-				(seg, traj));
-
-			delete seg_probs.at(s);
-		}
-		
-		//Deleting data from the previous iteration
-		for(it_traj = matrix_traj.at(u-1)->begin(); it_traj != matrix_traj.at(u-1)->end(); ++it_traj)
-		{
-			traj = it_traj->second;
-			delete traj;
-		}
-		
-		delete matrix_prob[u-1];
-		delete matrix_traj[u-1];
-
-		u++;
-	}
-
-	max_prob = std::numeric_limits<double>::max();
-	Trajectory* most_likely_traj = NULL;
-	
-	//Identifying the most likely trajecotyr
-	for(it_traj = matrix_traj[u-1]->begin(); 
-		it_traj != matrix_traj[u-1]->end(); ++it_traj)
-	{
-		traj = it_traj->second;
-		
-		if(traj->prob <= 
-			max_prob)
-		{
-			max_prob = traj->prob;
-			most_likely_traj = traj;
-		}
-	}
-	
-	Trajectory* res;
-	
-	//In case the most likely trajectory is NULL, 
-	//all trajectories have 0 probability and there
-	//is something wrong.
-	if(most_likely_traj != NULL)
-	{
-		res = new Trajectory(*most_likely_traj);
-	}
-	else
-	{
-		//TODO: Add exception
-		res = NULL;
-		std::cout << "Map matching error," << 
-			" most likely trajectory has" <<
-			" 0 probability" << std::endl;
-	}
-	
-	for(it_traj = matrix_traj[u-1]->begin(); it_traj != matrix_traj[u-1]->end(); ++it_traj)
-	{
-		traj = it_traj->second;
-		delete traj;
-	}
-
-	delete matrix_traj[u-1];
-	delete matrix_prob[u-1];
-	
-	return res;
-}
-*/
 Trajectory* Trajectory::map_matching
 	(
 		const std::list<update*>& updates, 
@@ -809,6 +597,8 @@ const unsigned int Trajectory::read_trajectories
 	//First line contains number of trajectories
 	unsigned int num_traj = atoi(line_str.c_str());
 	
+	std::getline(traj_file, line_str);
+
 	while(! traj_file.eof())
 	{
 		line_vec = split(line_str,',');
@@ -1047,3 +837,190 @@ void delete_list_updates(std::list<update*>* updates)
 		delete *it;
 	}
 }
+
+const bool TrajDB::insert(const std::string& obj, const Trajectory& traj)
+{
+	return true;
+}
+
+const bool TrajDB::insert(const std::string& input_file_name)
+{
+	return true;
+}
+
+const bool TrajDB::insert
+	(
+		const std::string& obj,
+		const seg_time& st
+	)
+{
+	return insert(obj, st);
+}
+
+const bool TrajDB::center_radius_query
+	(
+		const unsigned int lat,
+		const unsigned int longit,
+		std::list<std::string>& res,
+		const unsigned int time_begin,
+		const unsigned int time_end
+	)
+	const
+{
+	return true;
+}
+
+const bool TrajDB::nearest_neighbor_query
+	(
+		const unsigned int lat,
+		const unsigned int longit,
+		const std::string& res,
+		const unsigned int time_begin,
+		const unsigned int time_end
+	)
+	const
+{
+	return false;
+}
+
+const bool TrajDB::when_at
+	(
+		const std::string& obj,
+		const unsigned int lat,
+		const unsigned int longit,
+		const unsigned int& timestamp
+	)
+		const
+{
+	return false;
+}
+
+const bool TrajDB::where_at
+	(
+		const std::string& obj,
+		const unsigned int timestamp,
+		const unsigned int& lat,
+		const unsigned int& longit
+	)
+	const
+{
+	return false;
+}
+
+const bool TrajDBPostGis::connect()
+{
+	std::string conn_str = "dbname=" + database_name
+		+ " user=" + user
+		+ " password=" + password
+		+ " hostaddr=" + host
+		+ " port=" + port;
+	       
+	try
+	{
+		conn = new pqxx::connection(conn_str.c_str());
+	   
+		if(conn->is_open())
+		{
+			return true;
+		}
+		else
+	        {
+			return false;
+		}
+	}
+	catch(const pqxx::broken_connection &e)
+	{
+		std::cerr << "Error: Cannot connect to the database "
+			<< database_name << " with user "
+			<< user << " host " << host << " port "
+			<< port << std::endl << std::endl;
+		std::cerr << conn_str << std::endl;
+		std::cerr << e.what() << std::endl;
+			
+		return false;
+	}
+				        
+	return true;
+}
+
+const bool TrajDBPostGis::create()
+{
+	std::string sql;
+	  
+	try
+	{
+		//CREATE TABLE table_name (modid varchar(60) PRIMARY KEY, 
+		//	startime timestamp(5), endtime timestamp(5), 
+		//	flag smallint, linkid integer
+		//	speed real, anchorpoint geography(POINT,4326));
+		//CREATE INDEX traj_modid_idx_table_name ON table_name USING HASH(modid);
+		//CREATE INDEX traj_linkid_idx_table_name ON table_name USING HASH(linkid);
+		//CREATE INDEX traj_startendtime_idx_table_name ON table_name(starttime,endtime);
+		sql = "CREATE TABLE " + table_name +
+			"(modid varchar(60) PRIMARY KEY, starttime timestamp(5),\
+			endtime timestamp(5), flag smallint, linkid integer, speed real\
+			anchorpoint geography(POINT," + spatial_ref + "));\
+			CREATE INDEX traj_modid_idx_" + table_name + " ON " + table_name + " USING HASH(modid);\
+			CREATE INDEX traj_linkid_idx_" + table_name + " ON " + table_name + " USING HASH(linkid);\
+			CREATE INDEX traj_startendtime_idx_" + table_name +" ON " + table_name + "(starttime,endtime);";
+		
+		pqxx::work work (*conn);
+		work.exec(sql.c_str());
+		work.commit();
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+
+		return false;
+	}
+
+	return true;
+}
+
+const bool TrajDBPostGis::drop()
+{
+	std::string sql = "DROP TABLE " + table_name + ";";
+
+	try
+	{
+		sql = "DROP TABLE " + table_name + ";";
+		pqxx::work work (*conn);
+		work.exec(sql.c_str());
+		work.commit();
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query: " << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+		
+		return false;
+	}
+
+	return true;
+}
+
+const bool TrajDBPostGis::insert
+	(
+		const std::string& obj,
+		const seg_time& st
+	)
+{
+	return true;
+}
+
+const bool TrajDBPostGis::query_segment_time
+	(
+		const unsigned int segment,
+		std::list<std::string>& objs,
+		const unsigned int time_begin,
+		const unsigned int time_end
+	)
+	const
+{
+	return true;
+}
+

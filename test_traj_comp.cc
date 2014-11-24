@@ -31,12 +31,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 const bool test_traj_comp_freq_subt()
 {
 	std::cout << "Testing frequent sub-trajectory based compression" << std::endl;
-	std::cout << "Creating a road network" << std::endl;
-	RoadNet* net;
-	//FIXME: net = new RoadNet("../data/greater_sfo_adj.txt");
-	std::cout << "Road network created" << std::endl;
 
-	FreqSubt* fs = new  FreqSubt(2, net);
+	RoadNet* net = new RoadNet("road_net_sf.csv");
+	FreqSubt* fs = new  FreqSubt(2, 100, net);
 	
 	Trajectory* traj;
 
@@ -112,6 +109,7 @@ const bool test_traj_comp_freq_subt()
 	
 const bool test_traj_comp_freq_subt_sf_cab()
 {
+	/*
 	std::cout << "Creating a road network" << std::endl;
 	//RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
 	RoadNet* net = new RoadNet("road_net_sf.csv");
@@ -127,6 +125,36 @@ const bool test_traj_comp_freq_subt_sf_cab()
 	std::cout << "Road network deleted" << std::endl;
 	
 	std::cout << "Test finished" << std::endl;
+	*/
+
+	RoadNet* net = new RoadNet("road_net_sf.csv");
+//	RoadNet* net = new RoadNet("road_net.csv");
+
+	FreqSubt* fs = new  FreqSubt(10, 4, net);
+	std::cout << "size_tree = " << fs->train("map_matched_cab_stream_sfo.txt") << std::endl;;
 	
+	std::list<Trajectory*> fsts;
+	fs->freq_sub_traj(fsts);
+	Trajectory* traj;
+	
+	for(std::list<Trajectory*>::iterator it = fsts.begin(); it != fsts.end(); ++it)
+	{
+		traj = *it;
+		
+		//Prints a trajectory
+		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
+		{
+			std::cout << net->seg_name((*traj_it)->segment) << " ";
+		}
+
+		std::cout << std::endl;
+	}
+	
+	//fs->train("map_matched.txt");
+	//std::cout << "num_updates = " << fs->test("map_matched.txt") << std::endl;
+	std::cout << "num_updates = " << fs->test("map_matched_cab_stream_sfo.txt") << std::endl;
+
+	delete fs;
+
 	return true;
 }

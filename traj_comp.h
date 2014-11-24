@@ -31,12 +31,23 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "road_net.h"
 #include "moving_obj.h"
 
+/*Not in the frequent subtrajectory tree*/
 typedef struct t_node
 {
+	unsigned int id;
 	unsigned int seg;
 	unsigned int freq;
-	std::map<unsigned int, t_node*> children;
+	unsigned int depth;
+	std::map<unsigned int, t_node*>* children;
+	t_node* suffix;
 }Node;
+
+class CompTrajectory: public Trajectory
+{
+	public:
+		CompTrajectory():Trajectory(){};
+		CompTrajectory(const CompTrajectory& traj):Trajectory(traj){};
+};
 
 /**
  * Generic trajectory compression algorithm
@@ -44,12 +55,27 @@ typedef struct t_node
 class TrajCompAlgo
 {
 	public:
+		/*Constructor*/
 		TrajCompAlgo(RoadNet* _net);
-		virtual void train(const std::string training_traj_file_name){};
-		virtual const unsigned int test(const std::string test_traj_file_name);
+		
+		virtual const unsigned int train(const std::string training_traj_file_name)
+		{
+			return 0;
+		}
+
+		virtual const unsigned int test(const std::string test_traj_file_name)
+		{
+			return 0;
+		}
+
 		virtual ~TrajCompAlgo();
 		virtual void update(const unsigned int& obj, const unsigned int& seg, 
 			const unsigned int timestamp){};
+		
+		virtual CompTrajectory* compress(Trajectory* traj) const
+		{
+			return NULL;
+		}
 	protected:
 		RoadNet* net;
 };
@@ -57,38 +83,71 @@ class TrajCompAlgo
 class FreqSubt: public TrajCompAlgo
 {
 	public:
-		FreqSubt(const double _min_sup, RoadNet* net)
+		/*Constructor*/
+		FreqSubt
+			(
+				const double _min_sup, 
+				const unsigned int _max_length, 
+				RoadNet* net
+			)
 			:TrajCompAlgo(net)
 		{
 			min_sup = _min_sup;
-			tree = new Node;
-			tree->seg = 0;
-			tree->freq = 0;
+			max_length = _max_length;
+			tree = new_node();
+			Node* node;
+
+			for(unsigned int s = 0; s < net->size(); s++)
+			{
+				size_tree++;
+				node = new_node();
+				node->seg = s;
+				node->freq = 0;
+				node->depth = 1;
+				tree->children->insert(std::pair<unsigned int, Node*>(s, node));
+			}
 		}
 
 		virtual ~FreqSubt()
 		{
-			delete tree;
+			delete_tree(tree);
 		}
 
-		void train(const std::string training_traj_file_name);
+		const unsigned int train(const std::string training_traj_file_name);
 
 		const unsigned int test(const std::string test_traj_file_name);
 
 		void add_trajectory(Trajectory* traj);
-		void add_trajectory(Trajectory::iterator it, Trajectory* traj, Node* tree);
+		
+		void add_trajectory
+			(
+				Trajectory::iterator it, 
+				Trajectory* traj, 
+				Node* tree,
+				const unsigned int depth,
+				std::list<Node*>* suffix_pointers,
+				std::list<Node*>* new_suffix_pointers
+			);
 
 		void freq_sub_traj(std::list<Trajectory*>& fsts);
 
 		void print();
+		
+		CompTrajectory* compress(Trajectory* traj) const;
 	private:
 		double min_sup;
+		unsigned int max_length;
 		Node* tree;
+		unsigned int size_tree;
+		unsigned int id;
 		
 		void print_tree(Node* node);
 		void print_tree(Node* node, const std::string str);
 		void delete_tree(Node* node);
 		void freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajectory* traj=NULL);
+		void prune_unfrequent_subtraj();
+		void prune_tree(Node* root);
+		Node* new_node();
 };
 #endif
 
