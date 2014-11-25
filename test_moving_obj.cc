@@ -88,7 +88,7 @@ const bool test_moving_obj_file()
 		
 		for(Trajectory::iterator traj_it = trajectory->begin(); traj_it != trajectory->end(); ++traj_it)
 		{
-			if(matched_traj.at((*traj_it)->time) == net->seg_name((*traj_it)->segment))
+			if(matched_traj.at((*traj_it)->start_time) == net->seg_name((*traj_it)->segment))
 			{
 				accuracy = accuracy + 1;
 			}

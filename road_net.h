@@ -445,7 +445,8 @@ class RoadNet
 		const double shortest_path(const unsigned int s1, 
 			const unsigned int s2, const double latit_from,
 			const double latit_to, const double longit_from,
-			const double longit_to) const;
+			const double longit_to, 
+			const double max_dist=std::numeric_limits<double>::max()) const;
 		
 		/**
 		 * Computes the distance of the shortest path between 
@@ -615,11 +616,6 @@ class RoadNet
 		{
 			return segments.size();
 		}
-		
-		inline void clear_saved_shortest_paths(const unsigned int seg)
-		{
-			saved_shortest_paths[seg]->clear();
-		}
 	private:
 		/*VARIABLES*/
 		std::vector<std::list<unsigned int>*> adj_list;
@@ -629,7 +625,7 @@ class RoadNet
 		unsigned int n_segments;
 		SegIndex* seg_index;
 		double length_longest_segment;
-		std::vector< std::map<unsigned int, double> * > saved_shortest_paths; 
+		float** dist_matrix; 
 		
 		/*METHODS*/
 
@@ -651,6 +647,8 @@ class RoadNet
 		const unsigned int flip_segment(const unsigned int seg) const;
 		void compute_segment_lengths();
 		void project_segments();
+		void shortest_path(const unsigned int s1);
+		void build_dist_matrix();
 		
 		const bool create
 			(

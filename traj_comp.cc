@@ -28,6 +28,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "traj_comp.h"
 #include "io.h"
 
+const std::string CompTrajDBPostGis::table_name = "comptraj";
+
 Node* FreqSubt::new_node()
 {
 	Node* node = new Node;
@@ -200,10 +202,17 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	Node* curr_node = tree;
 	std::map<unsigned int, Node*>::iterator node_it;
 	std::list<Node*> decomp;
+	std::list<unsigned int> start_times;
+	std::list<unsigned int> end_times;
 	unsigned int size_dec = 0;
 
 	Trajectory::iterator it = traj->begin();
 
+	if(traj->size())
+	{
+		start_times.push_back((*it)->start_time);
+	}
+	
 	while(it != traj->end())
 	{
 		node_it = curr_node->children->find((*it)->segment);
@@ -238,7 +247,7 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 
 		if(l == 0)
 		{
-			comp_traj->add_update(curr_node->id, 0);
+			comp_traj->add_update(curr_node->id, 0, 0);
 			l =  curr_node->depth - 1;
 		}
 		else
@@ -340,7 +349,7 @@ void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajector
 			traj = new Trajectory();
 		}
 
-		traj->add_update(node->seg, 0);
+		traj->add_update(node->seg, 0, 0);
 		fsts.push_back(traj);
 
 		Trajectory* new_traj;
@@ -367,3 +376,37 @@ void FreqSubt::print()
 {
 	print_tree(tree);
 }
+
+const bool FreqSubtCompTrajDB::insert
+	(       
+		const std::string& obj,
+		const seg_time& st
+	)
+{
+	return false;
+}
+
+const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
+{
+	CompTrajectory* comp_traj = compress(&traj);
+
+}
+
+const bool FreqSubtCompTrajDB::insert(const std::string& obj, CompTrajectory& traj)
+{
+	return false;
+}
+
+const bool FreqSubtCompTrajDB::center_radius_query
+	(
+		const unsigned int lat,
+		const unsigned int longit,
+		const double dist,
+		std::list<std::string>& res,
+		const unsigned int time_begin=0,
+		const unsigned int time_end=0
+	)
+		const
+ {
+ 	return false;
+ }

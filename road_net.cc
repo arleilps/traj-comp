@@ -92,13 +92,6 @@ RoadNet::RoadNet(const std::string& input_file_name)
 	//Change the spatial index here
 	seg_index = new PostGisIndex();
 	read(input_file_name);
-
-	saved_shortest_paths.reserve(n_segments);
-	
-	for(unsigned int s = 0; s < n_segments; s++)
-	{
-		saved_shortest_paths.push_back(new std::map<unsigned int, double>);
-	}
 }
 
 RoadNet::RoadNet
@@ -111,13 +104,6 @@ RoadNet::RoadNet
 	n_segments = 0;
 	seg_index = new PostGisIndex();
 	create(input_file_name, output_file_name);
-	
-	saved_shortest_paths.reserve(n_segments);
-	
-	for(unsigned int s = 0; s < n_segments; s++)
-	{
-		saved_shortest_paths.push_back(new std::map<unsigned int, double>);
-	}
 }
 
 const bool RoadNet::read(const std::string& input_file_name)
@@ -218,13 +204,13 @@ const bool RoadNet::read(const std::string& input_file_name)
 		}
 	}
 	
+	s = 0;
 	std::list<unsigned int>* neighbors;
-	std::getline(road_net_file, line_str);
 
-	while(! road_net_file.eof())
+	while(s < n_segments)
 	{
+		std::getline(road_net_file, line_str);
 		line_vec = split(line_str,',');
-		
 		neighbors = new std::list<unsigned int>;
 
 		for(unsigned int i = 1; i < line_vec.size(); i++)
@@ -233,8 +219,21 @@ const bool RoadNet::read(const std::string& input_file_name)
 		}
 
 		adj_list.push_back(neighbors);
-		
+	}
+
+	s = 0;
+	dist_matrix = (float**) malloc(n_segments * sizeof(float*));
+
+	while(s < n_segments)
+	{
+		dist_matrix[s] = (float*) malloc(n_segments * sizeof(float));
 		std::getline(road_net_file, line_str);
+		line_vec = split(line_str,',');
+
+		for(unsigned int i = 1; i < line_vec.size(); i++)
+		{
+			dist_matrix[s][i-1] = atof(line_vec[i].c_str());
+		}
 	}
 
 	road_net_file.close();
@@ -257,6 +256,7 @@ const bool RoadNet::create
 			index_segments();
 			compute_segment_lengths();
 			project_segments();
+			build_dist_matrix();
 			write(output_file_name);
 		}
 		else
@@ -342,6 +342,18 @@ const bool RoadNet::write(const std::string& output_file_name)
 			road_net_file << "," << *it;
 		}
 
+		road_net_file << "\n";
+	}
+	
+	for(unsigned int s = 0; s < adj_list.size(); s++)
+	{
+		road_net_file << s;
+
+		for(unsigned t = 0; t < adj_list.size(); t++)
+		{
+			road_net_file << "," << dist_matrix[s][t];
+		}
+		
 		road_net_file << "\n";
 	}
 
@@ -536,8 +548,10 @@ RoadNet::~RoadNet()
 	{
 		delete segments.at(s);
 		delete adj_list.at(s);
-		delete saved_shortest_paths.at(s);
+		free(dist_matrix[s]);
 	}
+
+	free(dist_matrix);
 }
 
 void RoadNet::add_segment
@@ -774,6 +788,7 @@ const unsigned int PostGisIndex::within_distance
 		const
 {
 	std::string sql; 
+	
 	try
 	{
 		sql = "SELECT id FROM " + table_name + 
@@ -794,7 +809,7 @@ const unsigned int PostGisIndex::within_distance
 	}
 	catch(const pqxx::sql_error& e)
 	{
-		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << "Error: Failed query: " << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 
@@ -1048,6 +1063,73 @@ const double RoadNet::distance_point_segment
 		);
 }
 
+void RoadNet::build_dist_matrix()
+{
+	dist_matrix = (float**) malloc (segments.size() * sizeof(float*));
+
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		std::cout << "s = " << s << " total = " << segments.size() << std::endl;
+		dist_matrix[s] = (float*) malloc(segments.size() * sizeof(float));
+		shortest_path(s);
+	}
+}
+
+void RoadNet::shortest_path(const unsigned int s1)
+{
+	//Here be dragons
+	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
+		boost::heap::compare<compare_pair> > pq;
+	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
+		boost::heap::compare<compare_pair> >::handle_type> handles;
+	handles.reserve(n_segments);
+	
+	for(unsigned int s = 0; s < n_segments; s++)
+	{
+		dist_matrix[s1][s] =  std::numeric_limits<float>::max();
+		
+		if(s != s1)
+		{
+			handles.push_back(pq.push(std::pair<unsigned int, double>
+				(s, std::numeric_limits<double>::max())));
+		}
+		else
+		{
+			handles.push_back(pq.push(std::pair<unsigned int, double>
+				(s, 0)));
+		}
+	}
+
+	unsigned int u;
+	unsigned int z;
+	double dist;
+												               
+	dist_matrix[s1][s1] = 0;
+
+	//BFS using heap
+	while(! pq.empty())
+	{
+		u = pq.top().first;
+		pq.pop();
+		
+		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
+			it != adj_list[u]->end(); ++it)
+		{
+			z = *it;
+
+			dist = dist_matrix[s1][u];
+			
+			if(dist_matrix[s1][z] > dist)
+			{
+				dist_matrix[s1][z] = dist;
+
+				pq.increase(handles.at(z), 
+					std::pair<unsigned int, double>(z, dist));
+			}
+		}
+	}
+}
+
 //Dijkstra algorithm using fibonacci heap.
 //The heap implementation is from boost.
 //http://www.boost.org/doc/libs/1_49_0/doc/html/boost/heap/fibonacci_heap.html
@@ -1058,7 +1140,8 @@ const double RoadNet::shortest_path
 		const double proj_latit_s1,
 		const double proj_latit_s2, 
 		const double proj_longit_s1,
-		const double proj_longit_s2
+		const double proj_longit_s2,
+		const double max_dist
 	) 
 		const
 {
@@ -1079,21 +1162,7 @@ const double RoadNet::shortest_path
 
 	segment* from = segments.at(s1);
 	segment* to = segments.at(s2);
-/*
-	double dist_over_seg  = distance_points
-		(
-			proj_latit_s1,
-			from->latit_end,
-			proj_longit_s1,
-			from->longit_end
-		) + distance_points
-		(
-			proj_latit_s2,
-			to->latit_begin,
-			proj_longit_s2,
-			to->longit_begin
-		);
-*/	
+	
 	double dist_over_seg  = std_distance
 		(
 			proj_latit_s1,
@@ -1107,12 +1176,6 @@ const double RoadNet::shortest_path
 			proj_longit_s2,
 			to->proj_longit_begin
 		);
-
-	if(saved_shortest_paths[s1]->find(s2) 
-		!= saved_shortest_paths[s1]->end())
-	{
-		return saved_shortest_paths[s1]->at(s2) + dist_over_seg;
-	}
 
 	//Here be dragons
 	std::vector<double> distances;
@@ -1163,7 +1226,7 @@ const double RoadNet::shortest_path
 
 			dist = distances[u];
 			
-			if(distances[z] > dist)
+			if(distances[z] > dist&& distances[z] <= max_dist)
 			{
 				distances[z] = dist;
 
@@ -1173,14 +1236,6 @@ const double RoadNet::shortest_path
 		}
 	}
 	
-	for(unsigned int s = 0; s < n_segments; s++)
-	{
-		if(distances[s] < std::numeric_limits<double>::max())
-		{
-			saved_shortest_paths[s1]->insert(std::pair<unsigned int, double>(s, distances[s]));
-		}
-	}
-
 	return distances[s2] + dist_over_seg;
 }
 

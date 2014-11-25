@@ -96,6 +96,7 @@ class FreqSubt: public TrajCompAlgo
 			max_length = _max_length;
 			tree = new_node();
 			Node* node;
+			size_tree = 0;
 
 			for(unsigned int s = 0; s < net->size(); s++)
 			{
@@ -148,6 +149,60 @@ class FreqSubt: public TrajCompAlgo
 		void prune_unfrequent_subtraj();
 		void prune_tree(Node* root);
 		Node* new_node();
+};
+
+class CompTrajDBPostGis:public TrajDBPostGis
+{
+	public:
+		CompTrajDBPostGis():TrajDBPostGis(){}
+		virtual ~CompTrajDBPostGis(){};
+	protected:
+		 static const std::string table_name;
+
+};
+
+class FreqSubtCompTrajDB:public TrajDB
+{
+	public:
+		FreqSubtCompTrajDB
+			(
+				const std::string& train_file,
+				const double _min_sup,
+				const double _max_length,
+				RoadNet* _net
+			):TrajDB(_net)
+		{
+			alg = new FreqSubt(_min_sup, _max_length, _net);
+			alg->train(train_file);
+		}
+
+		virtual ~FreqSubtCompTrajDB()
+		{
+			delete alg;
+		}
+		
+		const bool insert(const std::string& obj, Trajectory& traj);
+		
+		const bool insert(const std::string& obj, CompTrajectory& traj);
+
+		const bool insert
+			(
+				const std::string& obj,
+				const seg_time& st
+			);
+
+		const bool center_radius_query
+			(
+				const unsigned int lat,
+				const unsigned int longit,
+				const double dist,
+				std::list<std::string>& res,
+				const unsigned int time_begin,
+				const unsigned int time_end
+			)
+				const;
+	private:
+		TrajCompAlgo* alg;
 };
 #endif
 

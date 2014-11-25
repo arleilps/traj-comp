@@ -77,7 +77,9 @@ void delete_list_updates(std::list<update*>* updates);
 typedef struct t_seg_time
 {
 	unsigned int segment;
-	unsigned int time;
+	unsigned int start_time;
+	unsigned int end_time;
+//	unsigned int time;
 	const update* up;
 } seg_time;
 
@@ -87,7 +89,8 @@ typedef struct t_seg_time
 seg_time* new_seg_time
 	(
 		const unsigned int segment, 
-		const unsigned int time, 
+		const unsigned int start_time,
+		const unsigned int end_time,
 		const update* up=NULL
 	);
 
@@ -195,6 +198,7 @@ class Trajectory
 		 /*OBJECT METHODS*/
 		
 		/**
+		 * FIXME
 		 * Adds a map-matched update to the trajectory
 		 * @param segment 
 		 * @param timestamp
@@ -203,7 +207,8 @@ class Trajectory
 		void add_update
 			(
 				const unsigned int segment, 
-				const unsigned int timestamp, 
+				const unsigned int start_time, 
+				const unsigned int end_time, 
 				const update* up=NULL
 			);
 		
@@ -236,11 +241,16 @@ class Trajectory
 		 * Removes repeated segments from a trajectory.
 		**/
 		void remove_repeated_segments();
+		
+		//FIXME
+		void set_end_times();
 
 		/*PUBLIC VARIABLES*/
 		
 		//iterator for trajectories
 		typedef std::list< seg_time* >::iterator iterator;
+		
+		typedef std::list< seg_time* >::const_iterator const_iterator;
 		
 		/*INLINES*/
 
@@ -251,7 +261,7 @@ class Trajectory
 		{
 			return seg_time_lst.begin();
 		}
-
+		
 		/**
 		 * Iterator to the end of the trajectory
 		**/
@@ -295,6 +305,7 @@ class Trajectory
 		static const double BETACONST;
 		static const double SIGMA;
 		static const double RADIUS;
+		static const double MAXSPEED;
 		
 		/*OBJECT METHODS*/
 
@@ -386,7 +397,7 @@ class TrajDBPostGis: public TrajDBStorage
 				const unsigned int time_end=0
 			)
 				const;
-	private:
+	protected:
 		static const std::string database_name;
 		static const std::string table_name;
 		static const std::string host;
@@ -428,7 +439,7 @@ class TrajDB
 
 		virtual const bool insert(const std::string& input_file_name);
 		
-		virtual const bool insert(const std::string& obj, const Trajectory& traj);
+		virtual const bool insert(const std::string& obj, Trajectory& traj);
 		
 		virtual const bool insert
 			(
@@ -440,6 +451,7 @@ class TrajDB
 			(
 				const unsigned int lat, 
 				const unsigned int longit,
+				const double dist,
 				std::list<std::string>& res,
 				const unsigned int time_begin=0,
 				const unsigned int time_end=0

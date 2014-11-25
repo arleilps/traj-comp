@@ -35,7 +35,7 @@ const double Trajectory::TIMEDIV = 10;
 const double Trajectory::SIGMA = 4.07;
 const double Trajectory::BETACONST = 1;
 const double Trajectory::RADIUS = 10;
-
+const double Trajectory::MAXSPEED = 38;	//in m/s 
 
 double Trajectory::time_div = TIMEDIV;
 double Trajectory::sigma = SIGMA;
@@ -93,13 +93,15 @@ update* new_update
 seg_time* new_seg_time
 	(
 		const unsigned int segment, 
-		const unsigned int time, 
+		const unsigned int start_time, 
+		const unsigned int end_time, 
 		const update* up
 	)
 {
 	seg_time* st = new seg_time;
 	st->segment = segment;
-	st->time = time;
+	st->start_time = start_time;
+	st->end_time = end_time;
 	st->up = up;
 
 	return st;
@@ -121,7 +123,7 @@ Trajectory::Trajectory(const Trajectory& traj)
 		seg_time* st;
 		st = *it;
 
-		add_update(st->segment, st->time, st->up);
+		add_update(st->segment, st->start_time, st->end_time, st->up);
 	}
 }
 		
@@ -137,11 +139,12 @@ Trajectory::~Trajectory()
 void Trajectory::add_update
 	(
 		const unsigned int segment, 
-		const unsigned int timestamp, 
+		const unsigned int start_time, 
+		const unsigned int end_time, 
 		const update* up
 	)
 {
-	seg_time* st = new_seg_time(segment, timestamp, up);
+	seg_time* st = new_seg_time(segment, start_time, end_time, up);
 	seg_time_lst.push_back(st);
 	size_traj++;
 }
@@ -254,8 +257,10 @@ const double Trajectory::transition_prob
 	)
 {
 	//Shortest path distance in the road network
+	double time = time_to - time_from;
+	double max_distance = MAXSPEED * time;
 	double sd = net->shortest_path(seg_from, seg_to, 
-		latit_from, latit_to, longit_from, longit_to);
+		latit_from, latit_to, longit_from, longit_to, max_distance);
 
 	//Probability grows as these two distances get closer
 	double d = fabs(gcd-sd);
@@ -302,7 +307,7 @@ Trajectory* Trajectory::map_matching
 	for(unsigned int c = 0; c < seg_probs.size(); c++)
 	{
 		traj = new Trajectory;
-		traj->add_update(seg_probs.at(c)->first, up->time, up);
+		traj->add_update(seg_probs.at(c)->first, up->time, up->time, up);
 		traj->prob = -1 * log(seg_probs.at(c)->second);
 		trajectories->push_back(traj);
 
@@ -426,7 +431,7 @@ Trajectory* Trajectory::map_matching
 			}
 
 			//Adding new update to trajectory 
-			traj->add_update(seg, up->time, up);
+			traj->add_update(seg, up->time, up->time, up);
 			traj->prob = max_prob;
 			
 			//Inserting new computed trajectory
@@ -440,7 +445,6 @@ Trajectory* Trajectory::map_matching
 		{
 			traj = trajectories->at(t);
 			prev_seg = traj->back()->segment;
-			net->clear_saved_shortest_paths(prev_seg);
 			delete traj;
 		}
 		
@@ -503,10 +507,23 @@ Trajectory* Trajectory::map_matching
 	return res;
 }
 
+//The way this trajectories are extended can be improved a lot.
+//In particular, we assume that speeds are uniform between updates
+//and that the position of the object over a segment is the closest
+//one to the segment, but a model for the error based on 
+//a normal distribution (as done for the map-matching) makes more
+//sense.
 void Trajectory::extend_traj_shortest_paths(const RoadNet*net)
 {
 	std::list<unsigned int> sp;
 	std::list< seg_time* >::iterator st_next;
+	double spv;
+	double speed;
+	double dist;
+	double proj_latit;
+	double proj_longit;
+	double dist_first_seg;
+	unsigned int time;
 	
 	for(std::list< seg_time* >::iterator st = seg_time_lst.begin();
 		st != seg_time_lst.end(); ++st)
@@ -519,13 +536,49 @@ void Trajectory::extend_traj_shortest_paths(const RoadNet*net)
 			//Computes shortest path between two segments
 			//Some trajectories might be disconnected due to
 			//GPS errors.
-			net->shortest_path(sp, (*st)->segment, (*st_next)->segment, 
+			spv = net->shortest_path(sp, (*st)->segment, (*st_next)->segment, 
 				(*st)->up->latit, (*st_next)->up->latit, 
 				(*st)->up->longit, (*st_next)->up->longit);
 			
+			speed = (double) spv / ((*st_next)->start_time - (*st)->start_time);
+			
+			net->closest_point_segment
+				(
+					(*st)->segment,
+					(*st)->up->latit,
+					(*st)->up->longit,
+					proj_latit,
+					proj_longit
+				);
+			
+			dist_first_seg = std_distance
+				(
+					proj_latit, 
+					net->seg_latit_end((*st)->segment), 
+					proj_longit,
+					net->seg_longit_end((*st)->segment)
+				);
+			
+			dist = dist_first_seg;
+			
 			for(std::list<unsigned int>::iterator s = sp.begin(); s != sp.end(); ++s)
 			{
-				seg_time_lst.insert(st_next, new_seg_time(*s, (*st)->time, (*st)->up));
+				time = (*st)->start_time 
+					+ (unsigned int) floor(dist / speed);
+
+				seg_time_lst.insert
+					(
+						st_next, 
+						new_seg_time
+							(
+								*s, 
+								time,
+								time,
+								(*st)->up
+							)
+					);
+				
+				dist += net->segment_length(*s);
 				++st;
 			}
 
@@ -566,6 +619,30 @@ void Trajectory::remove_repeated_segments()
 	}
 }
 
+//Start and end times are rough estimates that can be improved
+//we simply assume that the object enters a segment at the
+//time of the update, but it could be before. We also assume
+//that the object leaves a segment once the upcoming update
+//is matched to a new update, but it could be earlier.
+void Trajectory::set_end_times()
+{
+	std::list< seg_time* >::iterator st_next;
+	std::list< seg_time* >::iterator st;
+	
+	for(std::list< seg_time* >::iterator st = seg_time_lst.begin();
+		st != seg_time_lst.end(); ++st)
+	{
+		st_next = st;
+		st_next++;
+
+		if(st_next != seg_time_lst.end())
+		{
+			(*st)->end_time = (*st_next)->start_time;
+		}
+	}
+		
+}
+
 const unsigned int Trajectory::read_trajectories
 	(
 		std::list< Trajectory * >& trajectories,
@@ -590,7 +667,8 @@ const unsigned int Trajectory::read_trajectories
 	std::string id;
 	std::string seg_name;
 	unsigned int seg;
-	unsigned int timestamp;
+	unsigned int start_time;
+	unsigned int end_time;
 	std::getline(traj_file, line_str);
 	Trajectory* traj;
 	
@@ -603,7 +681,7 @@ const unsigned int Trajectory::read_trajectories
 	{
 		line_vec = split(line_str,',');
 
-		if(line_vec.size() < 3)
+		if(line_vec.size() < 4)
 		{
 			 std::cerr << "Error: Invalid trajectory file format, check the README file"
 			 	<< input_file_name << std::endl << std::endl;
@@ -616,19 +694,23 @@ const unsigned int Trajectory::read_trajectories
 		seg_name = line_vec[1];
 		seg = net->seg_ID(seg_name);
 		std::stringstream ss(line_vec[2]);
-		ss >> timestamp;
+		ss >> start_time;
+		
+		std::stringstream se(line_vec[3]);
+		se >> end_time;
+
 
 		if(traj_map.find(id) == traj_map.end())
 		{
 			traj = new Trajectory();
-			traj->add_update(seg, timestamp);
+			traj->add_update(seg, start_time, end_time);
 			traj_map.insert(std::pair<std::string, Trajectory*>
 				(id, traj));
 		}
 		else
 		{
 			traj = traj_map.at(id);
-			traj->add_update(seg, timestamp);
+			traj->add_update(seg, start_time, end_time);
 		}
 		
 		std::getline(traj_file, line_str);
@@ -656,7 +738,8 @@ void Trajectory::write(std::ofstream& output_file, const RoadNet* net) const
 		st = *it;
 		output_file << st->up->object << "," << 
 			net->seg_name(st->segment) << "," <<
-			st->time << "\n";
+			st->start_time << "," <<
+			st->end_time << "\n";
 	}
 }
 
@@ -698,6 +781,7 @@ const bool Trajectory::write_map_matched_trajectories
 		traj = map_matching(*(updates.at(u)), net);
 		traj->extend_traj_shortest_paths(net);
 		traj->remove_repeated_segments();
+		traj->set_end_times();
 		traj->write(output_file, net);
 		delete traj;
 		delete_list_updates(updates.at(u));
@@ -823,7 +907,7 @@ void Trajectory::print() const
 	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
 		it != seg_time_lst.end(); ++it)
 	{
-		std::cout << "(" << (*it)->segment << " , " << (*it)->time << ") ";
+		std::cout << "(" << (*it)->segment << " , " << (*it)->start_time << "," << (*it)->end_time << ") ";
 	}
 
 	std::cout << std::endl;
@@ -838,14 +922,30 @@ void delete_list_updates(std::list<update*>* updates)
 	}
 }
 
-const bool TrajDB::insert(const std::string& obj, const Trajectory& traj)
+const bool TrajDB::insert(const std::string& obj, Trajectory& traj)
 {
+	for(Trajectory::iterator it = traj.begin();
+		it != traj.end(); ++it)
+	{
+		insert(obj, *(*it));
+	}
+
 	return true;
 }
 
 const bool TrajDB::insert(const std::string& input_file_name)
 {
-	return true;
+	std::list<Trajectory*> trajectories;
+	
+	if(Trajectory::read_trajectories(trajectories, input_file_name, net))
+	{
+		Trajectory::delete_trajectories(&trajectories);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 const bool TrajDB::insert
@@ -854,19 +954,33 @@ const bool TrajDB::insert
 		const seg_time& st
 	)
 {
-	return insert(obj, st);
+	return db->insert(obj, st);
 }
 
 const bool TrajDB::center_radius_query
 	(
-		const unsigned int lat,
+		const unsigned int latit,
 		const unsigned int longit,
+		const double dist,
 		std::list<std::string>& res,
 		const unsigned int time_begin,
 		const unsigned int time_end
 	)
 	const
 {
+	std::list<unsigned int> segs;
+	net->segments_within_distance(segs, latit, longit, dist);
+	res.clear();
+
+	std::list<std::string> objs;
+
+	for(std::list<unsigned int>::iterator it = segs.begin();
+		it != segs.end(); ++it)
+	{
+		db->query_segment_time(*it, objs, time_begin, time_end);
+		res.splice(res.end(), objs);
+	}
+
 	return true;
 }
 
@@ -1009,6 +1123,37 @@ const bool TrajDBPostGis::insert
 		const seg_time& st
 	)
 {
+	std::string sql;
+	
+	//FIXME: Some variables need to be set properly
+	unsigned int flag = 0;
+	double speed = 0;
+	
+	try
+	{
+		sql = "INSERT INTO " + table_name +
+			"(modid, starttime, endtime, flag, linkid, speed, anchorpoint)\
+			VALUES (" + obj + "," +
+			"TO_TIMESTAMP(" + to_string(st.start_time) + ")" +
+			"TO_TIMESTAMP(" + to_string(st.end_time) + ")" +
+			to_string(flag) + "," +
+			to_string(st.segment) + "," +
+			to_string(speed) + "," +
+			"NULL,NULL);";
+		
+		pqxx::work work (*conn);
+		work.exec(sql.c_str());
+		work.commit();
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+ 
+		return false;
+	}
+	
 	return true;
 }
 
@@ -1021,6 +1166,41 @@ const bool TrajDBPostGis::query_segment_time
 	)
 	const
 {
+	std::string sql;
+
+	try
+	{
+		if(time_begin != 0 && time_end != 0)
+		{
+			sql = "SELECT modid FROM " + table_name + 
+				" WHERE segment=" + to_string(segment) +
+				" AND starttime < TO_TIMESTAMP(" + to_string(time_end) + ")" +
+				 " AND endtime > TO_TIMESTAMP(" + to_string(time_begin) + ")';";
+		} 
+		else
+		{
+			sql = "SELECT modid FROM " + table_name + 
+				" WHERE segment=" + to_string(segment) + ")';";
+		}
+
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+		objs.clear();
+		       
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
+		{
+			objs.push_back(r[0].as<std::string>());
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query: " << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+
+		return false;
+	}
+
 	return true;
 }
 

@@ -40,40 +40,40 @@ const bool test_traj_comp_freq_subt()
 	/*0, 1, 2, 3, 4*/
 	traj = new Trajectory();
 	//An update is a pair segment id, timestamp, but here the timestamps don't matter.
-	traj->add_update(0, 0);
-	traj->add_update(1, 1);
-	traj->add_update(2, 2);
-	traj->add_update(3, 3);
-	traj->add_update(4, 4);
+	traj->add_update(0, 0, 0);
+	traj->add_update(1, 1, 1);
+	traj->add_update(2, 2, 2);
+	traj->add_update(3, 3, 3);
+	traj->add_update(4, 4, 4);
 
 	fs->add_trajectory(traj);
 	
 	/*2, 3, 4*/
 	traj = new Trajectory();
-	traj->add_update(2, 0);
-	traj->add_update(3, 1);
-	traj->add_update(4, 2);
+	traj->add_update(2, 0, 0);
+	traj->add_update(3, 1, 1);
+	traj->add_update(4, 2, 2);
 	
 	fs->add_trajectory(traj);
 	
 	/*2, 3*/
 	traj = new Trajectory();
-	traj->add_update(2, 1);
-	traj->add_update(3, 2);
+	traj->add_update(2, 1, 1);
+	traj->add_update(3, 2, 2);
 	
 	fs->add_trajectory(traj);
 
 	/*4*/
 	traj = new Trajectory();
-	traj->add_update(4, 0);
+	traj->add_update(4, 0, 0);
 	
 	fs->add_trajectory(traj);
 	
 	/*4, 3, 2*/
 	traj = new Trajectory();
-	traj->add_update(4, 3);
-	traj->add_update(3, 4);
-	traj->add_update(2, 5);
+	traj->add_update(4, 3, 3);
+	traj->add_update(3, 4, 4);
+	traj->add_update(2, 5, 5);
 	
 	fs->add_trajectory(traj);
 
@@ -92,7 +92,7 @@ const bool test_traj_comp_freq_subt()
 		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
 		{
 			std::cout << "<seg: " << (*traj_it)->segment <<
-				" time: " << (*traj_it)->time << ">" << std::endl;
+				" time: " << (*traj_it)->start_time << ">" << std::endl;
 		}
 
 		std::cout << std::endl;
@@ -109,28 +109,26 @@ const bool test_traj_comp_freq_subt()
 	
 const bool test_traj_comp_freq_subt_sf_cab()
 {
-	/*
 	std::cout << "Creating a road network" << std::endl;
-	//RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
-	RoadNet* net = new RoadNet("road_net_sf.csv");
+	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
+//	RoadNet* net = new RoadNet("road_net_sf.csv");
 	std::cout << "Road network created" << std::endl;
-	 std::list<unsigned int> short_path;
-	 std::cout << "Map-matching updates" << std::endl;
-	 Trajectory::write_map_matched_trajectories(
-	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
-	 	//"../data/small_cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
+//	 std::list<unsigned int> short_path;
+//	 std::cout << "Map-matching updates" << std::endl;
+//	 Trajectory::write_map_matched_trajectories(
+	// 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
+//	 	"../data/small_cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
 
 	std::cout << "Deleting road network" << std::endl;
 	delete net;
 	std::cout << "Road network deleted" << std::endl;
 	
 	std::cout << "Test finished" << std::endl;
-	*/
 
-	RoadNet* net = new RoadNet("road_net_sf.csv");
+//	RoadNet* net = new RoadNet("road_net_sf.csv");
 //	RoadNet* net = new RoadNet("road_net.csv");
 
-	FreqSubt* fs = new  FreqSubt(10, 4, net);
+/*	FreqSubt* fs = new  FreqSubt(10, 2, net);
 	std::cout << "size_tree = " << fs->train("map_matched_cab_stream_sfo.txt") << std::endl;;
 	
 	std::list<Trajectory*> fsts;
@@ -152,9 +150,9 @@ const bool test_traj_comp_freq_subt_sf_cab()
 	
 	//fs->train("map_matched.txt");
 	//std::cout << "num_updates = " << fs->test("map_matched.txt") << std::endl;
-	std::cout << "num_updates = " << fs->test("map_matched_cab_stream_sfo.txt") << std::endl;
+//	std::cout << "num_updates = " << fs->test("map_matched_cab_stream_sfo.txt") << std::endl;
 
 	delete fs;
-
+*/
 	return true;
 }
