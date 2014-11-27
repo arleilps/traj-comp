@@ -110,27 +110,27 @@ const bool test_traj_comp_freq_subt()
 const bool test_traj_comp_freq_subt_sf_cab()
 {
 	std::cout << "Creating a road network" << std::endl;
-	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
-//	RoadNet* net = new RoadNet("road_net_sf.csv");
+//	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
+	RoadNet* net = new RoadNet("road_net_sf.csv");
 	std::cout << "Road network created" << std::endl;
-//	 std::list<unsigned int> short_path;
+
 //	 std::cout << "Map-matching updates" << std::endl;
 //	 Trajectory::write_map_matched_trajectories(
-	// 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
+//	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
 //	 	"../data/small_cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
 
-	std::cout << "Deleting road network" << std::endl;
-	delete net;
-	std::cout << "Road network deleted" << std::endl;
+//	std::cout << "Deleting road network" << std::endl;
+//	delete net;
+//	std::cout << "Road network deleted" << std::endl;
 	
-	std::cout << "Test finished" << std::endl;
+//	std::cout << "Test finished" << std::endl;
 
 //	RoadNet* net = new RoadNet("road_net_sf.csv");
 //	RoadNet* net = new RoadNet("road_net.csv");
 
-/*	FreqSubt* fs = new  FreqSubt(10, 2, net);
-	std::cout << "size_tree = " << fs->train("map_matched_cab_stream_sfo.txt") << std::endl;;
-	
+//	FreqSubt* fs = new  FreqSubt(10, 2, net);
+//	std::cout << "size_tree = " << fs->train("map_matched_cab_stream_sfo.txt") << std::endl;;
+/*	
 	std::list<Trajectory*> fsts;
 	fs->freq_sub_traj(fsts);
 	Trajectory* traj;
@@ -154,5 +154,18 @@ const bool test_traj_comp_freq_subt_sf_cab()
 
 	delete fs;
 */
+	
+	TrajDB* db = new FreqSubtCompTrajDB("map_matched_2.txt", 10, 2, net);
+	db->create();
+
+	db->insert("map_matched_2.txt");
+	
+	std::cout << "#original updates: " << db->updates() << std::endl;
+	std::cout << "#database updates:" << db->db_updates() << std::endl;
+
+	db->drop();
+	delete net;
+	delete db;
+
 	return true;
 }

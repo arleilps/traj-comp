@@ -97,9 +97,11 @@ class FreqSubt: public TrajCompAlgo
 			tree = new_node();
 			Node* node;
 			size_tree = 0;
+			seg_to_freq_subt_index.reserve(net->size());
 
 			for(unsigned int s = 0; s < net->size(); s++)
 			{
+				seg_to_freq_subt_index.push_back(new std::list<unsigned int>);
 				size_tree++;
 				node = new_node();
 				node->seg = s;
@@ -135,12 +137,20 @@ class FreqSubt: public TrajCompAlgo
 		void print();
 		
 		CompTrajectory* compress(Trajectory* traj) const;
+
+		void get_freq_subt_ids
+			(
+				const unsigned int seg, 
+				std::list<unsigned int>& freq_subt_ids
+			)
+			const;
 	private:
 		double min_sup;
 		unsigned int max_length;
 		Node* tree;
 		unsigned int size_tree;
 		unsigned int id;
+		std::vector< std::list<unsigned int>* > seg_to_freq_subt_index;
 		
 		void print_tree(Node* node);
 		void print_tree(Node* node, const std::string str);
@@ -149,6 +159,8 @@ class FreqSubt: public TrajCompAlgo
 		void prune_unfrequent_subtraj();
 		void prune_tree(Node* root);
 		Node* new_node();
+		void set_seg_index();
+		void set_seg_index(Node* root);
 };
 
 class CompTrajDBPostGis:public TrajDBPostGis
@@ -183,8 +195,6 @@ class FreqSubtCompTrajDB:public TrajDB
 		
 		const bool insert(const std::string& obj, Trajectory& traj);
 		
-		const bool insert(const std::string& obj, CompTrajectory& traj);
-
 		const bool insert
 			(
 				const std::string& obj,
@@ -202,7 +212,7 @@ class FreqSubtCompTrajDB:public TrajDB
 			)
 				const;
 	private:
-		TrajCompAlgo* alg;
+		FreqSubt* alg;
 };
 #endif
 

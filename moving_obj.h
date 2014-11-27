@@ -105,7 +105,7 @@ class Trajectory
 		/**
 		 * Creates an empty trajectory
 		**/
-		Trajectory();
+		Trajectory(const std::string obj="");
 
 		/**
 		 * Copy constructor
@@ -285,12 +285,19 @@ class Trajectory
 		{
 			return size_traj;
 		}
+		
+		//TODO
+		inline const std::string object()
+		{
+			return obj;
+		}
 	private:
 		/*OBJECT VARIABLES*/
 
 		std::list< seg_time* > seg_time_lst;
 		unsigned int size_traj;
 		double prob;
+		std::string obj;
 		
 		/*STATIC VARIABLES*/
 
@@ -333,7 +340,10 @@ class Trajectory
 class TrajDBStorage
 {
 	public:
-		TrajDBStorage(){};
+		TrajDBStorage()
+		{
+			n_updates = 0;
+		}
 		
 		virtual ~TrajDBStorage(){};
 		
@@ -367,6 +377,13 @@ class TrajDBStorage
 		{
 			return false;
 		}
+
+		const unsigned int updates() const
+		{
+			return n_updates;
+		}
+	protected:
+		unsigned int n_updates;
 };
 
 class TrajDBPostGis: public TrajDBStorage
@@ -420,6 +437,7 @@ class TrajDB
 		{
 			net = _net;
 			db = new TrajDBPostGis();
+			n_updates = 0;
 		}
 		
 		virtual ~TrajDB()
@@ -485,10 +503,20 @@ class TrajDB
 				const unsigned int& longit
 			)
 				const;
+		
+		const unsigned int updates() const
+		{
+			return n_updates;
+		}
 
+		const unsigned int db_updates() const
+		{
+			return db->updates();
+		}
 	protected:
 		RoadNet* net;
 		TrajDBStorage* db;
+		unsigned int n_updates;
 };
 
 #endif

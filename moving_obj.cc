@@ -107,16 +107,18 @@ seg_time* new_seg_time
 	return st;
 }
 
-Trajectory::Trajectory()
+Trajectory::Trajectory(const std::string _obj)
 {
 	size_traj = 0;
 	prob = 0;
+	obj = _obj;
 }
 
 Trajectory::Trajectory(const Trajectory& traj)
 {
 	prob = traj.prob;
 	size_traj = 0;
+	obj = traj.obj;
 	for(std::list< seg_time* >::const_iterator it = traj.seg_time_lst.begin();
 		it != traj.seg_time_lst.end(); ++it)
 	{
@@ -702,7 +704,7 @@ const unsigned int Trajectory::read_trajectories
 
 		if(traj_map.find(id) == traj_map.end())
 		{
-			traj = new Trajectory();
+			traj = new Trajectory(id);
 			traj->add_update(seg, start_time, end_time);
 			traj_map.insert(std::pair<std::string, Trajectory*>
 				(id, traj));
@@ -741,6 +743,8 @@ void Trajectory::write(std::ofstream& output_file, const RoadNet* net) const
 			st->start_time << "," <<
 			st->end_time << "\n";
 	}
+
+	output_file.flush();
 }
 
 const bool Trajectory::write_map_matched_trajectories
@@ -936,10 +940,20 @@ const bool TrajDB::insert(const std::string& obj, Trajectory& traj)
 const bool TrajDB::insert(const std::string& input_file_name)
 {
 	std::list<Trajectory*> trajectories;
-	
+	std::string obj;
+	Trajectory* traj;
+
 	if(Trajectory::read_trajectories(trajectories, input_file_name, net))
 	{
+		for(std::list<Trajectory*>::iterator it = trajectories.begin();
+			it != trajectories.end(); ++it)
+		{
+			traj = *it;
+			insert(traj->object(), *traj);
+		}
+
 		Trajectory::delete_trajectories(&trajectories);
+		
 		return true;
 	}
 	else
@@ -954,6 +968,7 @@ const bool TrajDB::insert
 		const seg_time& st
 	)
 {
+	n_updates++;
 	return db->insert(obj, st);
 }
 
@@ -980,6 +995,9 @@ const bool TrajDB::center_radius_query
 		db->query_segment_time(*it, objs, time_begin, time_end);
 		res.splice(res.end(), objs);
 	}
+
+	res.sort();
+	res.unique();
 
 	return true;
 }
@@ -1071,8 +1089,8 @@ const bool TrajDBPostGis::create()
 		//CREATE INDEX traj_linkid_idx_table_name ON table_name USING HASH(linkid);
 		//CREATE INDEX traj_startendtime_idx_table_name ON table_name(starttime,endtime);
 		sql = "CREATE TABLE " + table_name +
-			"(modid varchar(60) PRIMARY KEY, starttime timestamp(5),\
-			endtime timestamp(5), flag smallint, linkid integer, speed real\
+			"(modid varchar(60), starttime timestamp(5),\
+			endtime timestamp(5), flag smallint, linkid integer, speed real,\
 			anchorpoint geography(POINT," + spatial_ref + "));\
 			CREATE INDEX traj_modid_idx_" + table_name + " ON " + table_name + " USING HASH(modid);\
 			CREATE INDEX traj_linkid_idx_" + table_name + " ON " + table_name + " USING HASH(linkid);\
@@ -1124,22 +1142,22 @@ const bool TrajDBPostGis::insert
 	)
 {
 	std::string sql;
-	
+	n_updates++;
 	//FIXME: Some variables need to be set properly
 	unsigned int flag = 0;
 	double speed = 0;
-	
+
 	try
 	{
 		sql = "INSERT INTO " + table_name +
 			"(modid, starttime, endtime, flag, linkid, speed, anchorpoint)\
-			VALUES (" + obj + "," +
-			"TO_TIMESTAMP(" + to_string(st.start_time) + ")" +
-			"TO_TIMESTAMP(" + to_string(st.end_time) + ")" +
+			VALUES ('" + obj + "'," +
+			"TO_TIMESTAMP(" + to_string(st.start_time) + ")," +
+			"TO_TIMESTAMP(" + to_string(st.end_time) + ")," +
 			to_string(flag) + "," +
 			to_string(st.segment) + "," +
 			to_string(speed) + "," +
-			"NULL,NULL);";
+			"NULL);";
 		
 		pqxx::work work (*conn);
 		work.exec(sql.c_str());

@@ -624,8 +624,9 @@ class RoadNet
 		unsigned int seg_id;
 		unsigned int n_segments;
 		SegIndex* seg_index;
+		std::vector< std::map<unsigned int, double>* > distances;
 		double length_longest_segment;
-		float** dist_matrix; 
+		static const unsigned int num_short_paths;
 		
 		/*METHODS*/
 
@@ -648,8 +649,8 @@ class RoadNet
 		void compute_segment_lengths();
 		void project_segments();
 		void shortest_path(const unsigned int s1);
-		void build_dist_matrix();
-		
+		void compute_distances();
+
 		const bool create
 			(
 				const std::string& input_file_name,

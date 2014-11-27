@@ -66,7 +66,7 @@ const unsigned int FreqSubt::train(const std::string training_traj_file_name)
 	}
 
 	prune_unfrequent_subtraj();
-
+	set_seg_index();
 //	print_tree(tree);
 
 	return size_tree;
@@ -175,7 +175,8 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 
 	Trajectory::iterator iti = traj->end();
 	--iti;
-
+	
+	//Doesn't look good.
 	while(true)
 	{
 		itj = iti;
@@ -203,16 +204,10 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	std::map<unsigned int, Node*>::iterator node_it;
 	std::list<Node*> decomp;
 	std::list<unsigned int> start_times;
-	std::list<unsigned int> end_times;
 	unsigned int size_dec = 0;
 
 	Trajectory::iterator it = traj->begin();
 
-	if(traj->size())
-	{
-		start_times.push_back((*it)->start_time);
-	}
-	
 	while(it != traj->end())
 	{
 		node_it = curr_node->children->find((*it)->segment);
@@ -231,6 +226,7 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 		else
 		{
 			decomp.push_back(node_it->second);
+			start_times.push_back((*it)->start_time);
 			curr_node = node_it->second;
 			++it;
 			size_dec++;
@@ -238,16 +234,19 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	}
 
 	unsigned int l = 0;
+	unsigned int start_time;
 
 	while(size_dec > 0)
 	{
 		curr_node = decomp.front();
+		start_time = start_times.front();
 		decomp.pop_front();
+		start_times.pop_front();
 		size_dec--;
 
 		if(l == 0)
 		{
-			comp_traj->add_update(curr_node->id, 0, 0);
+			comp_traj->add_update(curr_node->id, start_time, start_time);
 			l =  curr_node->depth - 1;
 		}
 		else
@@ -255,6 +254,10 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 			l--;
 		}
 	}
+
+	comp_traj->set_end_times();
+
+	comp_traj->back()->end_time = traj->back()->end_time;
 
 	return comp_traj;
 }
@@ -311,7 +314,31 @@ void FreqSubt::prune_unfrequent_subtraj()
 		node = it->second;
 		prune_tree(node);
 	}
+}
+
+void FreqSubt::set_seg_index(Node* root)
+{
+	Node* node;
 	
+	for(std::map<unsigned int, Node*>::iterator it = root->children->begin(); 
+		it != root->children->end(); ++it)
+	{
+		node = it->second;
+		seg_to_freq_subt_index.at(node->seg)->push_back(node->id);
+		set_seg_index(node);
+	}
+}
+
+void FreqSubt::set_seg_index()
+{
+	Node* node;
+
+	for(std::map<unsigned int, Node*>::iterator it = tree->children->begin();
+		it != tree->children->end(); ++it)
+	{
+		node = it->second;
+		set_seg_index(node);
+	}
 }
 
 void FreqSubt::print_tree(Node* node)
@@ -377,6 +404,21 @@ void FreqSubt::print()
 	print_tree(tree);
 }
 
+void FreqSubt::get_freq_subt_ids
+	(
+		const unsigned int seg, 
+		std::list<unsigned int>& freq_subt_ids
+	)
+		const
+{
+	freq_subt_ids.clear();
+	for(std::list<unsigned int>::iterator it = seg_to_freq_subt_index.at(seg)->begin();
+		it != seg_to_freq_subt_index.at(seg)->end(); ++it)
+	{
+		freq_subt_ids.push_back(*it);
+	}
+}
+
 const bool FreqSubtCompTrajDB::insert
 	(       
 		const std::string& obj,
@@ -388,18 +430,28 @@ const bool FreqSubtCompTrajDB::insert
 
 const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
 {
-	CompTrajectory* comp_traj = compress(&traj);
+	CompTrajectory* comp_traj = alg->compress(&traj);
+	n_updates += traj.size();
 
-}
+	std::cout << "traj-size = " << traj.size() << " comptraj-size = " << comp_traj->size() << std::endl;
 
-const bool FreqSubtCompTrajDB::insert(const std::string& obj, CompTrajectory& traj)
-{
-	return false;
+	bool status;
+
+	for(Trajectory::iterator it = comp_traj->begin();
+		it != comp_traj->end(); ++it)
+	{
+		if(! db->insert(obj, *(*it)))
+		{
+			status = false;
+		}
+	}
+
+	return status;
 }
 
 const bool FreqSubtCompTrajDB::center_radius_query
 	(
-		const unsigned int lat,
+		const unsigned int latit,
 		const unsigned int longit,
 		const double dist,
 		std::list<std::string>& res,
@@ -407,6 +459,47 @@ const bool FreqSubtCompTrajDB::center_radius_query
 		const unsigned int time_end=0
 	)
 		const
- {
- 	return false;
- }
+{
+	std::list<unsigned int> segs;
+	bool status = net->segments_within_distance(segs, latit, longit, dist);
+	std::list<unsigned int> freq_subt_ids;
+	std::list<unsigned int> freq_subt_ids_seg;
+	std::list<std::string> objs;
+
+	res.clear();
+
+	for(std::list<unsigned int>::iterator it = segs.begin();
+		it != segs.end(); ++it)
+	{
+		alg->get_freq_subt_ids(*it, freq_subt_ids_seg);
+		
+		for(std::list<unsigned int>::iterator it_subt = freq_subt_ids_seg.begin();
+			it_subt != freq_subt_ids_seg.end(); ++it_subt)
+		{
+			freq_subt_ids.push_back(*it_subt);
+		}
+
+		freq_subt_ids_seg.clear();
+	}
+
+	freq_subt_ids.sort();
+	freq_subt_ids.unique();
+
+	for(std::list<unsigned int>::iterator it_subt = freq_subt_ids.begin();
+		it_subt != freq_subt_ids.end(); ++it_subt)
+	{
+		if(! db->query_segment_time(*it_subt, objs, time_begin, time_end))
+		{
+			status = false;
+		}
+
+		res.splice(res.end(), objs);
+	}
+
+	res.sort();
+	res.unique();
+
+	return status;
+}
+
+
