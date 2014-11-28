@@ -1198,7 +1198,7 @@ const bool TrajDBPostGis::query_segment_time
 		else
 		{
 			sql = "SELECT modid FROM " + table_name + 
-				" WHERE segment=" + to_string(segment) + ")';";
+				" WHERE segment=" + to_string(segment) + ";";
 		}
 
 		pqxx::nontransaction work(*conn);
