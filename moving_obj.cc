@@ -1191,14 +1191,14 @@ const bool TrajDBPostGis::query_segment_time
 		if(time_begin != 0 && time_end != 0)
 		{
 			sql = "SELECT modid FROM " + table_name + 
-				" WHERE segment=" + to_string(segment) +
+				" WHERE linkid=" + to_string(segment) +
 				" AND starttime < TO_TIMESTAMP(" + to_string(time_end) + ")" +
 				 " AND endtime > TO_TIMESTAMP(" + to_string(time_begin) + ")';";
 		} 
 		else
 		{
 			sql = "SELECT modid FROM " + table_name + 
-				" WHERE segment=" + to_string(segment) + ";";
+				" WHERE linkid=" + to_string(segment) + ";";
 		}
 
 		pqxx::nontransaction work(*conn);
