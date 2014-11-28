@@ -451,8 +451,8 @@ const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
 
 const bool FreqSubtCompTrajDB::center_radius_query
 	(
-		const unsigned int latit,
-		const unsigned int longit,
+		const double latit,
+		const double longit,
 		const double dist,
 		std::list<std::string>& res,
 		const unsigned int time_begin=0,

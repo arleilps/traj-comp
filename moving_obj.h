@@ -467,8 +467,8 @@ class TrajDB
 		
 		virtual const bool center_radius_query
 			(
-				const unsigned int lat, 
-				const unsigned int longit,
+				const double lat, 
+				const double longit,
 				const double dist,
 				std::list<std::string>& res,
 				const unsigned int time_begin=0,
@@ -478,8 +478,8 @@ class TrajDB
 
 		virtual const bool nearest_neighbor_query
 			(
-				const unsigned int lat,
-				const unsigned int longit,
+				const double lat,
+				const double longit,
 				const std::string& res,
 				const unsigned int time_begin=0,
 				const unsigned int time_end=0
@@ -489,8 +489,8 @@ class TrajDB
 		virtual const bool when_at
 			(
 				const std::string& obj,
-				const unsigned int lat,
-				const unsigned int longit,
+				const double lat,
+				const double longit,
 				const unsigned int& timestamp
 			)
 				const;
@@ -499,8 +499,8 @@ class TrajDB
 			(
 				const std::string& obj,
 				const unsigned int timestamp,
-				const unsigned int& lat,
-				const unsigned int& longit
+				double& lat,
+				double& longit
 			)
 				const;
 		

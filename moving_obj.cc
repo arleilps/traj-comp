@@ -974,8 +974,8 @@ const bool TrajDB::insert
 
 const bool TrajDB::center_radius_query
 	(
-		const unsigned int latit,
-		const unsigned int longit,
+		const double latit,
+		const double longit,
 		const double dist,
 		std::list<std::string>& res,
 		const unsigned int time_begin,
@@ -1004,8 +1004,8 @@ const bool TrajDB::center_radius_query
 
 const bool TrajDB::nearest_neighbor_query
 	(
-		const unsigned int lat,
-		const unsigned int longit,
+		const double lat,
+		const double longit,
 		const std::string& res,
 		const unsigned int time_begin,
 		const unsigned int time_end
@@ -1018,8 +1018,8 @@ const bool TrajDB::nearest_neighbor_query
 const bool TrajDB::when_at
 	(
 		const std::string& obj,
-		const unsigned int lat,
-		const unsigned int longit,
+		const double lat,
+		const double longit,
 		const unsigned int& timestamp
 	)
 		const
@@ -1031,8 +1031,8 @@ const bool TrajDB::where_at
 	(
 		const std::string& obj,
 		const unsigned int timestamp,
-		const unsigned int& lat,
-		const unsigned int& longit
+		double& lat,
+		double& longit
 	)
 	const
 {

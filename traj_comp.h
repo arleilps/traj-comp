@@ -203,8 +203,8 @@ class FreqSubtCompTrajDB:public TrajDB
 
 		const bool center_radius_query
 			(
-				const unsigned int lat,
-				const unsigned int longit,
+				const double lat,
+				const double longit,
 				const double dist,
 				std::list<std::string>& res,
 				const unsigned int time_begin,
