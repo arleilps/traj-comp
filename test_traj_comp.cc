@@ -106,66 +106,81 @@ const bool test_traj_comp_freq_subt()
 	return true;
 }
 
-	
-const bool test_traj_comp_freq_subt_sf_cab()
+const bool create_road_net()
 {
-	std::cout << "Creating a road network" << std::endl;
-//	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
+	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
+	delete net;
+
+	return true;
+}
+
+const bool map_matching()
+{
 	RoadNet* net = new RoadNet("road_net_sf.csv");
-	std::cout << "Road network created" << std::endl;
-
-//	 std::cout << "Map-matching updates" << std::endl;
-//	 Trajectory::write_map_matched_trajectories(
-//	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
-//	 	"../data/small_cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
-
-//	std::cout << "Deleting road network" << std::endl;
-//	delete net;
-//	std::cout << "Road network deleted" << std::endl;
+	Trajectory::write_map_matched_trajectories(
+	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
 	
-//	std::cout << "Test finished" << std::endl;
+	delete net;
 
-//	RoadNet* net = new RoadNet("road_net_sf.csv");
-//	RoadNet* net = new RoadNet("road_net.csv");
+	return true;
+}
 
-//	FreqSubt* fs = new  FreqSubt(10, 2, net);
-//	std::cout << "size_tree = " << fs->train("map_matched_cab_stream_sfo.txt") << std::endl;;
-/*	
-	std::list<Trajectory*> fsts;
-	fs->freq_sub_traj(fsts);
-	Trajectory* traj;
+const bool freq_sub_traj_queries()
+{
+	RoadNet* net = new RoadNet("road_net_sf.csv");
 	
-	for(std::list<Trajectory*>::iterator it = fsts.begin(); it != fsts.end(); ++it)
-	{
-		traj = *it;
-		
-		//Prints a trajectory
-		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
-		{
-			std::cout << net->seg_name((*traj_it)->segment) << " ";
-		}
-
-		std::cout << std::endl;
-	}
+	//Frequent subtrajectories of size at most two
+	//and frequency at most 10
+	TrajDB* db = new FreqSubtCompTrajDB("map_matched_cab_stream_sfo.txt", 10, 2, net);
 	
-	//fs->train("map_matched.txt");
-	//std::cout << "num_updates = " << fs->test("map_matched.txt") << std::endl;
-//	std::cout << "num_updates = " << fs->test("map_matched_cab_stream_sfo.txt") << std::endl;
-
-	delete fs;
-*/
-	
-	TrajDB* db = new FreqSubtCompTrajDB("map_matched_2.txt", 10, 2, net);
+	//Use db->drop(); to erase the content of the database
+	//db->drop(); 
 	db->create();
-
-	db->insert("map_matched_2.txt");
 	
+	//This will insert all the trajectories in the file
+	//into the database
+	db->insert("map_matched_cab_stream_sfo.txt");
+
+	//Some statistics
 	std::cout << "#original updates: " << db->updates() << std::endl;
 	std::cout << "#database updates:" << db->db_updates() << std::endl;
 
-	db->drop();
+	std::list<std::string> q_results;
+
+	//center = (lat,long), distance in meters
+	//Accepts time range arguments (optional) not tested yet
+	db->center_radius_query(37.78,-122.39, 100, q_results);
+
+	//Printing query results
+	for(std::list<std::string>::iterator it = q_results.begin();
+		it != q_results.end(); it++)
+	{
+		std::cout << *it << std::endl;
+	}
+
 	delete net;
 	delete db;
+	return true;
+}
+	
+const bool test_traj_comp_freq_subt_sf_cab()
+{
+	//Indexes the segments and creates
+	//a file road_net_sf.csv, needs to
+	//be executed only once.
+//	create_road_net();
+
+	//Map-matches the trajectory updates
+	//Might take too long, depends on 
+	//files and databases created in 
+	//the previous step. Needs to be
+	//executed only once.
+//	map_matching();
+
+	//Creating trajectory database
+	//and performing queries using
+	//frequent subtrajectories
+	freq_sub_traj_queries();
 
 	return true;
 }
