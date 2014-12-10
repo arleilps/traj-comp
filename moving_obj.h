@@ -104,6 +104,7 @@ class Trajectory
 
 		/**
 		 * Creates an empty trajectory
+		 * @param obj id of the object associated with the trajectory (optional)
 		**/
 		Trajectory(const std::string obj="");
 
@@ -198,11 +199,11 @@ class Trajectory
 		 /*OBJECT METHODS*/
 		
 		/**
-		 * FIXME
 		 * Adds a map-matched update to the trajectory
 		 * @param segment 
-		 * @param timestamp
-		 * @param update update that was matched
+		 * @param start_time time when object started segment
+		 * @param end_time time when object ended segment
+		 * @param update update that was matched (optional)
 		**/
 		void add_update
 			(
@@ -279,14 +280,16 @@ class Trajectory
 		}
 		
 		/**
-		 * Gives the size of a trajectory
+		 * Gets the size of a trajectory
 		**/
 		inline const unsigned int size()
 		{
 			return size_traj;
 		}
 		
-		//TODO
+		/**
+		 * Gets the object associated with the trajectory
+		**/
 		inline const std::string object()
 		{
 			return obj;
@@ -337,26 +340,38 @@ class Trajectory
 			);
 };
 
+/**
+ * Generic class for managing trajectory data using a database.
+**/
 class TrajDBStorage
 {
 	public:
+		/*Constructor*/
 		TrajDBStorage()
 		{
 			n_updates = 0;
 		}
 		
+		/*Destructor*/
 		virtual ~TrajDBStorage(){};
 		
+		/*Creates table*/
 		virtual const bool create()
 		{
 			return false;
 		}
 		
+		/*Drops table*/
 		virtual const bool drop()
 		{
 			return false;
 		}
 
+		/**
+		 * Inserts a trajectory update.
+		 * @param obj object id
+		 * @param st seg_time object for the update
+		**/
 		virtual const bool insert
 			(
 				const std::string& obj,
@@ -366,6 +381,13 @@ class TrajDBStorage
 			return false;
 		}
 		
+		/**
+		 * Recovers objects that have a given segment in a given time range.
+		 * @param segment segment id
+		 * @param objs list of objects to be updated
+		 * @param time_begin start time of the range
+		 * @param time_end end time of the range
+		**/
 		virtual const bool query_segment_time
 			(
 				const unsigned int segment,
@@ -378,6 +400,7 @@ class TrajDBStorage
 			return false;
 		}
 
+		/*Returns number of udpates made to the database*/
 		const unsigned int updates() const
 		{
 			return n_updates;
@@ -386,14 +409,19 @@ class TrajDBStorage
 		unsigned int n_updates;
 };
 
+/**
+ * Implements a trajectory database as a PostGis table.
+**/
 class TrajDBPostGis: public TrajDBStorage
 {
 	public:
+		/*Constructor*/
 		TrajDBPostGis():TrajDBStorage()
 		{
 			connect();
 		}
 		
+		/*Destructor*/
 		virtual ~TrajDBPostGis(){};
 		
 		const bool create();
@@ -415,6 +443,8 @@ class TrajDBPostGis: public TrajDBStorage
 			)
 				const;
 	protected:
+		//PostGis database name, table name, 
+		//host, port, user and password.
 		static const std::string database_name;
 		static const std::string table_name;
 		static const std::string host;
@@ -422,17 +452,34 @@ class TrajDBPostGis: public TrajDBStorage
 		static const std::string user;
 		static const std::string password;
 		
+		//Spatial reference and srid
+		//spatial reference is for the 
+		//input representation (lat,long)
+		//and we are using EPSG:4326
+		//http://en.wikipedia.org/wiki/World_Geodetic_System
+		//http://spatialreference.org/ref/epsg/wgs-84/
+		//srid is applied for projecting points into a planar
+		//representation and we are applying EPSG 26943
+		//for SF area. http://spatialreference.org/ref/epsg/26943/)
 		static const std::string srid;
 		static const std::string spatial_ref;
 
+		//Database connection
 		pqxx::connection* conn;
 
 		const bool connect();
 };
 
+/**
+ * Implements several functionalities (insert, query etc.) for managing a trajectory database.
+**/
 class TrajDB
 {
 	public:
+		/**
+		 * Constructor.
+		 * @param _net road network
+		**/
 		TrajDB(RoadNet* _net)
 		{
 			net = _net;
@@ -440,34 +487,65 @@ class TrajDB
 			n_updates = 0;
 		}
 		
+		/* Destructor */
 		virtual ~TrajDB()
 		{
 			delete db;
 		};
 		
-		virtual const bool create()
+		/*Creates a new database*/
+		const bool create()
 		{
 			return db->create();
 		}
 		
-		virtual const bool drop()
+		/*Drops the current database*/
+		const bool drop()
 		{
 			return db->drop();
 		}
 
+		/**
+		 * Inserts all trajectories in a map-matched trajectory file into 
+		 * the database.
+		 * @param input_file_name input file name
+		 * @return true in case of success, false otherwise
+		**/
 		virtual const bool insert(const std::string& input_file_name);
 		
+		/**
+		 * Inserts a trajectory into the database.
+		 * @param obj id of the object associated with the trajectory
+		 * @param traj trajectory
+		 * @return true in case of success, false otherwise
+		**/
 		virtual const bool insert(const std::string& obj, Trajectory& traj);
 		
+		/**
+		 * Inserts a trajectory update for a given object into the database.
+		 * @param obj object id
+		 * @param st seg_time update
+		**/
 		virtual const bool insert
 			(
 				const std::string& obj,
 				const seg_time& st
 			);
 		
+		/**
+		 * Center-radius query. Returns all objects within radius distance from a center
+		 * (lat-long) point during a given time range. If no range is provided, consider
+		 * the whole span of the database.
+		 * @param latit center latitude
+		 * @param longit center longit
+		 * @param dist radius distance
+		 * @param res query results to be updated
+		 * @param time_begin start time of the range (optional)
+		 * @param time_end end time of the range (optional)
+		**/
 		virtual const bool center_radius_query
 			(
-				const double lat, 
+				const double latit, 
 				const double longit,
 				const double dist,
 				std::list<std::string>& res,
@@ -475,7 +553,8 @@ class TrajDB
 				const unsigned int time_end=0
 			) 
 				const;
-
+		
+		//TODO
 		virtual const bool nearest_neighbor_query
 			(
 				const double lat,
@@ -486,6 +565,7 @@ class TrajDB
 			)
 				const;
 		
+		//TODO
 		virtual const bool when_at
 			(
 				const std::string& obj,
@@ -495,6 +575,7 @@ class TrajDB
 			)
 				const;
 		
+		//TODO
 		virtual const bool where_at
 			(
 				const std::string& obj,
@@ -504,12 +585,16 @@ class TrajDB
 			)
 				const;
 		
-		const unsigned int updates() const
+		/*INLINES*/
+		
+		/*Gets how many updates were processed*/
+		inline const unsigned int updates() const
 		{
 			return n_updates;
 		}
 
-		const unsigned int db_updates() const
+		/*Gets how many actual updates were made to the database*/
+		inline const unsigned int db_updates() const
 		{
 			return db->updates();
 		}

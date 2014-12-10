@@ -28,8 +28,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "traj_comp.h"
 #include "io.h"
 
-const std::string CompTrajDBPostGis::table_name = "comptraj";
-
 Node* FreqSubt::new_node()
 {
 	Node* node = new Node;
@@ -52,11 +50,14 @@ TrajCompAlgo::~TrajCompAlgo()
 {
 }
 
+//Frequent subtrajectories are identified in the training file by building
+//a frequent subtrajectory tree, which is similar to a frequent substring tree
 const unsigned int FreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
 	
+	//Adds each trajectory into the tree
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
@@ -65,32 +66,17 @@ const unsigned int FreqSubt::train(const std::string training_traj_file_name)
 		delete *it;
 	}
 
+	//Prunes unfrequent subtrajectories based on the given minimum support
 	prune_unfrequent_subtraj();
+
+	//Sets an index for the frequent subtrajectories that contain a given segment
 	set_seg_index();
-//	print_tree(tree);
 
 	return size_tree;
 }
 
 const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 {
-/*	
-	Trajectory* traj = new Trajectory();
-	traj->add_update(0,0);
-	traj->add_update(3,0);
-	traj->add_update(6,0);
-	traj->add_update(4,0);
-	traj->add_update(7,0);
-	traj->add_update(5,0);
-	traj->add_update(2,0);
-	traj->add_update(0,0);
-	traj->add_update(4,0);
-	traj->add_update(1,0);
-	traj->add_update(9,0);
-	std::list<Node*> compressed;
-	
-	std::cout << "size = " << compress(traj, compressed) << std::endl;;
-*/
 	std::list<Trajectory*> trajectories;
 	unsigned int updates = 0;
 	Trajectory* traj;
@@ -99,6 +85,8 @@ const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
 
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
@@ -111,6 +99,7 @@ const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 	return updates;
 }
 
+//Each node in the tree has a map from a segment id to a child node
 void FreqSubt::add_trajectory
 	(
 		Trajectory::iterator it, 
@@ -125,13 +114,16 @@ void FreqSubt::add_trajectory
 	
 	if(it != traj->end() && depth < max_length)
 	{
+		//Searches for the segment in the map
 		std::map<unsigned int, Node*>::iterator node = tree->children->find((*it)->segment);
 		
+		//Creates a new node if the segment is not found
 		if(node != tree->children->end())
 		{
 			suffix_pointers->pop_front();
 			new_suffix_pointers->push_back(node->second);
 			
+			//Recursively adds the remaining (suffix) of the trajectory
 			add_trajectory
 				(
 					++it, 
@@ -144,6 +136,7 @@ void FreqSubt::add_trajectory
 		}
 		else
 		{
+			//Creating a new node and inserting into the tree
 			size_tree++;
 			tree->children->insert(std::pair<unsigned int, Node*>((*it)->segment, new_node()));
 			id++;
@@ -153,6 +146,7 @@ void FreqSubt::add_trajectory
 			suffix_pointers->pop_front();
 			new_suffix_pointers->push_back(tree->children->at((*it)->segment));
 			
+			//Recursively adds the remaining (suffix) of the trajectory
 			add_trajectory
 				(
 					++it, 
@@ -168,11 +162,16 @@ void FreqSubt::add_trajectory
 void FreqSubt::add_trajectory(Trajectory* traj)
 {
 	Trajectory::iterator itj;
+	
+	//Each node in the tree has a pointer to its largest suffix
+	//which is useful for decomposing a trajectory into 
+	//subtrajectories
 	std::list<Node*>* suffix_pointers = new std::list<Node*>;
 	std::list<Node*>* new_suffix_pointers;
 	
 	suffix_pointers->push_back(NULL);
 
+	//Trajectory added by iterating over it
 	Trajectory::iterator iti = traj->end();
 	--iti;
 	
@@ -367,7 +366,12 @@ void FreqSubt::print_tree(Node* node, const std::string str)
 	}
 }
 
-void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajectory* traj)
+void FreqSubt::freq_sub_traj
+	(
+		std::list<std::pair<unsigned int, Trajectory * > * >& fsts,
+		Node* node, 
+		Trajectory* traj
+	)
 {
 	if(node->freq >= min_sup)
 	{
@@ -377,7 +381,10 @@ void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajector
 		}
 
 		traj->add_update(node->seg, 0, 0);
-		fsts.push_back(traj);
+		
+		//Adding trajectory and corresponding node id in the freq subt tree
+		//to the list
+		fsts.push_back(new std::pair<unsigned int, Trajectory*>(node->id, traj));
 
 		Trajectory* new_traj;
 
@@ -390,7 +397,10 @@ void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts, Node* node, Trajector
 	}
 }
 
-void FreqSubt::freq_sub_traj(std::list<Trajectory*>& fsts)
+void FreqSubt::freq_sub_traj
+	(
+		std::list<std::pair<unsigned int, Trajectory * > * >& fsts
+	)
 {
 	for(std::map<unsigned int, Node*>::iterator it = tree->children->begin(); 
 		it != tree->children->end(); ++it)
@@ -428,12 +438,38 @@ const bool FreqSubtCompTrajDB::insert
 	return false;
 }
 
+const bool FreqSubtCompTrajDB::insert(const std::string& input_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	std::string obj;
+	Trajectory* traj;
+	     
+	if(Trajectory::read_trajectories(trajectories, input_file_name, net))
+	{
+		for(std::list<Trajectory*>::iterator it = trajectories.begin();
+			it != trajectories.end(); ++it)
+		{
+			traj = *it;
+			insert(traj->object(), *traj);
+		}
+		      
+		Trajectory::delete_trajectories(&trajectories);
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
 {
 	CompTrajectory* comp_traj = alg->compress(&traj);
 	n_updates += traj.size();
 
-	std::cout << "traj-size = " << traj.size() << " comptraj-size = " << comp_traj->size() << std::endl;
+//	std::cout << "traj-size = " << traj.size() << " comptraj-size = " 
+//		<< comp_traj->size() << std::endl;
 
 	bool status;
 
@@ -455,8 +491,8 @@ const bool FreqSubtCompTrajDB::center_radius_query
 		const double longit,
 		const double dist,
 		std::list<std::string>& res,
-		const unsigned int time_begin=0,
-		const unsigned int time_end=0
+		const unsigned int time_begin,
+		const unsigned int time_end
 	)
 		const
 {

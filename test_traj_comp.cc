@@ -81,22 +81,22 @@ const bool test_traj_comp_freq_subt()
 	fs->print();
 
 	//Gets all frequent sub-trajectories (minimum support 2)
-	std::list<Trajectory*> fsts;
+	std::list<std::pair<unsigned int, Trajectory*>*> fsts;
 	fs->freq_sub_traj(fsts);
 
-	for(std::list<Trajectory*>::iterator it = fsts.begin(); it != fsts.end(); ++it)
+	for(std::list<std::pair<unsigned int, Trajectory* > * >::iterator it = fsts.begin(); 
+		it != fsts.end(); ++it)
 	{
-		traj = *it;
-		
+		traj = (*it)->second;
 		//Prints a trajectory
 		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
 		{
-			std::cout << "<seg: " << (*traj_it)->segment <<
-				" time: " << (*traj_it)->start_time << ">" << std::endl;
+			std::cout << (*traj_it)->segment << " " << std::endl;
 		}
 
 		std::cout << std::endl;
 	}
+
 /*
 	std::cout << "Deleting road network";
 	delete net;
@@ -125,25 +125,53 @@ const bool map_matching()
 	return true;
 }
 
+void print_freq_sub_traj(FreqSubtCompTrajDB* db)
+{
+	std::list<std::pair<unsigned int, Trajectory*>*> fsts;
+	db->freq_sub_traj(fsts);
+	
+	Trajectory* traj;
+	
+	for(std::list<std::pair<unsigned int, Trajectory* > * >::iterator it = fsts.begin(); 
+		it != fsts.end(); ++it)
+	{
+		traj = (*it)->second;
+		std::cout << (*it)->first << " : ";
+		//Prints a trajectory
+		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
+		{
+			std::cout << (*traj_it)->segment << " ";
+		}
+
+		std::cout << std::endl;
+
+		delete traj;
+		delete *it;
+	}
+}
+
 const bool freq_sub_traj_queries()
 {
 	RoadNet* net = new RoadNet("road_net_sf.csv");
 	
 	//Frequent subtrajectories of size at most two
 	//and frequency at most 10
-	TrajDB* db = new FreqSubtCompTrajDB("map_matched_cab_stream_sfo.txt", 10, 2, net);
+	FreqSubtCompTrajDB* db = new FreqSubtCompTrajDB("map_matched_cab_stream_sfo.txt", 10, 4, net);
 	
+	//Printing frequent subtrajectories with respective ids
+	print_freq_sub_traj(db);
+
 	//Use db->drop(); to erase the content of the database
 	//db->drop(); 
-	db->create();
+	//db->create();
 	
 	//This will insert all the trajectories in the file
 	//into the database
-	db->insert("map_matched_cab_stream_sfo.txt");
+	//db->insert("map_matched_cab_stream_sfo.txt");
 
 	//Some statistics
-	std::cout << "#original updates: " << db->updates() << std::endl;
-	std::cout << "#database updates:" << db->db_updates() << std::endl;
+	//std::cout << "#original updates: " << db->updates() << std::endl;
+	//std::cout << "#database updates: " << db->db_updates() << std::endl;
 
 	std::list<std::string> q_results;
 
