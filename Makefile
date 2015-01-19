@@ -1,4 +1,4 @@
-CFLAGS = -Wall -O3 -g #-pg
+CFLAGS = -Wall -g -Ofast #-pg
 
 CC = g++ $(CFLAGS) 
 
@@ -11,7 +11,7 @@ all: traj_comp
 traj_comp: $(GP_OBJS)
 	@echo ""
 	@echo " --- traj_comp ---"
-	@$(CC) $(GP_OBJS) -o traj_comp -L/usr/local/lib -lpqxx -lpq -I/usr/local/lib
+	@$(CC) $(GP_OBJS) -o traj_comp -L/usr/local/lib -lpqxx -lpq -I/usr/local/include/pqxx
 	@echo ""
 
 %.o: %.cc %.h

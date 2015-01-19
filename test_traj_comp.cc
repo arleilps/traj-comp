@@ -30,79 +30,19 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 const bool test_traj_comp_freq_subt()
 {
-	std::cout << "Testing frequent sub-trajectory based compression" << std::endl;
-
 	RoadNet* net = new RoadNet("road_net_sf.csv");
-	FreqSubt* fs = new  FreqSubt(2, 100, net);
+	TrajCompAlgo* traj_comp = new  FreqSubt(2, 5, net);
 	
-	Trajectory* traj;
-
-	/*0, 1, 2, 3, 4*/
-	traj = new Trajectory();
-	//An update is a pair segment id, timestamp, but here the timestamps don't matter.
-	traj->add_update(0, 0, 0);
-	traj->add_update(1, 1, 1);
-	traj->add_update(2, 2, 2);
-	traj->add_update(3, 3, 3);
-	traj->add_update(4, 4, 4);
-
-	fs->add_trajectory(traj);
+	traj_comp->train("map_matched_cab_stream_sfo.txt");
 	
-	/*2, 3, 4*/
-	traj = new Trajectory();
-	traj->add_update(2, 0, 0);
-	traj->add_update(3, 1, 1);
-	traj->add_update(4, 2, 2);
-	
-	fs->add_trajectory(traj);
-	
-	/*2, 3*/
-	traj = new Trajectory();
-	traj->add_update(2, 1, 1);
-	traj->add_update(3, 2, 2);
-	
-	fs->add_trajectory(traj);
+	unsigned int n = traj_comp->test("map_matched_cab_stream_sfo.txt");
 
-	/*4*/
-	traj = new Trajectory();
-	traj->add_update(4, 0, 0);
-	
-	fs->add_trajectory(traj);
-	
-	/*4, 3, 2*/
-	traj = new Trajectory();
-	traj->add_update(4, 3, 3);
-	traj->add_update(3, 4, 4);
-	traj->add_update(2, 5, 5);
-	
-	fs->add_trajectory(traj);
+	std::cout << "num updates = " << n << std::endl; 
 
-	//Printing the tree and the frequency of the respective substrings
-	fs->print();
-
-	//Gets all frequent sub-trajectories (minimum support 2)
-	std::list<std::pair<unsigned int, Trajectory*>*> fsts;
-	fs->freq_sub_traj(fsts);
-
-	for(std::list<std::pair<unsigned int, Trajectory* > * >::iterator it = fsts.begin(); 
-		it != fsts.end(); ++it)
-	{
-		traj = (*it)->second;
-		//Prints a trajectory
-		for(Trajectory::iterator traj_it = traj->begin(); traj_it != traj->end(); ++traj_it)
-		{
-			std::cout << (*traj_it)->segment << " " << std::endl;
-		}
-
-		std::cout << std::endl;
-	}
-
-/*
-	std::cout << "Deleting road network";
+	delete traj_comp;
 	delete net;
-	std::cout << "Road network deleted";
-*/	
-	std::cout << "Test finished" << std::endl;
+
+	
 	return true;
 }
 
@@ -209,6 +149,44 @@ const bool test_traj_comp_freq_subt_sf_cab()
 	//and performing queries using
 	//frequent subtrajectories
 	freq_sub_traj_queries();
+
+	return true;
+}
+
+const bool test_traj_comp_short_path()
+{
+	//RoadNet* net = new RoadNet("road_net.csv");
+	RoadNet* net = new RoadNet("road_net_sf.csv");
+
+	TrajCompAlgo* traj_comp = new ShortestPath(net, 100);
+	
+	std::cout << traj_comp->test("map_matched_cab_stream_sfo.txt") << std::endl;
+	
+	//std::cout << traj_comp->test("map_matched.txt") << std::endl;
+
+	delete traj_comp;
+	
+	delete net;
+
+	return true;
+}
+
+const bool test_traj_comp_ppm()
+{
+	RoadNet* net = new RoadNet("road_net_sf.csv");
+	//RoadNet* net = new RoadNet("road_net.csv");
+	TrajCompAlgo* traj_comp = new PredPartMatch(10, net);
+
+	traj_comp->train("map_matched_cab_stream_sfo.txt");
+	//traj_comp->train("map_matched.txt");
+	
+	unsigned int n = traj_comp->test("map_matched_cab_stream_sfo.txt");
+	//unsigned int n = traj_comp->test("map_matched.txt");
+
+	std::cout << "num updates = " << n << std::endl; 
+
+	delete traj_comp;
+	delete net;
 
 	return true;
 }

@@ -32,15 +32,15 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "moving_obj.h"
 
 /*Node in the frequent subtrajectory tree*/
-typedef struct t_node
+typedef struct t_node_subt
 {
 	unsigned int id;
 	unsigned int seg;
 	unsigned int freq;
 	unsigned int depth;
-	std::map<unsigned int, t_node*>* children;
-	t_node* suffix;
-}Node;
+	std::map<unsigned int, t_node_subt*>* children;
+	t_node_subt* suffix;
+}NodeSubt;
 
 /**
  * Implements functionalities for a compressed trajectory manipulation
@@ -134,7 +134,7 @@ class FreqSubt: public TrajCompAlgo
 			min_sup = _min_sup;
 			max_length = _max_length;
 			tree = new_node();
-			Node* node;
+			NodeSubt* node;
 			size_tree = 0;
 			seg_to_freq_subt_index.reserve(net->size());
 
@@ -146,7 +146,7 @@ class FreqSubt: public TrajCompAlgo
 				node->seg = s;
 				node->freq = 0;
 				node->depth = 1;
-				tree->children->insert(std::pair<unsigned int, Node*>(s, node));
+				tree->children->insert(std::pair<unsigned int, NodeSubt*>(s, node));
 			}
 		}
 		
@@ -193,38 +193,179 @@ class FreqSubt: public TrajCompAlgo
 		/* OBJECT VARIABLES */
 		double min_sup;
 		unsigned int max_length;
-		Node* tree;
+		NodeSubt* tree;
 		unsigned int size_tree;
 		unsigned int id;
 		std::vector< std::list<unsigned int>* > seg_to_freq_subt_index;
 		
 		/* OBJECT METHODS */
-		void print_tree(Node* node);
-		void print_tree(Node* node, const std::string str);
-		void delete_tree(Node* node);
+		void print_tree(NodeSubt* node);
+		void print_tree(NodeSubt* node, const std::string str);
+		void delete_tree(NodeSubt* node);
 		
 		void freq_sub_traj
 			(
 				std::list<std::pair<unsigned int, Trajectory * > * >& fsts,
-				Node* node, 
+				NodeSubt* node, 
 				Trajectory* traj=NULL
 			);
 
 		void prune_unfrequent_subtraj();
-		void prune_tree(Node* root);
-		Node* new_node();
+		void prune_tree(NodeSubt* root);
+		NodeSubt* new_node();
 		void set_seg_index();
-		void set_seg_index(Node* root);
+		void set_seg_index(NodeSubt* root);
 		
 		void add_trajectory
 			(
 				Trajectory::iterator it, 
 				Trajectory* traj, 
-				Node* tree,
+				NodeSubt* tree,
 				const unsigned int depth,
-				std::list<Node*>* suffix_pointers,
-				std::list<Node*>* new_suffix_pointers
+				std::list<NodeSubt*>* suffix_pointers,
+				std::list<NodeSubt*>* new_suffix_pointers
 			);
+};
+
+class ShortestPath: public TrajCompAlgo
+{
+	public:
+		ShortestPath
+			(
+				RoadNet* net,
+				const double _max_length = 100
+			)
+			:TrajCompAlgo(net)
+		{
+			max_length = _max_length;
+			compute_shortest_paths();
+		}
+
+		virtual ~ShortestPath()
+		{
+			delete_shortest_paths();
+		}
+		
+		const unsigned int train(const std::string training_traj_file_name)
+		{
+			return 0;
+		}
+
+		const unsigned int test(const std::string test_traj_file_name);
+
+		void add_trajectory(Trajectory* traj);
+		
+		CompTrajectory* compress(Trajectory* traj) const;
+	
+	private:
+		double max_length;
+		std::vector < std::map < unsigned int , unsigned int > * > short_paths;
+		
+		void compute_shortest_paths();
+		void delete_shortest_paths();
+		bool check_sp_through
+			(
+				const unsigned int start,
+				const unsigned int end,
+				const unsigned int through
+			) const;
+};
+
+typedef struct t_node_ppm
+{
+	unsigned int id;
+	unsigned int segment;
+	unsigned int next;
+	unsigned int freq_next;
+	std::map<unsigned int, t_node_ppm*> children;
+	std::map<unsigned int, double> freq;
+} NodePPM;
+
+class PredPartMatch: public TrajCompAlgo
+{
+	public:
+		PredPartMatch
+			(
+				const unsigned int _order, 
+				RoadNet* net
+			)
+				:TrajCompAlgo(net)
+			{
+				order = _order;
+				size_tree = 0;
+				tree = new_node_ppm(0);
+				NodePPM* node;
+			
+				for(unsigned int s = 0; s < net->size(); s++)
+				{
+					node = new_node_ppm(s);
+					tree->children.insert(std::pair<unsigned int, NodePPM*>(s, node));
+				}
+			}
+
+		virtual ~PredPartMatch()
+		{
+			delete_tree(tree);
+		}
+		
+		const unsigned int train(const std::string training_traj_file_name);
+
+		const unsigned int test(const std::string test_traj_file_name);
+
+		void add_trajectory(Trajectory* traj);
+
+		CompTrajectory* compress(Trajectory* traj) const;
+	private:
+		unsigned int order;
+		unsigned int size_tree;
+		NodePPM* tree;
+
+		NodePPM* new_node_ppm
+			(
+				unsigned int segment
+			);
+		
+		void add_trajectory
+			(
+				const Trajectory::iterator& iti,
+				Trajectory::iterator& itj,
+				Trajectory* traj,
+				NodePPM* tree,
+				const unsigned int r
+			);
+
+		void delete_tree(NodePPM* tree);
+
+		const unsigned int next_segment
+			(
+				Trajectory::iterator it,
+				Trajectory* traj,
+				NodePPM* tree
+			) const;
+};
+
+class TSND: public TrajCompAlgo
+{
+	public:
+		TSND(RoadNet* net, const double _max_error)
+			:TrajCompAlgo(net)
+		{
+			max_error = _max_error;
+		}
+	private:
+		double max_error;
+};
+
+class NSTD: public TrajCompAlgo
+{
+	public:
+		NSTD(RoadNet* net, const double _max_error)
+			:TrajCompAlgo(net)
+		{
+			max_error = _max_error;
+		}
+	private:
+		double max_error;
 };
 
 /**

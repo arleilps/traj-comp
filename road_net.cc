@@ -42,7 +42,7 @@ const std::string PostGisIndex::port = "5432";
 const std::string PostGisIndex::user = "traj_comp";
 const std::string PostGisIndex::password="traj_comp";
 
-const unsigned int RoadNet::num_short_paths = 100;
+const unsigned int RoadNet::num_short_paths = 200;
 
 //Projection
 const std::string PostGisIndex::srid = "26943";
@@ -94,6 +94,14 @@ RoadNet::RoadNet(const std::string& input_file_name)
 	//Change the spatial index here
 	seg_index = new PostGisIndex();
 	read(input_file_name);
+	
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		distances.push_back
+			(
+				new std::map<unsigned int, double>
+			);
+	}
 }
 
 RoadNet::RoadNet
@@ -106,6 +114,22 @@ RoadNet::RoadNet
 	n_segments = 0;
 	seg_index = new PostGisIndex();
 	create(input_file_name, output_file_name);
+
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		distances.push_back
+			(
+				new std::map<unsigned int, double>
+			);
+	}
+}
+
+void RoadNet::clear_distances()
+{
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		distances.at(s)->clear();
+	}
 }
 
 const bool RoadNet::read(const std::string& input_file_name)
@@ -142,6 +166,7 @@ const bool RoadNet::read(const std::string& input_file_name)
 
 	segments.reserve(n_segments);
 	adj_list.reserve(n_segments);
+	neigh_check.reserve(n_segments);
 	length_longest_segment = 0;
 
 	unsigned int s = 0;
@@ -216,47 +241,17 @@ const bool RoadNet::read(const std::string& input_file_name)
 		std::getline(road_net_file, line_str);
 		line_vec = split(line_str,',');
 		neighbors = new std::list<unsigned int>;
+		neigh_check.push_back(new std::map<unsigned int, bool>);
 
 		for(unsigned int i = 1; i < line_vec.size(); i++)
 		{
 			neighbors->push_back(atoi(line_vec[i].c_str()));
+			neigh_check.at(s)->insert(std::pair<unsigned int, bool>(atoi(line_vec[i].c_str()), true));
 		}
 
 		adj_list.push_back(neighbors);
 		
-		distances.push_back(new std::map<unsigned int, double>);
-
 		s++;
-	}
-
-	//Reading pre-computed shortest path distances
-	std::getline(road_net_file, line_str);
-	unsigned int s1;
-	unsigned int s2;
-	double dist;
-
-	while(! road_net_file.eof())
-	{
-		line_vec = split(line_str,',');
-		
-		if(line_vec.size() != 3)
-		{
-			std::cerr << "Error: Invalid road network file format, check the README file -- " 
-				<< input_file_name << std::endl << std::endl;
-			road_net_file.close();
-
-			return false;
-		}
-		else
-		{
-			s1 = atoi(line_vec[0].c_str());
-			s2 = atoi(line_vec[1].c_str());
-			dist = atof(line_vec[2].c_str());
-
-			distances.at(s1)->insert(std::pair<unsigned int, double>(s2,dist));
-
-			std::getline(road_net_file, line_str);
-		}
 	}
 
 	road_net_file.close();
@@ -279,7 +274,7 @@ const bool RoadNet::create
 			index_segments();
 			compute_segment_lengths();
 			project_segments();
-			compute_distances();
+			//compute_distances();
 			write(output_file_name);
 		}
 		else
@@ -537,10 +532,12 @@ const bool RoadNet::build(const std::string& input_file_name)
 void RoadNet::build_adjacency_list()
 {
 	adj_list.reserve(n_segments);
+	neigh_check.reserve(n_segments);
 	
 	for(unsigned int s1 = 0; s1 < segments.size(); s1++)
 	{
 		adj_list.push_back(new std::list<unsigned int>);
+		neigh_check.push_back(new std::map<unsigned int, bool>);
 
 		for(unsigned int s2 = 0; s2 < segments.size(); s2++)
 		{
@@ -550,6 +547,7 @@ void RoadNet::build_adjacency_list()
 				if(segments[s1]->p_end == segments[s2]->p_begin)
 				{
 					adj_list.back()->push_back(s2);	
+					neigh_check.at(s1)->insert(std::pair<unsigned int, bool>(s2, true));
 				}
 			}	
 		}
@@ -567,6 +565,7 @@ RoadNet::~RoadNet()
 	{
 		delete segments.at(s);
 		delete adj_list.at(s);
+		delete neigh_check.at(s);
 		delete distances.at(s);
 	}
 }
@@ -643,8 +642,7 @@ const bool PostGisIndex::connect()
 	
 	try
 	{
-		conn = new pqxx::connection(conn_str.c_str());
-
+		conn = new pqxx::connection(conn_str);
 		if(conn->is_open())
 		{
 			return true;
@@ -678,6 +676,8 @@ const bool PostGisIndex::project
 	)
 {
 	std::string sql;
+
+	std::cout << latit << "," << longit << std::endl;
 
 	try
 	{
@@ -1237,8 +1237,6 @@ const double RoadNet::shortest_path
 	}
 
 	//Here be dragons
-	std::vector<double> distances_s1;
-	distances_s1.reserve(n_segments);
 	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
 		boost::heap::compare<compare_pair> > pq;
 	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
@@ -1247,8 +1245,6 @@ const double RoadNet::shortest_path
 	
 	for(unsigned int s = 0; s < n_segments; s++)
 	{
-		distances_s1.push_back(std::numeric_limits<double>::max());
-	
 		if(s != s1)
 		{
 			handles.push_back(pq.push(std::pair<unsigned int, double>
@@ -1265,7 +1261,7 @@ const double RoadNet::shortest_path
 	unsigned int z;
 	double dist;
 												               
-	distances_s1[s1] = 0;
+	distances.at(s1)->insert(std::pair<unsigned int, double>(s1, segments.at(s1)->length));
 
 	//BFS using heap
 	while(! pq.empty())
@@ -1273,26 +1269,25 @@ const double RoadNet::shortest_path
 		u = pq.top().first;
 		pq.pop();
 		
-		if(u == s2)
+		if(distances.at(s1)->find(u) == distances.at(s1)->end())
 		{
-			break;
+			return std::numeric_limits<double>::max();
 		}
+		
+		dist = distances.at(s1)->at(u);
 		
 		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
 			it != adj_list[u]->end(); ++it)
 		{
 			z = *it;
 
-			dist = distances_s1[u];
-
-			if(u != s1)
-			{
-				dist += segments.at(u)->length;
-			}
+			dist += segments.at(z)->length;
 			
-			if(distances_s1[z] > dist)
+			if((distances.at(s1)->find(z) == distances.at(s1)->end() ||
+				distances.at(s1)->at(z) > dist) && dist <= max_dist)
 			{
-				distances_s1[z] = dist;
+		//		std::cout << "z = " << z << " dist = " << dist << std::endl;
+				distances.at(s1)->insert(std::pair<unsigned int, double>(z, dist));
 
 				pq.increase(handles.at(z), 
 					std::pair<unsigned int, double>(z, dist));
@@ -1300,7 +1295,10 @@ const double RoadNet::shortest_path
 		}
 	}
 	
-	return distances_s1[s2] + dist_over_seg;
+	return distances.at(s1)->at(s2) 
+		+ dist_over_seg
+		- segments.at(s1)->length
+		- segments.at(s2)->length;
 }
 
 //Same as the last function, but also retrieves corresponding path
@@ -1449,6 +1447,68 @@ const double RoadNet::shortest_path
 	}
 
 	return distances_s1[s2] + dist_over_seg;
+}
+
+void RoadNet::fill_short_path_struct
+	(
+		const unsigned int segment, 
+		const double max_length, 
+		std::map < unsigned int , unsigned int >* s_paths
+	)
+{
+	std::vector<double> distances_seg;
+	distances_seg.reserve(n_segments);
+	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
+		boost::heap::compare<compare_pair> > pq;
+	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
+		boost::heap::compare<compare_pair> >::handle_type> handles;
+	handles.reserve(n_segments);
+	
+	for(unsigned int s = 0; s < n_segments; s++)
+	{
+		distances_seg.push_back(std::numeric_limits<double>::max());
+
+		if(s != segment)
+		{
+			handles.push_back(pq.push(std::pair<unsigned int, double>
+				(s, std::numeric_limits<double>::max())));
+		}
+		else
+		{
+			handles.push_back(pq.push(std::pair<unsigned int, double>
+				(s, 0)));
+		}
+	}
+
+	unsigned int u;
+	unsigned int z;
+	double dist;
+	distances_seg[segment] = 0;
+	
+	while(! pq.empty())
+	{
+		u = pq.top().first;
+		pq.pop();
+		
+		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
+			it != adj_list[u]->end(); ++it)
+		{
+			z = *it;
+
+			dist = distances_seg[u] + segments.at(u)->length;
+
+			if(distances_seg[z] > dist &&
+				dist <= max_length)
+			{
+				distances_seg[z] = dist;
+
+				pq.increase(handles.at(z), 
+					std::pair<unsigned int, double>(z, dist));
+
+				s_paths->insert(std::pair<unsigned int, unsigned int>(z,u));
+			}
+		}
+	}
 }
 
 void RoadNet::compute_segment_lengths()

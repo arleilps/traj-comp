@@ -480,7 +480,16 @@ class RoadNet
 				const double longit
 			) 
 				const;
-		
+	
+		void clear_distances();
+
+		void fill_short_path_struct
+			(
+				const unsigned int segment, 
+				const double max_length, 
+				std::map < unsigned int , unsigned int >* s_paths
+			);
+
 		/*INLINES*/
 
 		/**
@@ -607,6 +616,11 @@ class RoadNet
 			return seg_index->distance_points(latit_one, 
 				latit_two, longit_one, longit_two);
 		}
+
+		inline const bool check_adj(const unsigned int s1, const unsigned int s2)
+		{
+			return (neigh_check.at(s1)->find(s2) != neigh_check.at(s1)->end());
+		}
 		
 		/**
 		 * Gets the size of the road network in number of segments.
@@ -627,6 +641,7 @@ class RoadNet
 		std::vector< std::map<unsigned int, double>* > distances;
 		double length_longest_segment;
 		static const unsigned int num_short_paths;
+		std::vector < std::map <unsigned int, bool> * > neigh_check;
 		
 		/*METHODS*/
 

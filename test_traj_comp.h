@@ -24,4 +24,7 @@ const bool test_traj_comp_freq_subt();
 
 const bool test_traj_comp_freq_subt_sf_cab();
 
+const bool test_traj_comp_ppm();
+
+const bool test_traj_comp_short_path();
 #endif

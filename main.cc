@@ -44,7 +44,10 @@ int main(int argc, char** argv)
 //	test_database();
 //	test_moving_obj();
 //	test_moving_obj_traj_file();
-	test_traj_comp_freq_subt_sf_cab();
+//	test_traj_comp_freq_subt_sf_cab();
+//	test_traj_comp_freq_subt();
+//	test_traj_comp_ppm();
+	test_traj_comp_short_path();
 
 	/*Setting the compression algorithms*/
 //	std::vector<std::string> compression_algorithms;

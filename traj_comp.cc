@@ -28,14 +28,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "traj_comp.h"
 #include "io.h"
 
-Node* FreqSubt::new_node()
+NodeSubt* FreqSubt::new_node()
 {
-	Node* node = new Node;
+	NodeSubt* node = new NodeSubt;
 	node->id = id++;
 	node->freq = 0;
 	node->seg = 0;
 	node->depth = 0;
-	node->children = new std::map<unsigned int, Node*>;
+	node->children = new std::map<unsigned int, NodeSubt*>;
  	node->suffix = NULL; 
 	
 	return node;
@@ -81,7 +81,7 @@ const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 	unsigned int updates = 0;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	std::list<Node*> compressed;
+	std::list<NodeSubt*> compressed;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
 
@@ -104,10 +104,10 @@ void FreqSubt::add_trajectory
 	(
 		Trajectory::iterator it, 
 		Trajectory* traj, 
-		Node* tree, 
+		NodeSubt* tree, 
 		const unsigned int depth,
-		std::list<Node*>* suffix_pointers,
-		std::list<Node*>* new_suffix_pointers
+		std::list<NodeSubt*>* suffix_pointers,
+		std::list<NodeSubt*>* new_suffix_pointers
 	)
 {
 	tree->freq++;
@@ -115,7 +115,7 @@ void FreqSubt::add_trajectory
 	if(it != traj->end() && depth < max_length)
 	{
 		//Searches for the segment in the map
-		std::map<unsigned int, Node*>::iterator node = tree->children->find((*it)->segment);
+		std::map<unsigned int, NodeSubt*>::iterator node = tree->children->find((*it)->segment);
 		
 		//Creates a new node if the segment is not found
 		if(node != tree->children->end())
@@ -138,7 +138,7 @@ void FreqSubt::add_trajectory
 		{
 			//Creating a new node and inserting into the tree
 			size_tree++;
-			tree->children->insert(std::pair<unsigned int, Node*>((*it)->segment, new_node()));
+			tree->children->insert(std::pair<unsigned int, NodeSubt*>((*it)->segment, new_node()));
 			id++;
 			tree->children->at((*it)->segment)->seg = (*it)->segment;
 			tree->children->at((*it)->segment)->depth = depth+1;
@@ -166,8 +166,8 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 	//Each node in the tree has a pointer to its largest suffix
 	//which is useful for decomposing a trajectory into 
 	//subtrajectories
-	std::list<Node*>* suffix_pointers = new std::list<Node*>;
-	std::list<Node*>* new_suffix_pointers;
+	std::list<NodeSubt*>* suffix_pointers = new std::list<NodeSubt*>;
+	std::list<NodeSubt*>* new_suffix_pointers;
 	
 	suffix_pointers->push_back(NULL);
 
@@ -179,7 +179,7 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 	while(true)
 	{
 		itj = iti;
-		new_suffix_pointers = new std::list<Node*>;
+		new_suffix_pointers = new std::list<NodeSubt*>;
 		new_suffix_pointers->push_back(NULL);
 		add_trajectory(itj, traj, tree, 0, suffix_pointers, new_suffix_pointers);
 		delete suffix_pointers;
@@ -199,9 +199,9 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 {
 	CompTrajectory* comp_traj = new CompTrajectory();
-	Node* curr_node = tree;
-	std::map<unsigned int, Node*>::iterator node_it;
-	std::list<Node*> decomp;
+	NodeSubt* curr_node = tree;
+	std::map<unsigned int, NodeSubt*>::iterator node_it;
+	std::list<NodeSubt*> decomp;
 	std::list<unsigned int> start_times;
 	unsigned int size_dec = 0;
 
@@ -261,9 +261,9 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	return comp_traj;
 }
 
-void FreqSubt::delete_tree(Node* node)
+void FreqSubt::delete_tree(NodeSubt* node)
 {
-	for(std::map<unsigned int, Node*>::iterator it = node->children->begin(); 
+	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
 	{
 		delete_tree(it->second);
@@ -274,13 +274,13 @@ void FreqSubt::delete_tree(Node* node)
 	size_tree--;
 }
 
-void FreqSubt::prune_tree(Node* root)
+void FreqSubt::prune_tree(NodeSubt* root)
 {
-	Node* node;
+	NodeSubt* node;
 	
-	std::map<unsigned int, Node*>* new_map = new std::map<unsigned int, Node*>; 
+	std::map<unsigned int, NodeSubt*>* new_map = new std::map<unsigned int, NodeSubt*>; 
 
-	std::map<unsigned int, Node*>::iterator it = root->children->begin(); 
+	std::map<unsigned int, NodeSubt*>::iterator it = root->children->begin(); 
 	 
 	while(it != root->children->end())
 	{
@@ -292,7 +292,7 @@ void FreqSubt::prune_tree(Node* root)
 		}
 		else
 		{
-			new_map->insert(std::pair<unsigned int, Node*>(it->first, node));
+			new_map->insert(std::pair<unsigned int, NodeSubt*>(it->first, node));
 			prune_tree(node);
 		}
 		
@@ -305,9 +305,9 @@ void FreqSubt::prune_tree(Node* root)
 
 void FreqSubt::prune_unfrequent_subtraj()
 {
-	Node* node;
+	NodeSubt* node;
 
-	for(std::map<unsigned int, Node*>::iterator it = tree->children->begin();
+	for(std::map<unsigned int, NodeSubt*>::iterator it = tree->children->begin();
 		it != tree->children->end(); ++it)
 	{
 		node = it->second;
@@ -315,11 +315,11 @@ void FreqSubt::prune_unfrequent_subtraj()
 	}
 }
 
-void FreqSubt::set_seg_index(Node* root)
+void FreqSubt::set_seg_index(NodeSubt* root)
 {
-	Node* node;
+	NodeSubt* node;
 	
-	for(std::map<unsigned int, Node*>::iterator it = root->children->begin(); 
+	for(std::map<unsigned int, NodeSubt*>::iterator it = root->children->begin(); 
 		it != root->children->end(); ++it)
 	{
 		node = it->second;
@@ -330,9 +330,9 @@ void FreqSubt::set_seg_index(Node* root)
 
 void FreqSubt::set_seg_index()
 {
-	Node* node;
+	NodeSubt* node;
 
-	for(std::map<unsigned int, Node*>::iterator it = tree->children->begin();
+	for(std::map<unsigned int, NodeSubt*>::iterator it = tree->children->begin();
 		it != tree->children->end(); ++it)
 	{
 		node = it->second;
@@ -340,11 +340,11 @@ void FreqSubt::set_seg_index()
 	}
 }
 
-void FreqSubt::print_tree(Node* node)
+void FreqSubt::print_tree(NodeSubt* node)
 {
 	std::string str;
 	
-	for(std::map<unsigned int, Node*>::iterator it = node->children->begin(); 
+	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
 	{
 		str = "[" + to_string(net->seg_name(it->first)) + "]";
@@ -352,13 +352,13 @@ void FreqSubt::print_tree(Node* node)
 	}
 }
 
-void FreqSubt::print_tree(Node* node, const std::string str) 
+void FreqSubt::print_tree(NodeSubt* node, const std::string str) 
 {
 	std::string new_str;
 	
 	std::cout << str << " " << node->freq << std::endl;
 
-	for(std::map<unsigned int, Node*>::iterator it = node->children->begin(); 
+	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
 	{
 		new_str = str +"-["+ to_string(net->seg_name(it->first)) + "]";
@@ -369,7 +369,7 @@ void FreqSubt::print_tree(Node* node, const std::string str)
 void FreqSubt::freq_sub_traj
 	(
 		std::list<std::pair<unsigned int, Trajectory * > * >& fsts,
-		Node* node, 
+		NodeSubt* node, 
 		Trajectory* traj
 	)
 {
@@ -388,7 +388,7 @@ void FreqSubt::freq_sub_traj
 
 		Trajectory* new_traj;
 
-		for(std::map<unsigned int, Node*>::iterator it = node->children->begin(); 
+		for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
 			it != node->children->end(); ++it)
 		{
 			new_traj = new Trajectory(*traj);
@@ -402,7 +402,7 @@ void FreqSubt::freq_sub_traj
 		std::list<std::pair<unsigned int, Trajectory * > * >& fsts
 	)
 {
-	for(std::map<unsigned int, Node*>::iterator it = tree->children->begin(); 
+	for(std::map<unsigned int, NodeSubt*>::iterator it = tree->children->begin(); 
 		it != tree->children->end(); ++it)
 	{
 		freq_sub_traj(fsts, it->second);
@@ -485,6 +485,9 @@ const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
 	return status;
 }
 
+//TODO: Maybe there is a way to index the hypersegments
+//in the database directly, instead of recovering them
+//from segments. Check multilinestring.
 const bool FreqSubtCompTrajDB::center_radius_query
 	(
 		const double latit,
@@ -538,4 +541,305 @@ const bool FreqSubtCompTrajDB::center_radius_query
 	return status;
 }
 
+NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
+{
+	NodePPM* node = new NodePPM;
+	
+	node->segment = segment;
+	node->id = size_tree++;
+	node->next = 0;		//FIXME should be at least adjacent to segment
+	node->freq_next = 0;
+
+	return node;
+}
+
+const unsigned int PredPartMatch::train(const std::string training_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	
+	//Adds each trajectory into the tree
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		add_trajectory(*it);
+
+		delete *it;
+	}
+
+	return size_tree;
+}
+
+const unsigned int PredPartMatch::test(const std::string test_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	unsigned int updates = 0;
+	Trajectory* traj;
+	CompTrajectory* comp_traj;
+	std::list<NodeSubt*> compressed;
+	
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		comp_traj = compress(traj);
+		updates += comp_traj->size();
+		delete comp_traj;
+	}
+
+	return updates;
+}
+
+void PredPartMatch::add_trajectory
+	(
+		const Trajectory::iterator& iti, 
+		Trajectory::iterator& itj, 
+		Trajectory* traj,
+		NodePPM* tree,
+		const unsigned int r
+	)
+{
+	if(itj != traj->begin() && r <= order)
+	{
+		std::map<unsigned int, NodePPM*>::iterator node_it = tree->children.find((*itj)->segment);
+		NodePPM* node;
+		std::map<unsigned int, double>::iterator next;
+
+		if(node_it != tree->children.end())
+		{
+			node = node_it->second;
+			next = node->freq.find((*iti)->segment);
+
+			if(next != node->freq.end())
+			{
+				next->second++;
+				
+				if(next->second > node->freq_next)
+				{
+					node->freq_next = next->second;
+					node->next = (*iti)->segment;
+				}
+			}
+			else
+			{
+				node->freq.insert(std::pair<unsigned int, double>((*iti)->segment, 1));
+
+				if(node->freq.size() == 1)
+				{
+					node->freq_next = 1;
+					node->next = (*iti)->segment;
+				}
+			}
+
+			add_trajectory(iti, --itj, traj, node, r+1);
+		}
+		else
+		{
+			node = new_node_ppm((*itj)->segment);
+			tree->children.insert(std::pair<unsigned int, NodePPM*>((*itj)->segment, node));
+			node->freq.insert(std::pair<unsigned int, double>((*iti)->segment, 1));
+			node->freq_next = 1;
+			node->next = (*iti)->segment;
+
+			add_trajectory(iti, --itj, traj, node, r+1);
+		}
+	}
+}
+
+void PredPartMatch::add_trajectory(Trajectory* traj)
+{
+	Trajectory::iterator itj;
+	
+	//Trajectory added by iterating over it
+	Trajectory::iterator iti = traj->begin();
+	iti++;
+
+	while(iti != traj->end())
+	{
+		itj = iti;
+		--itj;
+		add_trajectory(iti, itj, traj, tree, 1);
+		++iti;
+	}
+}
+
+const unsigned int PredPartMatch::next_segment
+	(
+		Trajectory::iterator it, 
+		Trajectory* traj,
+		NodePPM* tree
+	) const
+{
+	std::map<unsigned int, NodePPM*>::iterator node_it = tree->children.find((*it)->segment);
+	NodePPM* node;
+
+	if(node_it != tree->children.end() && it != traj->begin())
+	{
+		node = node_it->second;
+
+		return next_segment(--it, traj, node);
+	}
+	else
+	{
+		return tree->next;
+	}
+}
+
+CompTrajectory* PredPartMatch::compress(Trajectory* traj) const
+{
+	CompTrajectory* comp_traj = new CompTrajectory();
+	
+	Trajectory::iterator it = traj->begin();
+	comp_traj->add_update((*it)->segment, (*it)->start_time, (*it)->end_time);
+	unsigned int next;
+
+	while(it != traj->end())
+	{
+		next = next_segment(it, traj, tree);
+		it++;
+		
+		if(it != traj->end() && (*it)->segment != next)
+		{
+			comp_traj->add_update
+				(
+					(*it)->segment, 
+					(*it)->start_time, 
+					(*it)->end_time
+				);
+		}
+	}
+
+	return comp_traj;
+}
+
+void PredPartMatch::delete_tree(NodePPM* tree)
+{
+	std::map<unsigned int, NodePPM*>::iterator node_it;
+	NodePPM* node;
+
+	for(node_it = tree->children.begin(); 
+		node_it != tree->children.end();
+		++node_it)
+	{
+		node = node_it->second;
+
+		delete_tree(node);
+	}
+
+	delete tree;
+}
+
+const unsigned int ShortestPath::test(const std::string test_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	unsigned int updates = 0;
+	Trajectory* traj;
+	CompTrajectory* comp_traj;
+
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		comp_traj = compress(traj);
+		updates += comp_traj->size();
+		
+		delete comp_traj;
+	}
+	
+	Trajectory::delete_trajectories(&trajectories);
+
+	return updates;
+}
+
+bool ShortestPath::check_sp_through
+	(
+		const unsigned int start, 
+		const unsigned int end, 
+		const unsigned int through
+	) const
+{
+	std::map<unsigned int, unsigned int>::iterator it;
+
+	it = short_paths.at(start)->find(end);
+
+	if(it != short_paths.at(start)->end())
+	{
+		if(it->second == through)
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+CompTrajectory* ShortestPath::compress(Trajectory* traj) const
+{
+	CompTrajectory* comp_traj = new CompTrajectory();
+		
+	Trajectory::iterator it = traj->begin();
+	unsigned int start = (*it)->segment;
+		
+	comp_traj->add_update(start, (*it)->start_time, (*it)->end_time);
+		
+	++it;
+	unsigned int b_end = (*it)->segment;
+	unsigned int end;
+	unsigned int b_start_time = (*it)->start_time;
+	unsigned int b_end_time = (*it)->end_time;
+	++it;
+
+	while(it != traj->end())
+	{
+		end = (*it)->segment;
+			
+		if(! check_sp_through(start, end, b_end))	
+		{
+			comp_traj->add_update(b_end, b_start_time, b_end_time);
+			start = b_end;
+		}
+
+		b_end = (*it)->segment;
+		b_start_time = (*it)->start_time;
+		b_end_time = (*it)->end_time;
+		++it;
+	}
+
+	comp_traj->add_update(b_end, b_start_time, b_end_time);
+
+	return comp_traj;
+}
+
+void ShortestPath::compute_shortest_paths()
+{
+	short_paths.reserve(net->size());
+	
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		short_paths.push_back(new std::map<unsigned int, unsigned int>);
+	}
+
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		net->fill_short_path_struct(s, max_length, short_paths.at(s));
+
+		std::cout << "size = " << short_paths.at(s)->size() << std::endl;
+	}
+}
+
+void ShortestPath::delete_shortest_paths()
+{
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		delete short_paths.at(s);
+	}
+}
 

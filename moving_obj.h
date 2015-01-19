@@ -308,6 +308,7 @@ class Trajectory
 		static double beta_const;
 		static double sigma;
 		static double radius;
+		static unsigned int max_cand_matches;
 		
 		/*CONSTANTS*/
 
@@ -316,6 +317,7 @@ class Trajectory
 		static const double SIGMA;
 		static const double RADIUS;
 		static const double MAXSPEED;
+		static const unsigned int MAXCANDMATCHES;
 		
 		/*OBJECT METHODS*/
 

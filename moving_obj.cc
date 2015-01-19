@@ -34,13 +34,15 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 const double Trajectory::TIMEDIV = 10;
 const double Trajectory::SIGMA = 4.07;
 const double Trajectory::BETACONST = 1;
-const double Trajectory::RADIUS = 10;
-const double Trajectory::MAXSPEED = 38;	//in m/s 
+const double Trajectory::RADIUS = 30;
+const double Trajectory::MAXSPEED = 32;	//in m/s
+const unsigned int Trajectory::MAXCANDMATCHES = 5;
 
 double Trajectory::time_div = TIMEDIV;
 double Trajectory::sigma = SIGMA;
 double Trajectory::beta_const = BETACONST;
 double Trajectory::radius = RADIUS;
+unsigned int Trajectory::max_cand_matches = MAXCANDMATCHES;
 
 const std::string TrajDBPostGis::database_name = "test";
 const std::string TrajDBPostGis::table_name = "traj";
@@ -215,7 +217,7 @@ void Trajectory::cand_seg_probs
 	double sum = 0;
 	double prob;
 	segment* seg;
-
+	
 	//Computing probabilies for each segment based on its distance
 	for(std::list<unsigned int>::iterator it = cand_segs.begin(); 
 		it != cand_segs.end(); ++it)
@@ -242,6 +244,12 @@ void Trajectory::cand_seg_probs
 	}
 
 	std::sort(seg_probs.begin(), seg_probs.end(), compare_pair_segs);
+
+	while(seg_probs.size() > max_cand_matches)
+	{
+		delete seg_probs.back();
+		seg_probs.pop_back();
+	}
 }
 
 const double Trajectory::transition_prob
@@ -283,6 +291,7 @@ Trajectory* Trajectory::map_matching
 		RoadNet* net
 	)
 {
+	net->clear_distances();
 	std::list<update*>::const_iterator it = updates.begin();
 	update* up = *it;
 	std::vector < std::pair < unsigned int, double > * > seg_probs;
@@ -685,7 +694,7 @@ const unsigned int Trajectory::read_trajectories
 
 		if(line_vec.size() < 4)
 		{
-			 std::cerr << "Error: Invalid trajectory file format, check the README file"
+			 std::cerr << "Error: Invalid trajectory file format, check the README file: "
 			 	<< input_file_name << std::endl << std::endl;
 			 traj_file.close();
 
@@ -700,7 +709,6 @@ const unsigned int Trajectory::read_trajectories
 		
 		std::stringstream se(line_vec[3]);
 		se >> end_time;
-
 
 		if(traj_map.find(id) == traj_map.end())
 		{
@@ -789,6 +797,7 @@ const bool Trajectory::write_map_matched_trajectories
 		traj->write(output_file, net);
 		delete traj;
 		delete_list_updates(updates.at(u));
+		delete updates.at(u);
 	}
 
 	output_file.close();
