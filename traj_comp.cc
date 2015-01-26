@@ -95,6 +95,8 @@ const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 		updates += comp_traj->size();
 		delete comp_traj;
 	}
+	
+	Trajectory::delete_trajectories(&trajectories);
 
 	return updates;
 }
@@ -202,6 +204,7 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	NodeSubt* curr_node = tree;
 	std::map<unsigned int, NodeSubt*>::iterator node_it;
 	std::list<NodeSubt*> decomp;
+	std::list<unsigned int> end_times;
 	std::list<unsigned int> start_times;
 	unsigned int size_dec = 0;
 
@@ -225,6 +228,7 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 		else
 		{
 			decomp.push_back(node_it->second);
+			end_times.push_back((*it)->end_time);
 			start_times.push_back((*it)->start_time);
 			curr_node = node_it->second;
 			++it;
@@ -233,30 +237,33 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	}
 
 	unsigned int l = 0;
+	unsigned int end_time;
 	unsigned int start_time;
 
 	while(size_dec > 0)
 	{
-		curr_node = decomp.front();
-		start_time = start_times.front();
-		decomp.pop_front();
-		start_times.pop_front();
+		curr_node = decomp.back();
+		end_time = end_times.back();
+		start_time = start_times.back();
+
+		decomp.pop_back();
+		end_times.pop_back();
+		start_times.pop_back();
 		size_dec--;
 
 		if(l == 0)
 		{
-			comp_traj->add_update(curr_node->id, start_time, start_time);
+			comp_traj->add_update_front(curr_node->id, start_time, end_time);
 			l =  curr_node->depth - 1;
 		}
 		else
 		{
+			comp_traj->front()->start_time = start_time;
 			l--;
 		}
 	}
-
-	comp_traj->set_end_times();
-
-	comp_traj->back()->end_time = traj->back()->end_time;
+	
+//	comp_traj->set_end_times();
 
 	return comp_traj;
 }
@@ -356,7 +363,7 @@ void FreqSubt::print_tree(NodeSubt* node, const std::string str)
 {
 	std::string new_str;
 	
-	std::cout << str << " " << node->freq << std::endl;
+	std::cout << str << " " << node->id << std::endl;
 
 	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
@@ -590,6 +597,8 @@ const unsigned int PredPartMatch::test(const std::string test_traj_file_name)
 		updates += comp_traj->size();
 		delete comp_traj;
 	}
+	
+	Trajectory::delete_trajectories(&trajectories);
 
 	return updates;
 }
@@ -830,8 +839,7 @@ void ShortestPath::compute_shortest_paths()
 	for(unsigned int s = 0; s < net->size(); s++)
 	{
 		net->fill_short_path_struct(s, max_length, short_paths.at(s));
-
-		std::cout << "size = " << short_paths.at(s)->size() << std::endl;
+		std::cout << "i = " << s << ": " << short_paths.at(s)->size() << std::endl;
 	}
 }
 
@@ -843,3 +851,60 @@ void ShortestPath::delete_shortest_paths()
 	}
 }
 
+const unsigned int ShortestPathFreqSubt::train(const std::string training_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	CompTrajectory* sp_comp;
+	
+	//Adds each trajectory into the tree
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		sp_comp = shortest_path_comp->compress(*it);
+		freq_subt_comp->add_trajectory(sp_comp);
+
+		delete sp_comp;
+		delete *it;
+	}
+
+	//Prunes unfrequent subtrajectories based on the given minimum support
+	freq_subt_comp->prune_unfrequent_subtraj();
+
+	//Sets an index for the frequent subtrajectories that contain a given segment
+	freq_subt_comp->set_seg_index();
+
+	return freq_subt_comp->size_tree;
+}
+
+const unsigned int ShortestPathFreqSubt::test(const std::string test_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	unsigned int updates = 0;
+	Trajectory* traj;
+	CompTrajectory* sp_comp;
+	CompTrajectory* fs_comp;
+
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		sp_comp = shortest_path_comp->compress(traj);
+		fs_comp = freq_subt_comp->compress(sp_comp);
+		updates += fs_comp->size();
+		traj->print();
+		sp_comp->print();
+		fs_comp->print();
+		
+		delete sp_comp;
+		delete fs_comp;
+	}
+	
+	Trajectory::delete_trajectories(&trajectories);
+
+	return updates;
+}

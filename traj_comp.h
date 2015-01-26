@@ -116,6 +116,7 @@ class TrajCompAlgo
 **/
 class FreqSubt: public TrajCompAlgo
 {
+	friend class ShortestPathFreqSubt;
 	public:
 		/**
 		 * Constructor.
@@ -136,6 +137,7 @@ class FreqSubt: public TrajCompAlgo
 			tree = new_node();
 			NodeSubt* node;
 			size_tree = 0;
+			id = 0;
 			seg_to_freq_subt_index.reserve(net->size());
 
 			for(unsigned int s = 0; s < net->size(); s++)
@@ -153,7 +155,13 @@ class FreqSubt: public TrajCompAlgo
 		/*Destructor*/
 		virtual ~FreqSubt()
 		{
+			print();
 			delete_tree(tree);
+
+			for(unsigned int s = 0; s < net->size(); s++)
+			{
+				delete seg_to_freq_subt_index.at(s);
+			}
 		}
 
 		const unsigned int train(const std::string training_traj_file_name);
@@ -232,8 +240,8 @@ class ShortestPath: public TrajCompAlgo
 	public:
 		ShortestPath
 			(
-				RoadNet* net,
-				const double _max_length = 100
+				const double _max_length,
+				RoadNet* net
 			)
 			:TrajCompAlgo(net)
 		{
@@ -269,6 +277,43 @@ class ShortestPath: public TrajCompAlgo
 				const unsigned int end,
 				const unsigned int through
 			) const;
+};
+
+class ShortestPathFreqSubt: public TrajCompAlgo
+{
+	public:
+		ShortestPathFreqSubt
+			(
+				const double max_length_paths,
+				const unsigned int min_sup,
+				const unsigned int max_length_subt,
+				RoadNet* net
+			)
+				:TrajCompAlgo(net)
+		{
+			freq_subt_comp = new FreqSubt(min_sup, max_length_subt, net);
+			shortest_path_comp = new ShortestPath(max_length_paths, net);
+		}
+		
+		inline const unsigned int train(const std::string training_traj_file_name);
+
+		virtual ~ShortestPathFreqSubt()
+		{
+			delete freq_subt_comp;
+			delete shortest_path_comp;
+		}
+		
+		const unsigned int test(const std::string test_traj_file_name);
+
+		void add_trajectory(Trajectory* traj){};
+		
+		CompTrajectory* compress(Trajectory* traj) const
+		{
+			return NULL;
+		}
+	private:
+		FreqSubt* freq_subt_comp;
+		ShortestPath* shortest_path_comp;
 };
 
 typedef struct t_node_ppm

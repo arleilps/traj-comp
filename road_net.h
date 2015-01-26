@@ -29,6 +29,43 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <pqxx/pqxx>
 #include <queue>
 #include <math.h>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+
+using namespace boost;
+
+typedef adjacency_list < listS, vecS, directedS,
+	no_property, property < edge_weight_t, double > > graph_t;
+typedef graph_traits < graph_t >::vertex_descriptor vertex_descriptor;
+typedef graph_traits < graph_t >::edge_descriptor edge_descriptor;
+
+/*This is for implementing single-source single-destination
+ * Dijkstra algorithm using boost*/
+template <class Vertex, class Tag>
+	struct target_visitor : public default_dijkstra_visitor
+{
+	target_visitor(Vertex u) : v(u) {}
+  
+	template <class Graph>
+		void examine_vertex(Vertex u, Graph& g)
+	{
+		if( u == v ) 
+		{
+			throw(-1);
+		}
+	}
+	     
+	private:
+		Vertex v;
+};
+	      
+template <class Vertex, class Tag> 
+	target_visitor<Vertex, Tag>
+	      target_visit(Vertex u, Tag) 
+{
+	return target_visitor<Vertex, Tag>(u);
+}
 
 /**
  * Segment
@@ -83,6 +120,7 @@ segment* new_segment
 		const unsigned int p_end,
 		const bool double_way
 	);
+
 
 const double std_distance(const double x1, const double x2, const double y1, const double y2);
 
@@ -523,7 +561,7 @@ class RoadNet
 		**/
 		inline const double seg_latit_begin(const unsigned int& seg) const
 		{
-			return segments.at(seg)->latit_begin;
+			return segments.at(seg)->proj_latit_begin;
 		}
 		
 		/**
@@ -533,7 +571,7 @@ class RoadNet
 		**/
 		inline const double seg_latit_end(const unsigned int& seg) const
 		{
-			return segments.at(seg)->latit_end;
+			return segments.at(seg)->proj_latit_end;
 		}
 		
 		/**
@@ -543,7 +581,7 @@ class RoadNet
 		**/
 		inline const double seg_longit_begin(const unsigned int& seg) const
 		{
-			return segments.at(seg)->longit_begin;
+			return segments.at(seg)->proj_longit_begin;
 		}
 		
 		/**
@@ -553,7 +591,7 @@ class RoadNet
 		**/
 		inline const double seg_longit_end(const unsigned int& seg) const
 		{
-			return segments.at(seg)->longit_end;
+			return segments.at(seg)->proj_longit_end;
 		}
 		
 		/**
@@ -640,8 +678,9 @@ class RoadNet
 		SegIndex* seg_index;
 		std::vector< std::map<unsigned int, double>* > distances;
 		double length_longest_segment;
-		static const unsigned int num_short_paths;
+		static const double max_length_short_path;
 		std::vector < std::map <unsigned int, bool> * > neigh_check;
+		graph_t boost_graph;
 		
 		/*METHODS*/
 
@@ -681,6 +720,8 @@ class RoadNet
 		
 		const bool read(const std::string& input_file_name)
 			throw (std::ios_base::failure);
+
+		void build_boost_graph();
 };
 
 #endif

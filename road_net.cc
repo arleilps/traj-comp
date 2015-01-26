@@ -42,7 +42,8 @@ const std::string PostGisIndex::port = "5432";
 const std::string PostGisIndex::user = "traj_comp";
 const std::string PostGisIndex::password="traj_comp";
 
-const unsigned int RoadNet::num_short_paths = 200;
+//const double RoadNet::max_length_short_path = 1000;
+const double RoadNet::max_length_short_path = 100;
 
 //Projection
 const std::string PostGisIndex::srid = "26943";
@@ -94,14 +95,9 @@ RoadNet::RoadNet(const std::string& input_file_name)
 	//Change the spatial index here
 	seg_index = new PostGisIndex();
 	read(input_file_name);
+	build_boost_graph();
 	
-	for(unsigned int s = 0; s < segments.size(); s++)
-	{
-		distances.push_back
-			(
-				new std::map<unsigned int, double>
-			);
-	}
+	compute_distances();
 }
 
 RoadNet::RoadNet
@@ -114,14 +110,7 @@ RoadNet::RoadNet
 	n_segments = 0;
 	seg_index = new PostGisIndex();
 	create(input_file_name, output_file_name);
-
-	for(unsigned int s = 0; s < segments.size(); s++)
-	{
-		distances.push_back
-			(
-				new std::map<unsigned int, double>
-			);
-	}
+	build_boost_graph();
 }
 
 void RoadNet::clear_distances()
@@ -274,7 +263,6 @@ const bool RoadNet::create
 			index_segments();
 			compute_segment_lengths();
 			project_segments();
-			//compute_distances();
 			write(output_file_name);
 		}
 		else
@@ -363,16 +351,6 @@ const bool RoadNet::write(const std::string& output_file_name)
 		road_net_file << "\n";
 	}
 
-	//Prints shortest path distances from->to
-	for(unsigned int s = 0; s < adj_list.size(); s++)
-	{
-		for(std::map<unsigned int, double>::iterator it = distances.at(s)->begin();
-			it != distances.at(s)->end(); ++it)
-		{
-			road_net_file << s << "," << it->first << "," << it->second << "\n";
-		}
-	}
-	
 	return true;
 }
 
@@ -566,7 +544,14 @@ RoadNet::~RoadNet()
 		delete segments.at(s);
 		delete adj_list.at(s);
 		delete neigh_check.at(s);
-		delete distances.at(s);
+	}
+	
+	if(distances.size())
+	{
+		for(unsigned int s = 0; s < segments.size(); s++)
+		{
+			delete distances.at(s);
+		}
 	}
 }
 
@@ -676,8 +661,6 @@ const bool PostGisIndex::project
 	)
 {
 	std::string sql;
-
-	std::cout << latit << "," << longit << std::endl;
 
 	try
 	{
@@ -1098,92 +1081,46 @@ void RoadNet::compute_distances()
 				new std::map<unsigned int, double>
 			);
 
-		shortest_path(s);
+		if(max_length_short_path > 0)
+		{
+			shortest_path(s);
+		}
 	}
+}
+
+void RoadNet::build_boost_graph()
+{
+	for(unsigned int s = 0; s < size(); s++)
+	{
+		for(std::list<unsigned int>::iterator it = adj_list.at(s)->begin();
+			it != adj_list.at(s)->end(); ++it)
+		{
+			add_edge(s, *it, segments.at(s)->length, boost_graph);
+		}
+	}
+
+//	graph_t g(edges, edge + num_arcs, weights, num_nodes);
+//	property_map<graph_t, edge_weight_t>::type weightmap = get(edge_weight, g);
 }
 
 void RoadNet::shortest_path(const unsigned int s1)
 {
-	std::vector<std::pair<unsigned int, double>* > distances_s1;
-	//Here be dragons
-	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
-		boost::heap::compare<compare_pair> > pq;
-	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
-		boost::heap::compare<compare_pair> >::handle_type> handles;
-	handles.reserve(n_segments);
-	distances_s1.reserve(n_segments);
+	std::vector<vertex_descriptor> p(num_vertices(boost_graph));
+	std::vector<double> d(num_vertices(boost_graph));
+	dijkstra_shortest_paths(boost_graph, s1, predecessor_map(&p[0]).distance_map(&d[0]));
 	
-	for(unsigned int s = 0; s < n_segments; s++)
-	{
-		distances_s1.push_back
-			(
-				new std::pair<unsigned int, double>
-					(
-						s,
-						std::numeric_limits<float>::max()
-					)
-			);
-		
-		if(s != s1)
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, std::numeric_limits<double>::max())));
-		}
-		else
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, segments.at(s1)->length)));
-		}
-	}
-
-	unsigned int u;
-	unsigned int z;
-	double dist;
-												               
-	distances_s1[s1]->second = segments.at(s1)->length;
-
-	//BFS using heap
-	while(! pq.empty())
-	{
-		u = pq.top().first;
-		pq.pop();
-		
-		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
-			it != adj_list[u]->end(); ++it)
-		{
-			z = *it;
-
-			dist = distances_s1[u]->second + segments.at(z)->length;
-
-			if(distances_s1[z]->second > dist)
-			{
-				distances_s1[z]->second = dist;
-
-				pq.increase(handles.at(z), 
-					std::pair<unsigned int, double>(z, dist));
-			}
-		}
-	}
+	graph_traits < graph_t >::vertex_iterator vi, vend;
 	
-	std::sort(distances_s1.begin(), distances_s1.end(), compare_pair_asc);
-	
-	for(unsigned int s = 0; s < num_short_paths; s++)
+	for (tie(vi, vend) = vertices(boost_graph); vi != vend; ++vi) 
 	{
-		distances.at(s1)->insert(std::pair<unsigned int, double>
-			(
-				distances_s1[s]->first, distances_s1[s]->second)
-			);
-	}
-
-	for(unsigned int s = 0; s < distances_s1.size(); s++)
-	{
-		delete distances_s1.at(s);
+		if(d[*vi] <= max_length_short_path)
+		{
+			distances.at(s1)->insert(std::pair<unsigned int, double>(*vi,d[*vi]));
+		}
 	}
 }
 
-//Dijkstra algorithm using fibonacci heap.
-//The heap implementation is from boost.
-//http://www.boost.org/doc/libs/1_49_0/doc/html/boost/heap/fibonacci_heap.html
+//Dijkstra algorithm using boost.
 const double RoadNet::shortest_path
 	(
 		const unsigned int s1, 
@@ -1232,73 +1169,25 @@ const double RoadNet::shortest_path
 	{
 		return distances.at(s1)->at(s2) 
 			+ dist_over_seg
-			- segments.at(s1)->length
-			- segments.at(s2)->length;
+			- segments.at(s1)->length;
 	}
-
-	//Here be dragons
-	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
-		boost::heap::compare<compare_pair> > pq;
-	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
-		boost::heap::compare<compare_pair> >::handle_type> handles;
-	handles.reserve(n_segments);
-	
-	for(unsigned int s = 0; s < n_segments; s++)
+	else
 	{
-		if(s != s1)
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, std::numeric_limits<double>::max())));
-		}
-		else
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, 0)));
-		}
-	}
-								
-	unsigned int u;
-	unsigned int z;
-	double dist;
-												               
-	distances.at(s1)->insert(std::pair<unsigned int, double>(s1, segments.at(s1)->length));
-
-	//BFS using heap
-	while(! pq.empty())
-	{
-		u = pq.top().first;
-		pq.pop();
-		
-		if(distances.at(s1)->find(u) == distances.at(s1)->end())
-		{
-			return std::numeric_limits<double>::max();
-		}
-		
-		dist = distances.at(s1)->at(u);
-		
-		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
-			it != adj_list[u]->end(); ++it)
-		{
-			z = *it;
-
-			dist += segments.at(z)->length;
-			
-			if((distances.at(s1)->find(z) == distances.at(s1)->end() ||
-				distances.at(s1)->at(z) > dist) && dist <= max_dist)
-			{
-		//		std::cout << "z = " << z << " dist = " << dist << std::endl;
-				distances.at(s1)->insert(std::pair<unsigned int, double>(z, dist));
-
-				pq.increase(handles.at(z), 
-					std::pair<unsigned int, double>(z, dist));
-			}
-		}
-	}
+		std::vector<vertex_descriptor> p(num_vertices(boost_graph));
+		std::vector<double> d(num_vertices(boost_graph));
 	
-	return distances.at(s1)->at(s2) 
-		+ dist_over_seg
-		- segments.at(s1)->length
-		- segments.at(s2)->length;
+		try
+		{
+			dijkstra_shortest_paths(boost_graph, s1, 
+				predecessor_map(&p[0]).distance_map(&d[0]).visitor(
+					target_visit(s2, on_examine_vertex())));
+		}
+		catch(...){}
+
+		return d[s2] 
+			+ dist_over_seg
+			- segments.at(s1)->length;
+	}
 }
 
 //Same as the last function, but also retrieves corresponding path
@@ -1370,83 +1259,32 @@ const double RoadNet::shortest_path
 			);
 	}
 
-	std::vector<double> distances_s1;
-	distances_s1.reserve(n_segments);
-	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
-		boost::heap::compare<compare_pair> > pq;
-	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
-		boost::heap::compare<compare_pair> >::handle_type> handles;
-	handles.reserve(n_segments);
+	std::vector<vertex_descriptor> p(num_vertices(boost_graph));
+	std::vector<double> d(num_vertices(boost_graph));
 	
-	for(unsigned int s = 0; s < n_segments; s++)
+	try
 	{
-		distances_s1.push_back(std::numeric_limits<double>::max());
-		reverse_edges.push_back(0);
-
-		if(s != s1)
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, std::numeric_limits<double>::max())));
-		}
-		else
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, 0)));
-		}
+		dijkstra_shortest_paths(boost_graph, s1, 
+			predecessor_map(&p[0]).distance_map(&d[0]).visitor(
+				target_visit(s2, on_examine_vertex())));
 	}
-								
-	unsigned int u;
-	unsigned int z;
-	double dist;
-												               
-	distances_s1[s1] = 0;
-	
-	while(! pq.empty())
+	catch(...){}
+
+	unsigned int v = s2;
+
+	if(d[s2] < std::numeric_limits<double>::max())
 	{
-		u = pq.top().first;
-		pq.pop();
-		
-		if(u == s2)
+		while(p[v] != s1)
 		{
-			break;
-		}
-		
-		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
-			it != adj_list[u]->end(); ++it)
-		{
-			z = *it;
-
-			dist = distances_s1[u];
-
-			if(u != s1)
-			{
-				dist += segments.at(u)->length; 
-			}
-			
-			
-			if(distances_s1[z] > dist)
-			{
-				distances_s1[z] = dist;
-
-				pq.increase(handles.at(z), 
-					std::pair<unsigned int, double>(z, dist));
-				reverse_edges[z] = u;
-			}
-		}
-	}
-	
-	if(distances_s1[s2] < std::numeric_limits<double>::max())
-	{
-		u = reverse_edges.at(s2);
-
-		while(u != s1)
-		{
-			short_path.push_front(u);
-			u = reverse_edges.at(u);
+			short_path.push_front(p[v]);
+				v = p[v];
 		}
 	}
 
-	return distances_s1[s2] + dist_over_seg;
+	return d[s2] 
+		+ dist_over_seg
+		- segments.at(s1)->length;
+
 }
 
 void RoadNet::fill_short_path_struct
@@ -1456,57 +1294,17 @@ void RoadNet::fill_short_path_struct
 		std::map < unsigned int , unsigned int >* s_paths
 	)
 {
-	std::vector<double> distances_seg;
-	distances_seg.reserve(n_segments);
-	boost::heap::fibonacci_heap<std::pair<unsigned int, double>, 
-		boost::heap::compare<compare_pair> > pq;
-	std::vector<boost::heap::fibonacci_heap<std::pair<unsigned int, double> ,  
-		boost::heap::compare<compare_pair> >::handle_type> handles;
-	handles.reserve(n_segments);
+	std::vector<vertex_descriptor> p(num_vertices(boost_graph));
+	std::vector<double> d(num_vertices(boost_graph));
+	dijkstra_shortest_paths(boost_graph, segment, predecessor_map(&p[0]).distance_map(&d[0]));
 	
-	for(unsigned int s = 0; s < n_segments; s++)
-	{
-		distances_seg.push_back(std::numeric_limits<double>::max());
-
-		if(s != segment)
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, std::numeric_limits<double>::max())));
-		}
-		else
-		{
-			handles.push_back(pq.push(std::pair<unsigned int, double>
-				(s, 0)));
-		}
-	}
-
-	unsigned int u;
-	unsigned int z;
-	double dist;
-	distances_seg[segment] = 0;
+	graph_traits < graph_t >::vertex_iterator vi, vend;
 	
-	while(! pq.empty())
+	for (tie(vi, vend) = vertices(boost_graph); vi != vend; ++vi) 
 	{
-		u = pq.top().first;
-		pq.pop();
-		
-		for (std::list<unsigned int>::iterator it = adj_list[u]->begin(); 
-			it != adj_list[u]->end(); ++it)
+		if(d[*vi] < max_length && *vi != segment)
 		{
-			z = *it;
-
-			dist = distances_seg[u] + segments.at(u)->length;
-
-			if(distances_seg[z] > dist &&
-				dist <= max_length)
-			{
-				distances_seg[z] = dist;
-
-				pq.increase(handles.at(z), 
-					std::pair<unsigned int, double>(z, dist));
-
-				s_paths->insert(std::pair<unsigned int, unsigned int>(z,u));
-			}
+			s_paths->insert(std::pair<unsigned int, unsigned int>(*vi,p[*vi]));
 		}
 	}
 }

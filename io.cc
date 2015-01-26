@@ -22,11 +22,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 std::string Parameters::road_net_file_name;
 std::string Parameters::training_traj_file_name;
 std::string Parameters::test_traj_file_name;
-std::string Parameters::compressed_traj_file_name;
+std::string Parameters::output_file_name;
 std::string Parameters::compression_algorithm;
-unsigned int Parameters::num_hyper_seg;
+std::string Parameters::gps_file_name;
+unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
-double Parameters::min_sup;
+unsigned int Parameters::min_sup;
+unsigned int Parameters::max_shortest_path;
 
 std::vector<std::string> Parameters::compression_algorithms;
 
@@ -64,11 +66,13 @@ void Parameters::print_usage()
 	std::cout << " -g, --net		road network file" << std::endl;
 	std::cout << " -t, --train		training trajectories file" << std::endl;
 	std::cout << " -e, --test		test trajectories file" << std::endl;
-	std::cout << " -o, --output		compressed trajectories file" << std::endl;
+	std::cout << " -o, --output		output file" << std::endl;
 	std::cout << " -c, --compression	compression algorithm" << std::endl;
-	std::cout << " -n, --num-hyseg		number of hyper-segments" << std::endl;
+	std::cout << " -u, --length-subt	max length subtrajectory" << std::endl;
 	std::cout << " -r, --order		order" << std::endl;
-	std::cout << " -s, --min-sup		minimum support" << std::endl;
+	std::cout << " -s, --min-sup		minimum support subtrajectory" << std::endl;
+	std::cout << " -p, --short-path		max length shortest path" << std::endl;
+	std::cout << " -d, --gps-updates	gps updates file to be map-matched" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
 }
 
@@ -82,7 +86,11 @@ void Parameters::print_usage()
 bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingException)
 {
 	InvalidParameterSettingException invalid_parameters;
-	
+	max_length_subt = 0;
+	order = 0;
+	min_sup = std::numeric_limits<unsigned int>::max();
+	max_shortest_path = 0;
+
 	try
 	{
 		GetOpt::GetOpt_pp ops(argc, argv);
@@ -97,11 +105,13 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		ops >> GetOpt::Option('g', "net", road_net_file_name, "")
 		>> GetOpt::Option('t', "train", training_traj_file_name, "")
 		>> GetOpt::Option('e', "test", test_traj_file_name, "")
-		>> GetOpt::Option('o', "output", compressed_traj_file_name, "")
+		>> GetOpt::Option('o', "output", output_file_name, "")
 		>> GetOpt::Option('c', "compression", compression_algorithm, "")
-		>> GetOpt::Option('n', "num-hyseg", num_hyper_seg)
+		>> GetOpt::Option('d', "gps-updates", gps_file_name, "")
+		>> GetOpt::Option('u', "length-subt", max_length_subt)
 		>> GetOpt::Option('r', "order", order)
 		>> GetOpt::Option('s', "min-sup", min_sup)
+		>> GetOpt::Option('p', "short-path", max_shortest_path)
 		;
 	}
 	catch(GetOpt::GetOptEx& e)
@@ -126,10 +136,12 @@ void Parameters::print()
 	std::cout << "training trajectories: " << training_traj_file_name << "\n";
 	std::cout << "test trajectories: " << test_traj_file_name << "\n";
 	std::cout << "compression algorithm: " << compression_algorithm << std::endl;
-	std::cout << "output: " << compressed_traj_file_name << std::endl;
-	std::cout << "num hyper-segments: " << num_hyper_seg << std::endl;
+	std::cout << "output: " << output_file_name << std::endl;
+	std::cout << "length subtrajectories: " << max_length_subt << std::endl;
 	std::cout << "order: " << order << std::endl;
 	std::cout << "min support: " << min_sup << std::endl;
+	std::cout << "shortest-paths: " << max_shortest_path << std::endl;
+	std::cout << "gps updates file: " << gps_file_name << std::endl;
 }
 
 /**

@@ -31,6 +31,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 const bool test_moving_obj()
 {
+	RoadNet* net = new RoadNet("road_net_sfo.csv");
+	std::list<unsigned int> short_path;
+
+	net->shortest_path(short_path, 0, 1, 37.7885, 37.7886, 37.7885,37.7886);
+
+	delete net;
 	return true;
 }
 
@@ -63,8 +69,10 @@ void read_matched_trajectories(std::map<unsigned int, std::string>& matched_traj
 const bool test_moving_obj_file()
 {
 	/*Creating a road network*/
-	std::cout << "Creating a road network" << std::endl;
+//	std::cout << "Creating a road network" << std::endl;
 //	RoadNet* net = new RoadNet("../data/wa_adj.txt", "road_net_wa.csv");
+//	delete net;
+	
 	RoadNet* net = new RoadNet("road_net_wa.csv");
 	std::cout << "Road network created" << std::endl;
 
@@ -78,13 +86,12 @@ const bool test_moving_obj_file()
 
 	for(unsigned int i = 0; i < 1; i++)
 	{
-		Trajectory::read_updates(updates, "../data/wa_stream_small.txt", net); 
-		trajectory = Trajectory::map_matching(*(updates.at(0)), net);
+		Trajectory::read_updates(updates, "../data/wa_stream_" + to_string(i) + ".txt", net);
+		trajectory = Trajectory::map_matching(*(updates.at(i)), net);
 //		trajectory = Trajectory::read_trajectory("../data/wa_stream_" + to_string(i) + ".txt", net);
 		matched_traj.clear();
 
 		read_matched_trajectories(matched_traj, "../data/wa_matched_stream_" + to_string(i) + ".txt");
-//		read_matched_trajectories(matched_traj, "../data/wa_matched_stream_small.txt");
 		
 		for(Trajectory::iterator traj_it = trajectory->begin(); traj_it != trajectory->end(); ++traj_it)
 		{
@@ -96,13 +103,13 @@ const bool test_moving_obj_file()
 			num++;
 		}
 		
-		trajectory->extend_traj_shortest_paths(net);
-		trajectory->remove_repeated_segments();
+	//	trajectory->extend_traj_shortest_paths(net);
+	//	trajectory->remove_repeated_segments();
 
 		trajectory->print();
 
 		delete trajectory;
-		delete_list_updates(updates.at(0));
+		delete_list_updates(updates.at(i));
 	}
 	
 	accuracy = (double) accuracy / num;

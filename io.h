@@ -73,11 +73,13 @@ class Parameters
 		static std::string road_net_file_name;
 		static std::string training_traj_file_name;
 		static std::string test_traj_file_name;
-		static std::string compressed_traj_file_name;
+		static std::string output_file_name;
 		static std::string compression_algorithm;
-		static unsigned int num_hyper_seg;
+		static std::string gps_file_name;
+		static unsigned int max_length_subt;
 		static unsigned int order;
-		static double min_sup;
+		static unsigned int min_sup;
+		static unsigned int max_shortest_path;
 		
 		/*List of valid compression algorithms for checking*/
 		static std::vector < std::string > compression_algorithms;

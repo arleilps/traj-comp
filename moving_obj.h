@@ -213,6 +213,14 @@ class Trajectory
 				const update* up=NULL
 			);
 		
+		void add_update_front
+			(
+				const unsigned int segment, 
+				const unsigned int start_time, 
+				const unsigned int end_time, 
+				const update* up=NULL
+			);
+		
 		/**
 		 * Writes a trajectory into a file.
 		 * Format <object, segment, timestamp>, one per line.
@@ -277,6 +285,11 @@ class Trajectory
 		inline seg_time* back()
 		{
 			return seg_time_lst.back();
+		}
+		
+		inline seg_time* front()
+		{
+			return seg_time_lst.front();
 		}
 		
 		/**

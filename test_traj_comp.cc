@@ -155,15 +155,47 @@ const bool test_traj_comp_freq_subt_sf_cab()
 
 const bool test_traj_comp_short_path()
 {
-	//RoadNet* net = new RoadNet("road_net.csv");
+//	create_road_net();
+//	RoadNet* net = new RoadNet("../data/adj.txt", "road_net.csv");
+//	delete net;
+	
+//	RoadNet* net = new RoadNet("road_net.csv");
+
+//	Trajectory::write_map_matched_trajectories(
+//	 	"../data/cab_stream.txt", "map_matched_cab_stream.txt", net);
+
+//	TrajCompAlgo* traj_comp = new ShortestPath(net, std::numeric_limits<double>::max());
+	
+//	std::cout << traj_comp->test("map_matched_cab_stream.txt") << std::endl;
+	
+//	delete traj_comp;
+	
+//	delete net;
+
 	RoadNet* net = new RoadNet("road_net_sf.csv");
-
-	TrajCompAlgo* traj_comp = new ShortestPath(net, 100);
+	Trajectory::write_map_matched_trajectories(
+	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
 	
-	std::cout << traj_comp->test("map_matched_cab_stream_sfo.txt") << std::endl;
-	
-	//std::cout << traj_comp->test("map_matched.txt") << std::endl;
+//	TrajCompAlgo* traj_comp = new ShortestPath(net, pow(10, 2));
 
+//	delete traj_comp;
+	delete net;
+
+	return true;
+}
+
+const bool test_traj_comp_short_path_freq_subt()
+{
+	RoadNet* net = new RoadNet("road_net.csv");
+
+	//TrajCompAlgo* traj_comp = new FreqSubt(2, 100, net);
+	//TrajCompAlgo* traj_comp = new ShortestPath(net, std::numeric_limits<double>::max());
+	TrajCompAlgo* traj_comp = new ShortestPathFreqSubt(net, 2, 100, std::numeric_limits<double>::max());
+	
+	std::cout << traj_comp->train("map_matched_cab_stream.txt") << std::endl;
+
+	std::cout << traj_comp->test("map_matched_cab_stream.txt") << std::endl;
+	
 	delete traj_comp;
 	
 	delete net;
@@ -173,8 +205,7 @@ const bool test_traj_comp_short_path()
 
 const bool test_traj_comp_ppm()
 {
-	RoadNet* net = new RoadNet("road_net_sf.csv");
-	//RoadNet* net = new RoadNet("road_net.csv");
+	RoadNet* net = new RoadNet("road_net.csv");
 	TrajCompAlgo* traj_comp = new PredPartMatch(10, net);
 
 	traj_comp->train("map_matched_cab_stream_sfo.txt");

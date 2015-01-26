@@ -153,6 +153,19 @@ void Trajectory::add_update
 	size_traj++;
 }
 
+void Trajectory::add_update_front
+	(
+		const unsigned int segment, 
+		const unsigned int start_time, 
+		const unsigned int end_time, 
+		const update* up
+	)
+{
+	seg_time* st = new_seg_time(segment, start_time, end_time, up);
+	seg_time_lst.push_front(st);
+	size_traj++;
+}
+
 const double cdf_normal(const double sigma, const double x)
 {
 	return (double) (1.0 + erf((double) x / sqrt(2))) / 2;
@@ -572,25 +585,28 @@ void Trajectory::extend_traj_shortest_paths(const RoadNet*net)
 			
 			dist = dist_first_seg;
 			
-			for(std::list<unsigned int>::iterator s = sp.begin(); s != sp.end(); ++s)
+			if(speed <= MAXSPEED)
 			{
-				time = (*st)->start_time 
-					+ (unsigned int) floor(dist / speed);
-
-				seg_time_lst.insert
-					(
-						st_next, 
-						new_seg_time
-							(
-								*s, 
-								time,
-								time,
-								(*st)->up
-							)
-					);
+				for(std::list<unsigned int>::iterator s = sp.begin(); s != sp.end(); ++s)
+				{
+					time = (*st)->start_time 
+						+ (unsigned int) floor(dist / speed);
 				
-				dist += net->segment_length(*s);
-				++st;
+					seg_time_lst.insert
+						(
+							st_next, 
+							new_seg_time
+								(
+									*s, 
+									time,
+									time,
+									(*st)->up
+								)
+						);
+				
+					dist += net->segment_length(*s);
+					++st;
+				}
 			}
 
 			sp.clear();

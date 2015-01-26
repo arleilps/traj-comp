@@ -43,42 +43,88 @@ int main(int argc, char** argv)
 //	test_road_net();
 //	test_database();
 //	test_moving_obj();
-//	test_moving_obj_traj_file();
+//	test_moving_obj_file();
 //	test_traj_comp_freq_subt_sf_cab();
 //	test_traj_comp_freq_subt();
 //	test_traj_comp_ppm();
-	test_traj_comp_short_path();
+//	test_traj_comp_short_path();
+//	test_traj_comp_short_path_freq_subt();
 
 	/*Setting the compression algorithms*/
-//	std::vector<std::string> compression_algorithms;
-//	compression_algorithms.push_back("FS");	  //Frequent subtrajectories
+	std::vector<std::string> compression_algorithms;
+	compression_algorithms.push_back("IND");  	//Index road network
+	compression_algorithms.push_back("MAP");  	//Map-match trajectories
+	compression_algorithms.push_back("FS");	  	//Frequent subtrajectories
+	compression_algorithms.push_back("SP");	  	//Shortest path
+	compression_algorithms.push_back("SPFS");	// Shortest path 
+							//+ frequent subtrajectories
+	compression_algorithms.push_back("PPM");	//Prediction by partial matching
+
 	
-//	Parameters::set_compression_algorithms(compression_algorithms);
-//	unsigned int num_updates;	
-//	TrajCompAlgo* alg;
+	Parameters::set_compression_algorithms(compression_algorithms);
+	unsigned int num_updates;	
+	TrajCompAlgo* alg;
 
 	/*Reading the input parameters*/
-//	if(Parameters::read(argc,argv))
-//	{
+	if(Parameters::read(argc,argv))
+	{
 //		Parameters::print();
+			
+		RoadNet* net;
 
-		/*Reading road network*/
-//		RoadNet* net = new RoadNet(Parameters::road_net_file_name);
+		if(Parameters::compression_algorithm == "IND")
+		{
+			//Indexing road network
+			net = new RoadNet(Parameters::road_net_file_name,
+				Parameters::output_file_name);
+		}
+		else
+		{
+			//Reading already indexed road network
+			net = new RoadNet(Parameters::road_net_file_name);
+
+			if(Parameters::compression_algorithm == "MAP")
+			{
+				Trajectory::write_map_matched_trajectories(
+					Parameters::gps_file_name, 
+					Parameters::output_file_name, net);
+			}
+			else
+			{
+				if(Parameters::compression_algorithm == "FS")
+				{
+					alg = new FreqSubt(Parameters::min_sup, 
+						Parameters::max_length_subt, net);
+				}
+
+				if(Parameters::compression_algorithm == "SP")
+				{
+					alg = new ShortestPath(Parameters::max_shortest_path, net);
+				}
+
+				if(Parameters::compression_algorithm == "SPFS")
+				{
+					alg = new ShortestPathFreqSubt(Parameters::max_shortest_path, 
+						Parameters::min_sup, Parameters::max_length_subt, net);
+				}
+
+				if(Parameters::compression_algorithm == "PPM")
+				{
+					alg = new PredPartMatch(Parameters::order, net);
+				}
+
+				alg->train(Parameters::training_traj_file_name);
+
+				num_updates = alg->test(Parameters::test_traj_file_name);
+
+				std::cout << "num updates = " << num_updates << std::endl;
 		
-//		if(Parameters::compression_algorithm == "FS")
-//		{
-//			alg = new FreqSubt(Parameters::min_sup, net);
-//		}
+				delete alg;
+			}
+		}
 
-//		alg->train(Parameters::training_traj_file_name);
-
-//		num_updates = alg->test(Parameters::test_traj_file_name);
-
-//		std::cout << "num updates = " << num_updates << std::endl;
-		
-//		delete alg;
-//		delete net;
-//	}
+		delete net;
+	}
 
 	return 0;
 }
