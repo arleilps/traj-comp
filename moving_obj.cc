@@ -26,6 +26,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <math.h>
 #include <fstream>
 #include <limits>
+#include <pthread.h>
 
 #include "io.h"
 #include "moving_obj.h"
@@ -43,6 +44,7 @@ double Trajectory::sigma = SIGMA;
 double Trajectory::beta_const = BETACONST;
 double Trajectory::radius = RADIUS;
 unsigned int Trajectory::max_cand_matches = MAXCANDMATCHES;
+unsigned int Trajectory::num_threads = 1;
 
 const std::string TrajDBPostGis::database_name = "test";
 const std::string TrajDBPostGis::table_name = "traj";
@@ -107,6 +109,28 @@ seg_time* new_seg_time
 	st->up = up;
 
 	return st;
+}
+
+p_thread_param* new_p_thread_param
+	(
+		std::vector<std::list< update* > * >* updates,
+		unsigned int* pointer,
+		pthread_mutex_t* mutex_pool,
+		pthread_mutex_t* mutex_file,
+		std::ofstream* output_file,
+		RoadNet* net
+	)
+{
+	p_thread_param* param = new p_thread_param;
+	
+	param->updates = updates;
+	param->pointer = pointer;
+	param->mutex_pool = mutex_pool;
+	param->mutex_file = mutex_file;
+	param->output_file = output_file;
+	param->net = net;
+
+	return param;
 }
 
 Trajectory::Trajectory(const std::string _obj)
@@ -226,7 +250,7 @@ void Trajectory::cand_seg_probs
 		up->latit, up->longit, search_radius);
 	seg_probs.clear();
 	seg_probs.reserve(num_segs);
-	
+		
 	double sum = 0;
 	double prob;
 	segment* seg;
@@ -243,7 +267,7 @@ void Trajectory::cand_seg_probs
 		sum = sum + prob;
 		seg_probs.push_back(new std::pair<unsigned int, double>(*it, prob));
 	}
-	
+
 	for(unsigned int i = 0; i < seg_probs.size(); i++)
 	{
 		seg_probs.at(i)->second = (double) seg_probs.at(i)->second / sum;
@@ -304,7 +328,6 @@ Trajectory* Trajectory::map_matching
 		RoadNet* net
 	)
 {
-	net->clear_distances();
 	std::list<update*>::const_iterator it = updates.begin();
 	update* up = *it;
 	std::vector < std::pair < unsigned int, double > * > seg_probs;
@@ -365,7 +388,6 @@ Trajectory* Trajectory::map_matching
 	//Iterating over updates
 	for(; it != updates.end(); ++it)
 	{
-		std::cout << "u = " << u << std::endl;
 		prev_up = up;
 		up = *it;
 		
@@ -482,6 +504,7 @@ Trajectory* Trajectory::map_matching
 
 		u++;
 	}
+	
 	
 	delete proj_latit_prev;
 	delete proj_longit_prev;
@@ -812,6 +835,126 @@ const bool Trajectory::write_map_matched_trajectories
 		traj->set_end_times();
 		traj->write(output_file, net);
 		delete traj;
+		delete_list_updates(updates.at(u));
+		delete updates.at(u);
+	}
+
+	output_file.close();
+
+	return true;
+}
+
+void run_thread
+	(
+		std::vector<std::list< update* > * >* updates,
+		unsigned int* pointer,
+		pthread_mutex_t* mutex_pool,
+		pthread_mutex_t* mutex_file,
+		std::ofstream* output_file,
+		RoadNet* net
+	)
+{
+	std::list < update* >* object_updates;
+	Trajectory* traj;
+
+	while(true)
+	{
+		pthread_mutex_lock(mutex_pool);
+		
+		if(*pointer == updates->size())
+		{
+			pthread_mutex_unlock(mutex_pool);
+			break;
+		}
+		else
+		{
+			object_updates = updates->at(*pointer);
+			*pointer = *pointer + 1;
+			pthread_mutex_unlock(mutex_pool);
+		}
+		
+		traj = Trajectory::map_matching(*object_updates, net);
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
+		traj->set_end_times();
+
+		pthread_mutex_lock(mutex_file);
+		traj->write(*output_file, net);
+		pthread_mutex_unlock(mutex_file);
+	}
+}
+
+void* start_thread(void* v_param)
+{
+	p_thread_param* param = (p_thread_param*) v_param;
+	run_thread(param->updates, param->pointer, param->mutex_pool,
+		param->mutex_file, param->output_file, param->net);
+	pthread_exit(NULL);
+}
+
+const bool Trajectory::write_map_matched_trajectories_multithreads
+	(
+		const std::string input_file_name, 
+		const std::string output_file_name, 
+		RoadNet* net,
+		const double _sigma, 
+		const double _radius, 
+		const double _beta_const,
+		const double _time_div
+	)
+{
+	//Setting some variables used in the map-matching.
+	sigma = _sigma;
+	radius = _radius;
+	beta_const = _beta_const;
+	time_div = _time_div;
+
+	std::vector<std::list< update* > * > updates;
+	read_updates(updates, input_file_name, net);
+	std::ofstream output_file(output_file_name.c_str(), std::ios::out);
+
+	if(! output_file.is_open())
+	{
+		std::cerr << "Error: Could not open trajectory file for writing: "
+			<< output_file_name << std::endl << std::endl;
+	     	
+		return false;
+	}
+
+	output_file << updates.size() << "\n";
+
+	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
+	p_thread_param* param;
+	pthread_mutex_t* mutex_pool = new pthread_mutex_t;
+	pthread_mutex_init(mutex_pool, NULL);
+	pthread_mutex_t* mutex_file = new pthread_mutex_t;
+	pthread_mutex_init(mutex_file, NULL);
+	unsigned int pointer = 0;
+	std::vector<p_thread_param*> params;
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		param = new_p_thread_param(&updates, &pointer, mutex_pool, mutex_file, &output_file, net);
+		params.push_back(param);
+		pthread_create(&threads[t], NULL, start_thread, param);
+	}
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		pthread_join(threads[t], NULL);
+	}
+	 
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		delete params[t];
+	}
+	
+	free(threads);
+	delete mutex_pool;
+	delete mutex_file;
+
+	for(unsigned int u = 0; u < updates.size(); u++)
+	{
 		delete_list_updates(updates.at(u));
 		delete updates.at(u);
 	}

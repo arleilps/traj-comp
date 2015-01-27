@@ -32,6 +32,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <pthread.h>
+#include <unistd.h>
 
 using namespace boost;
 
@@ -173,7 +175,6 @@ class SegIndex
 				const double longit, 
 				unsigned int k
 			) 
-			const
 		{
 			return 0;
 		}
@@ -195,7 +196,6 @@ class SegIndex
 				const double longit, 
 				const double distance
 			) 
-			const 
 		{
 			return 0;
 		}
@@ -269,7 +269,6 @@ class SegIndex
 				double& latit_s, 
 				double& longit_s
 			) 
-			const
 		{
 			return false;
 		}
@@ -316,8 +315,7 @@ class PostGisIndex: public SegIndex
 				const double latit, 
 				const double longit, 
 				unsigned int k
-			) 
-				const;
+			); 
 		
 		const unsigned int within_distance
 			(
@@ -325,8 +323,7 @@ class PostGisIndex: public SegIndex
 				const double latit, 
 				const double longit, 
 				const double distance
-			) 
-				const;
+			); 
 
 		const double distance_points
 			(
@@ -355,19 +352,19 @@ class PostGisIndex: public SegIndex
 				const double longit_p,
 				double& latit_s, 
 				double& longit_s
-			) 
-				const;
+			); 
 
 		const double distance_point_segment
 			(
 				const unsigned int seg,
 				const double latit, 
 				const double longit
-			)
-				const;
+			);
 	private:
-		//Database connection
-		pqxx::connection* conn;
+		//Database connection pool
+		pqxx::connection** conns;
+		std::vector<bool> free_conns;
+		pthread_mutex_t* mutex_conn;
 
 		//PostGis database name, table name, 
 		//host, port, user and password. 
@@ -377,6 +374,9 @@ class PostGisIndex: public SegIndex
 		static const std::string port;
 		static const std::string user;
 		static const std::string password;
+
+		static const unsigned int num_connections;
+		static unsigned int sleep_time_conn;
 		
 		//Spatial reference and srid
 		//spatial reference is for the 
@@ -394,6 +394,8 @@ class PostGisIndex: public SegIndex
 		void disconnect();
 		const bool create_table();
 		void drop_table();
+		const unsigned int get_connection();
+		void return_connection(const unsigned int c);
 };
 
 /**

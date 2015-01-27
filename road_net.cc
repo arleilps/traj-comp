@@ -41,6 +41,8 @@ const std::string PostGisIndex::host = "127.0.0.1";
 const std::string PostGisIndex::port = "5432";
 const std::string PostGisIndex::user = "traj_comp";
 const std::string PostGisIndex::password="traj_comp";
+const unsigned int PostGisIndex::num_connections = 16;
+unsigned int PostGisIndex::sleep_time_conn = 1;
 
 //const double RoadNet::max_length_short_path = 1000;
 const double RoadNet::max_length_short_path = 100;
@@ -616,6 +618,43 @@ const unsigned int RoadNet::segments_within_distance
 	return seg_index->within_distance(ids, latit, longit, distance);
 }
 
+const unsigned int PostGisIndex::get_connection()
+{
+	unsigned int conn = num_connections;
+
+	while(true)
+	{
+		pthread_mutex_lock(mutex_conn);
+		
+		for(unsigned int c = 0; c < num_connections; c++)
+		{
+			if(conns[c]->is_open() && free_conns.at(c))
+			{
+				conn = c;
+				free_conns.at(c) = false;
+				break;
+			}
+		}
+		
+		pthread_mutex_unlock(mutex_conn);
+		
+		if(conn == num_connections)
+		{
+			sleep(sleep_time_conn);
+		}
+		else
+		{
+			return conn;
+		}
+	}
+}
+
+void PostGisIndex::return_connection(const unsigned int c)
+{
+	pthread_mutex_lock(mutex_conn);
+	free_conns.at(c) = true;
+	pthread_mutex_unlock(mutex_conn);
+}
 
 const bool PostGisIndex::connect()
 {
@@ -625,16 +664,27 @@ const bool PostGisIndex::connect()
 		+ " hostaddr=" + host
 		+ " port=" + port;
 	
+	conns = (pqxx::connection**) malloc (num_connections * sizeof(pqxx::connection));
+	pqxx::connection* conn;
+	free_conns.reserve(num_connections);
+	mutex_conn = new pthread_mutex_t;
+	pthread_mutex_init(mutex_conn, NULL);
+
 	try
 	{
-		conn = new pqxx::connection(conn_str);
-		if(conn->is_open())
+		for(unsigned int c = 0; c < num_connections; c++)
 		{
-			return true;
-		}
-		else
+			conn = new pqxx::connection(conn_str);
+			conns[c] = conn;
+			free_conns.push_back(true);
+		}	
+	
+		for(unsigned int c = 0; c < num_connections; c++)
 		{
-			return false;
+			if(! conns[c]->is_open())
+			{
+				return false;
+			}
 		}
 	}
 	catch(const pqxx::broken_connection &e)
@@ -648,7 +698,7 @@ const bool PostGisIndex::connect()
 
 		return false;
 	}
-
+	
 	return true;
 }
 
@@ -661,6 +711,8 @@ const bool PostGisIndex::project
 	)
 {
 	std::string sql;
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 
 	try
 	{
@@ -682,6 +734,7 @@ const bool PostGisIndex::project
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
@@ -689,12 +742,16 @@ const bool PostGisIndex::project
 		return false;
 	}
 
+	return_connection(c);
+	
 	return true;
 }
 
 const bool PostGisIndex::create_table()
 {
 	std::string sql;
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 	
 	try
 	{
@@ -710,6 +767,7 @@ const bool PostGisIndex::create_table()
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
@@ -717,12 +775,16 @@ const bool PostGisIndex::create_table()
 		return false;
 	}
 
+	return_connection(c);
+	
 	return true;
 }
 
 void PostGisIndex::drop_table()
 {
 	std::string sql = "DROP TABLE " + table_name + ";";
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 	
 	try
 	{
@@ -733,15 +795,21 @@ void PostGisIndex::drop_table()
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query: " << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 	}
+	
+	return_connection(c);
 }
 
 void PostGisIndex::disconnect()
 {
-	conn->disconnect();
+	for(unsigned int c = 0; c < num_connections; c++)
+	{
+		conns[c]->disconnect();
+	}
 }
 
 const bool PostGisIndex::insert
@@ -752,6 +820,8 @@ const bool PostGisIndex::insert
 {
 	//PostGis is long-lat
 	std::string sql;
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 	
 	try
 	{
@@ -770,12 +840,15 @@ const bool PostGisIndex::insert
 	}	
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 
 		return false;
 	}
+	
+	return_connection(c);
 	
 	return true;
 }
@@ -786,9 +859,10 @@ const unsigned int PostGisIndex::within_distance
 	const double longit,
 	const double distance
 	) 
-		const
 {
 	std::string sql; 
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 	
 	try
 	{
@@ -810,12 +884,15 @@ const unsigned int PostGisIndex::within_distance
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query: " << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 
 		return 0;
 	}
+	
+	return_connection(c);
 
 	return ids.size();
 }
@@ -829,6 +906,8 @@ const double PostGisIndex::distance_points
 	)
 {
 	std::string sql; 
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 
 	double distance = 0;
 	
@@ -851,10 +930,13 @@ const double PostGisIndex::distance_points
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 	}
+	
+	return_connection(c);
 
 	return distance;
 }
@@ -865,9 +947,10 @@ const double PostGisIndex::distance_point_segment
 		const double latit, 
 		const double longit
 	) 
-		const 
 {
 	std::string sql; 
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 
 	double distance = 0;
 	
@@ -878,13 +961,7 @@ const double PostGisIndex::distance_point_segment
 			" " + to_string_prec(latit) + ")', " + 
 			srid + "), ST_Transform(segment," + srid + 
 			")) FROM "+ table_name +" WHERE id = " + to_string(seg) + ";";
-		/*
-		sql = "SELECT ST_Distance(ST_Transform(ST_GeomFromText('POINT(" + 
-			to_string_prec(longit) + 
-			" " + to_string_prec(latit) + ")', " + 
-			spatial_ref + ")," + srid + "), ST_Transform(segment," + srid + 
-			")) FROM "+ table_name +" WHERE id = " + to_string(seg) + ";";
-		*/
+		
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
 
@@ -895,10 +972,13 @@ const double PostGisIndex::distance_point_segment
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 	}
+	
+	return_connection(c);
 
 	return distance;
 }
@@ -910,9 +990,10 @@ const unsigned int PostGisIndex::k_nearest
 		const double longit, 
 		const unsigned int k
 	) 
-		const
 {
 	std::string sql;
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 
 	try
 	{
@@ -934,12 +1015,15 @@ const unsigned int PostGisIndex::k_nearest
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 
 		return 0;
 	}
+	
+	return_connection(c);
 	
 	return ids.size();
 }
@@ -952,9 +1036,10 @@ const bool PostGisIndex::closest_point_segment
 		double& latit_s, 
 		double& longit_s
 	) 
-	const
 {
 	std::string sql;
+	const unsigned int c = get_connection();
+	pqxx::connection* conn = conns[c];
 
 	try
 	{
@@ -977,12 +1062,15 @@ const bool PostGisIndex::closest_point_segment
 	}
 	catch(const pqxx::sql_error& e)
 	{
+		return_connection(c);
 		std::cerr << "Error: Failed query:" << std::endl;
 		std::cerr << sql << std::endl;
 		std::cerr << e.what() << std::endl;
 
 		return false;
 	}
+	
+	return_connection(c);
 	
 	return true;
 }
@@ -1007,7 +1095,8 @@ void PostGisIndex::drop()
 PostGisIndex::~PostGisIndex()
 {
 	disconnect();
-	delete conn;
+	free(conns);
+	delete mutex_conn;
 }
 
 //Comparison function used for Fibonacci (min) heap.

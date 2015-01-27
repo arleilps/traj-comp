@@ -59,7 +59,6 @@ int main(int argc, char** argv)
 	compression_algorithms.push_back("SPFS");	// Shortest path 
 							//+ frequent subtrajectories
 	compression_algorithms.push_back("PPM");	//Prediction by partial matching
-
 	
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
@@ -70,6 +69,7 @@ int main(int argc, char** argv)
 	{
 //		Parameters::print();
 			
+		Trajectory::set_num_threads(Parameters::num_threads);
 		RoadNet* net;
 
 		if(Parameters::compression_algorithm == "IND")
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 
 			if(Parameters::compression_algorithm == "MAP")
 			{
-				Trajectory::write_map_matched_trajectories(
+				Trajectory::write_map_matched_trajectories_multithreads(
 					Parameters::gps_file_name, 
 					Parameters::output_file_name, net);
 			}

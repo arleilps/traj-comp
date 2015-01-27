@@ -26,6 +26,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <pthread.h>
 
 #include "road_net.h"
 
@@ -79,7 +80,6 @@ typedef struct t_seg_time
 	unsigned int segment;
 	unsigned int start_time;
 	unsigned int end_time;
-//	unsigned int time;
 	const update* up;
 } seg_time;
 
@@ -93,6 +93,16 @@ seg_time* new_seg_time
 		const unsigned int end_time,
 		const update* up=NULL
 	);
+
+typedef struct t_p_thread_param
+{
+	std::vector<std::list< update* > * >* updates;
+	unsigned int* pointer;
+	pthread_mutex_t* mutex_pool;
+	pthread_mutex_t* mutex_file;
+	std::ofstream* output_file;
+	RoadNet* net;
+}p_thread_param;
 
 /**
  * Implements functionalities for trajectory manipulation (e.g. creation, map-matching etc.)
@@ -186,6 +196,17 @@ class Trajectory
 		 * @return true in case of success, false otherwise
 		**/
 		static const bool write_map_matched_trajectories
+			(
+				const std::string input_file_name,
+				const std::string output_file_name,
+				RoadNet* net,
+				const double _sigma=SIGMA,
+				const double _radius=RADIUS,
+				const double _beta_const=BETACONST,
+				const double _time_div=TIMEDIV
+			);
+		
+		static const bool write_map_matched_trajectories_multithreads
 			(
 				const std::string input_file_name,
 				const std::string output_file_name,
@@ -307,6 +328,11 @@ class Trajectory
 		{
 			return obj;
 		}
+
+		static inline void set_num_threads(const unsigned int _num_threads)
+		{
+			num_threads = _num_threads;
+		}
 	private:
 		/*OBJECT VARIABLES*/
 
@@ -322,6 +348,7 @@ class Trajectory
 		static double sigma;
 		static double radius;
 		static unsigned int max_cand_matches;
+		static unsigned int num_threads;
 		
 		/*CONSTANTS*/
 

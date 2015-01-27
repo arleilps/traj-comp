@@ -29,6 +29,7 @@ unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
 unsigned int Parameters::min_sup;
 unsigned int Parameters::max_shortest_path;
+unsigned int Parameters::num_threads;
 
 std::vector<std::string> Parameters::compression_algorithms;
 
@@ -73,6 +74,7 @@ void Parameters::print_usage()
 	std::cout << " -s, --min-sup		minimum support subtrajectory" << std::endl;
 	std::cout << " -p, --short-path		max length shortest path" << std::endl;
 	std::cout << " -d, --gps-updates	gps updates file to be map-matched" << std::endl;
+	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
 }
 
@@ -112,6 +114,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('r', "order", order)
 		>> GetOpt::Option('s', "min-sup", min_sup)
 		>> GetOpt::Option('p', "short-path", max_shortest_path)
+		>> GetOpt::Option('n', "num-threads", num_threads)
 		;
 	}
 	catch(GetOpt::GetOptEx& e)
@@ -142,6 +145,7 @@ void Parameters::print()
 	std::cout << "min support: " << min_sup << std::endl;
 	std::cout << "shortest-paths: " << max_shortest_path << std::endl;
 	std::cout << "gps updates file: " << gps_file_name << std::endl;
+	std::cout << "number of threads: " << num_threads << std::endl;
 }
 
 /**

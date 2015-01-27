@@ -80,6 +80,7 @@ class Parameters
 		static unsigned int order;
 		static unsigned int min_sup;
 		static unsigned int max_shortest_path;
+		static unsigned int num_threads;
 		
 		/*List of valid compression algorithms for checking*/
 		static std::vector < std::string > compression_algorithms;
