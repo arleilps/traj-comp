@@ -155,7 +155,6 @@ class FreqSubt: public TrajCompAlgo
 		/*Destructor*/
 		virtual ~FreqSubt()
 		{
-			print();
 			delete_tree(tree);
 
 			for(unsigned int s = 0; s < net->size(); s++)

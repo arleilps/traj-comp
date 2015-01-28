@@ -44,8 +44,8 @@ const std::string PostGisIndex::password="traj_comp";
 const unsigned int PostGisIndex::num_connections = 16;
 unsigned int PostGisIndex::sleep_time_conn = 1;
 
-const double RoadNet::max_length_short_path = 1000;
-//const double RoadNet::max_length_short_path = 100;
+//const double RoadNet::max_length_short_path = 1000;
+const double RoadNet::max_length_short_path = 0;
 
 //Projection
 const std::string PostGisIndex::srid = "26943";

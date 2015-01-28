@@ -839,7 +839,6 @@ void ShortestPath::compute_shortest_paths()
 	for(unsigned int s = 0; s < net->size(); s++)
 	{
 		net->fill_short_path_struct(s, max_length, short_paths.at(s));
-		std::cout << "i = " << s << ": " << short_paths.at(s)->size() << std::endl;
 	}
 }
 
@@ -896,9 +895,9 @@ const unsigned int ShortestPathFreqSubt::test(const std::string test_traj_file_n
 		sp_comp = shortest_path_comp->compress(traj);
 		fs_comp = freq_subt_comp->compress(sp_comp);
 		updates += fs_comp->size();
-		traj->print();
-		sp_comp->print();
-		fs_comp->print();
+//		traj->print();
+	//	sp_comp->print();
+//		fs_comp->print();
 		
 		delete sp_comp;
 		delete fs_comp;

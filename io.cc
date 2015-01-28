@@ -68,11 +68,11 @@ void Parameters::print_usage()
 	std::cout << " -t, --train		training trajectories file" << std::endl;
 	std::cout << " -e, --test		test trajectories file" << std::endl;
 	std::cout << " -o, --output		output file" << std::endl;
-	std::cout << " -c, --compression	compression algorithm" << std::endl;
-	std::cout << " -u, --length-subt	max length subtrajectory" << std::endl;
+	std::cout << " -c, --compression	compression algorithm [MAP,FS,SP,SPFS,PPM]" << std::endl;
+	std::cout << " -u, --length-subt	max length subtrajectory [in segments]" << std::endl;
 	std::cout << " -r, --order		order" << std::endl;
-	std::cout << " -s, --min-sup		minimum support subtrajectory" << std::endl;
-	std::cout << " -p, --short-path		max length shortest path" << std::endl;
+	std::cout << " -s, --min-sup		minimum support subtrajectory [integer]" << std::endl;
+	std::cout << " -p, --short-path		max length shortest path [in meters]" << std::endl;
 	std::cout << " -d, --gps-updates	gps updates file to be map-matched" << std::endl;
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
