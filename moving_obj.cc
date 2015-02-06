@@ -869,7 +869,7 @@ const bool Trajectory::write_map_matched_trajectories
 	}
 	
 	//Precomputing shortest paths
-	net->precompute_shortest_paths(0);
+	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH);
 
 	output_file << updates.size() << "\n";
 
