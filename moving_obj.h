@@ -78,8 +78,8 @@ void delete_list_updates(std::list<update*>* updates);
 typedef struct t_seg_time
 {
 	unsigned int segment;
-	unsigned int start_time;
-	unsigned int end_time;
+	unsigned int time;
+	double dist;
 	const update* up;
 } seg_time;
 
@@ -89,8 +89,8 @@ typedef struct t_seg_time
 seg_time* new_seg_time
 	(
 		const unsigned int segment, 
-		const unsigned int start_time,
-		const unsigned int end_time,
+		const unsigned int time,
+		double dist,
 		const update* up=NULL
 	);
 
@@ -103,6 +103,12 @@ typedef struct t_p_thread_param
 	std::ofstream* output_file;
 	RoadNet* net;
 }p_thread_param;
+
+typedef struct t_dist_time
+{
+	unsigned int time;
+	double dist;
+} dist_time;
 
 /**
  * Implements functionalities for trajectory manipulation (e.g. creation, map-matching etc.)
@@ -218,6 +224,13 @@ class Trajectory
 			);
 
 		 /*OBJECT METHODS*/
+
+		void get_dist_times_uniform
+			(
+				std::list < dist_time* >& dist_times,
+				RoadNet* net
+			) 
+				const;
 		
 		/**
 		 * Adds a map-matched update to the trajectory
@@ -229,16 +242,16 @@ class Trajectory
 		void add_update
 			(
 				const unsigned int segment, 
-				const unsigned int start_time, 
-				const unsigned int end_time, 
+				const unsigned int time, 
+				const double dist, 
 				const update* up=NULL
 			);
 		
 		void add_update_front
 			(
 				const unsigned int segment, 
-				const unsigned int start_time, 
-				const unsigned int end_time, 
+				const unsigned int time, 
+				const double dist, 
 				const update* up=NULL
 			);
 		
@@ -271,10 +284,11 @@ class Trajectory
 		 * Removes repeated segments from a trajectory.
 		**/
 		void remove_repeated_segments();
-		
-		//FIXME
-		void set_end_times();
 
+		void decompose_online(std::list<Trajectory*>& decomp);
+		
+		void append(Trajectory* traj);
+		
 		/*PUBLIC VARIABLES*/
 		
 		//iterator for trajectories
@@ -358,6 +372,7 @@ class Trajectory
 		static const double RADIUS;
 		static const double MAXSPEED;
 		static const unsigned int MAXCANDMATCHES;
+		static const double MAXLENGTHSHORTESTPATH;
 		
 		/*OBJECT METHODS*/
 
@@ -454,45 +469,45 @@ class TrajDBStorage
 /**
  * Implements a trajectory database as a PostGis table.
 **/
-class TrajDBPostGis: public TrajDBStorage
-{
-	public:
-		/*Constructor*/
-		TrajDBPostGis():TrajDBStorage()
-		{
-			connect();
-		}
+//class TrajDBPostGis: public TrajDBStorage
+//{
+//	public:
+//		/*Constructor*/
+//		TrajDBPostGis():TrajDBStorage()
+//		{
+//			connect();
+//		}
 		
-		/*Destructor*/
-		virtual ~TrajDBPostGis(){};
+//		/*Destructor*/
+//		virtual ~TrajDBPostGis(){};
 		
-		const bool create();
+//		const bool create();
 		
-		const bool drop();
+//		const bool drop();
 
-		const bool insert
-			(
-				const std::string& obj,
-				const seg_time& st 
-			);
+//		const bool insert
+//			(
+//				const std::string& obj,
+//				const seg_time& st 
+//			);
 		
-		const bool query_segment_time
-			(
-				const unsigned int segment,
-				std::list<std::string>& objs,
-				const unsigned int time_begin=0,
-				const unsigned int time_end=0
-			)
-				const;
-	protected:
+//		const bool query_segment_time
+//			(
+//				const unsigned int segment,
+//				std::list<std::string>& objs,
+//				const unsigned int time_begin=0,
+//				const unsigned int time_end=0
+//			)
+//				const;
+//	protected:
 		//PostGis database name, table name, 
 		//host, port, user and password.
-		static const std::string database_name;
-		static const std::string table_name;
-		static const std::string host;
-		static const std::string port;
-		static const std::string user;
-		static const std::string password;
+//		static const std::string database_name;
+//		static const std::string table_name;
+//		static const std::string host;
+//		static const std::string port;
+//		static const std::string user;
+//		static const std::string password;
 		
 		//Spatial reference and srid
 		//spatial reference is for the 
@@ -503,14 +518,14 @@ class TrajDBPostGis: public TrajDBStorage
 		//srid is applied for projecting points into a planar
 		//representation and we are applying EPSG 26943
 		//for SF area. http://spatialreference.org/ref/epsg/26943/)
-		static const std::string srid;
-		static const std::string spatial_ref;
+//		static const std::string srid;
+//		static const std::string spatial_ref;
 
 		//Database connection
-		pqxx::connection* conn;
+//		pqxx::connection* conn;
 
-		const bool connect();
-};
+//		const bool connect();
+//};
 
 /**
  * Implements several functionalities (insert, query etc.) for managing a trajectory database.
@@ -525,7 +540,7 @@ class TrajDB
 		TrajDB(RoadNet* _net)
 		{
 			net = _net;
-			db = new TrajDBPostGis();
+			//db = new TrajDBPostGis();
 			n_updates = 0;
 		}
 		

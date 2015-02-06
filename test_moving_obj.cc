@@ -34,7 +34,7 @@ const bool test_moving_obj()
 	RoadNet* net = new RoadNet("road_net_sfo.csv");
 	std::list<unsigned int> short_path;
 
-	net->shortest_path(short_path, 0, 1, 37.7885, 37.7886, 37.7885,37.7886);
+	net->shortest_path(short_path, 0, 1);
 
 	delete net;
 	return true;
@@ -95,7 +95,7 @@ const bool test_moving_obj_file()
 		
 		for(Trajectory::iterator traj_it = trajectory->begin(); traj_it != trajectory->end(); ++traj_it)
 		{
-			if(matched_traj.at((*traj_it)->start_time) == net->seg_name((*traj_it)->segment))
+			if(matched_traj.at((*traj_it)->time) == net->seg_name((*traj_it)->segment))
 			{
 				accuracy = accuracy + 1;
 			}
@@ -132,7 +132,7 @@ const bool test_moving_obj_traj_file()
 //	RoadNet* net = new RoadNet("../data/wa_adj.txt", "road_net_wa.csv");
 //	RoadNet* net = new RoadNet("road_net_wa.csv");
 //	RoadNet* net = new RoadNet("../data/greater_sfo_adj.txt", "road_net_sf.csv");
-	RoadNet* net = new RoadNet("road_net_sf.csv");
+	RoadNet* net = new RoadNet("road_net_sfo.csv");
 
 	std::cout << "Road network created" << std::endl;
 
@@ -154,4 +154,8 @@ const bool test_moving_obj_traj_file()
 
 	return true;
 }
-	
+
+const bool test_dist_times()
+{
+	return true;
+}

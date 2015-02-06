@@ -54,6 +54,18 @@ const std::vector<std::string> split(const std::string &s, char delim)
         return elems;
 }
 
+void print_statistics(TrajCompAlgo* algo)
+{
+	std::cout << "compression_time = " << algo->compression_time() << std::endl;
+	std::cout << "training_time = " << algo->training_time() << std::endl;
+	std::cout << "num_updates_orig = " << algo->num_updates_orig() << std::endl;
+	std::cout << "num_updates_comp = " << algo->num_updates_comp() << std::endl;
+	std::cout << "num_updates_train = " << algo->num_updates_train() << std::endl;
+	std::cout << "num_traj_comp = " << algo->num_traj_comp() << std::endl;
+	std::cout << "num_traj_train = " << algo->num_traj_train() << std::endl;
+	std::cout << "compression_ratio = " << algo->compression_ratio() << std::endl;
+}
+
 /**
  * Prints the usage of this program
  * @param
@@ -90,8 +102,9 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 	InvalidParameterSettingException invalid_parameters;
 	max_length_subt = 0;
 	order = 0;
-	min_sup = std::numeric_limits<unsigned int>::max();
+	min_sup = 1;
 	max_shortest_path = 0;
+	num_threads = 0;
 
 	try
 	{
@@ -135,17 +148,17 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 **/
 void Parameters::print()
 {
-	std::cout << "road network: " << road_net_file_name << std::endl;
-	std::cout << "training trajectories: " << training_traj_file_name << "\n";
-	std::cout << "test trajectories: " << test_traj_file_name << "\n";
-	std::cout << "compression algorithm: " << compression_algorithm << std::endl;
-	std::cout << "output: " << output_file_name << std::endl;
-	std::cout << "length subtrajectories: " << max_length_subt << std::endl;
-	std::cout << "order: " << order << std::endl;
-	std::cout << "min support: " << min_sup << std::endl;
-	std::cout << "shortest-paths: " << max_shortest_path << std::endl;
-	std::cout << "gps updates file: " << gps_file_name << std::endl;
-	std::cout << "number of threads: " << num_threads << std::endl;
+	std::cout << "road_network = " << road_net_file_name << std::endl;
+	std::cout << "training_trajectories = " << training_traj_file_name << "\n";
+	std::cout << "test_trajectories = " << test_traj_file_name << "\n";
+	std::cout << "compression_algorithm = " << compression_algorithm << std::endl;
+	std::cout << "output = " << output_file_name << std::endl;
+	std::cout << "length_subtrajectories = " << max_length_subt << std::endl;
+	std::cout << "order = " << order << std::endl;
+	std::cout << "min_support =" << min_sup << std::endl;
+	std::cout << "shortest_paths = " << max_shortest_path << std::endl;
+	std::cout << "gps_updates_file = " << gps_file_name << std::endl;
+	std::cout << "number_of_threads = " << num_threads << std::endl;
 }
 
 /**

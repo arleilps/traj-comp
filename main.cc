@@ -49,6 +49,8 @@ int main(int argc, char** argv)
 //	test_traj_comp_ppm();
 //	test_traj_comp_short_path();
 //	test_traj_comp_short_path_freq_subt();
+//	test_dist_times();
+//	test_moving_obj_traj_file();
 
 	/*Setting the compression algorithms*/
 	std::vector<std::string> compression_algorithms;
@@ -67,8 +69,6 @@ int main(int argc, char** argv)
 	/*Reading the input parameters*/
 	if(Parameters::read(argc,argv))
 	{
-//		Parameters::print();
-			
 		Trajectory::set_num_threads(Parameters::num_threads);
 		RoadNet* net;
 
@@ -115,13 +115,15 @@ int main(int argc, char** argv)
 
 				alg->train(Parameters::training_traj_file_name);
 
-				num_updates = alg->test(Parameters::test_traj_file_name);
+				alg->test(Parameters::test_traj_file_name);
 
-				std::cout << "num updates = " << num_updates << std::endl;
-		
+				print_statistics(alg);
+
 				delete alg;
 			}
 		}
+
+		Parameters::print();
 
 		delete net;
 	}

@@ -30,6 +30,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 /*my includes*/
 #include "getopt_pp.h"
+#include "traj_comp.h"
 
 #define PREC 10
 
@@ -62,6 +63,8 @@ template < typename T > std::string to_string( const T& t)
 }
 
 const std::string to_string_prec(const double t);
+
+void print_statistics(TrajCompAlgo* algo);
 
 /**
  * Simple handler for the input parameters

@@ -28,14 +28,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "traj_comp.h"
 #include "io.h"
 
-NodeSubt* FreqSubt::new_node()
+node_subt* FreqSubt::new_node()
 {
-	NodeSubt* node = new NodeSubt;
+	node_subt* node = new node_subt;
 	node->id = id++;
 	node->freq = 0;
 	node->seg = 0;
 	node->depth = 0;
-	node->children = new std::map<unsigned int, NodeSubt*>;
+	node->children = new std::map<unsigned int, node_subt*>;
  	node->suffix = NULL; 
 	
 	return node;
@@ -44,6 +44,16 @@ NodeSubt* FreqSubt::new_node()
 TrajCompAlgo::TrajCompAlgo(RoadNet* _net)
 {
 	net = _net;
+	
+	_compression_time = 0;
+	_training_time = 0;
+	_num_updates_orig = 0;
+	_num_updates_comp = 0;
+	_num_updates_train = 0;
+	_num_traj_comp = 0;
+	_num_traj_train = 0;
+	comp_t = new ExecTime();
+	train_t = new ExecTime();
 }
 
 TrajCompAlgo::~TrajCompAlgo()
@@ -52,15 +62,22 @@ TrajCompAlgo::~TrajCompAlgo()
 
 //Frequent subtrajectories are identified in the training file by building
 //a frequent subtrajectory tree, which is similar to a frequent substring tree
-const unsigned int FreqSubt::train(const std::string training_traj_file_name)
+void FreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	
+	train_t->start();
 	
 	//Adds each trajectory into the tree
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
+		_num_traj_train++;
+		_num_updates_train += (*it)->size();
+		(*it)->extend_traj_shortest_paths(net);
+		(*it)->remove_repeated_segments();
+		
 		add_trajectory(*it);
 
 		delete *it;
@@ -71,19 +88,22 @@ const unsigned int FreqSubt::train(const std::string training_traj_file_name)
 
 	//Sets an index for the frequent subtrajectories that contain a given segment
 	set_seg_index();
-
-	return size_tree;
+	
+	train_t->stop();
+	_training_time = train_t->get_seconds();
 }
 
-const unsigned int FreqSubt::test(const std::string test_traj_file_name)
+void FreqSubt::test(const std::string test_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
-	unsigned int updates = 0;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	std::list<NodeSubt*> compressed;
+	CompTrajectory* comp_traj_up;
+	std::list<node_subt*> compressed;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	std::list<Trajectory*> decomp;
+	std::list<Trajectory*>::iterator t;
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -91,14 +111,24 @@ const unsigned int FreqSubt::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		comp_traj = compress(traj);
-		updates += comp_traj->size();
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
+		
+		traj->decompose_online(decomp);
+		comp_traj = new CompTrajectory;
+
+		for(t = decomp.begin(); t != decomp.end(); ++t)
+		{
+			comp_traj_up = compress(*t);
+			comp_traj->append(comp_traj_up);
+			delete comp_traj_up;
+		}
+		
+		decomp.clear();
 		delete comp_traj;
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
-
-	return updates;
 }
 
 //Each node in the tree has a map from a segment id to a child node
@@ -106,10 +136,10 @@ void FreqSubt::add_trajectory
 	(
 		Trajectory::iterator it, 
 		Trajectory* traj, 
-		NodeSubt* tree, 
+		node_subt* tree, 
 		const unsigned int depth,
-		std::list<NodeSubt*>* suffix_pointers,
-		std::list<NodeSubt*>* new_suffix_pointers
+		std::list<node_subt*>* suffix_pointers,
+		std::list<node_subt*>* new_suffix_pointers
 	)
 {
 	tree->freq++;
@@ -117,7 +147,7 @@ void FreqSubt::add_trajectory
 	if(it != traj->end() && depth < max_length)
 	{
 		//Searches for the segment in the map
-		std::map<unsigned int, NodeSubt*>::iterator node = tree->children->find((*it)->segment);
+		std::map<unsigned int, node_subt*>::iterator node = tree->children->find((*it)->segment);
 		
 		//Creates a new node if the segment is not found
 		if(node != tree->children->end())
@@ -140,7 +170,7 @@ void FreqSubt::add_trajectory
 		{
 			//Creating a new node and inserting into the tree
 			size_tree++;
-			tree->children->insert(std::pair<unsigned int, NodeSubt*>((*it)->segment, new_node()));
+			tree->children->insert(std::pair<unsigned int, node_subt*>((*it)->segment, new_node()));
 			id++;
 			tree->children->at((*it)->segment)->seg = (*it)->segment;
 			tree->children->at((*it)->segment)->depth = depth+1;
@@ -168,8 +198,8 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 	//Each node in the tree has a pointer to its largest suffix
 	//which is useful for decomposing a trajectory into 
 	//subtrajectories
-	std::list<NodeSubt*>* suffix_pointers = new std::list<NodeSubt*>;
-	std::list<NodeSubt*>* new_suffix_pointers;
+	std::list<node_subt*>* suffix_pointers = new std::list<node_subt*>;
+	std::list<node_subt*>* new_suffix_pointers;
 	
 	suffix_pointers->push_back(NULL);
 
@@ -181,7 +211,7 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 	while(true)
 	{
 		itj = iti;
-		new_suffix_pointers = new std::list<NodeSubt*>;
+		new_suffix_pointers = new std::list<node_subt*>;
 		new_suffix_pointers->push_back(NULL);
 		add_trajectory(itj, traj, tree, 0, suffix_pointers, new_suffix_pointers);
 		delete suffix_pointers;
@@ -198,14 +228,15 @@ void FreqSubt::add_trajectory(Trajectory* traj)
 	delete suffix_pointers;
 }
 
-CompTrajectory* FreqSubt::compress(Trajectory* traj) const
+CompTrajectory* FreqSubt::compress(Trajectory* traj)
 {
+	comp_t->start();
+
 	CompTrajectory* comp_traj = new CompTrajectory();
-	NodeSubt* curr_node = tree;
-	std::map<unsigned int, NodeSubt*>::iterator node_it;
-	std::list<NodeSubt*> decomp;
-	std::list<unsigned int> end_times;
-	std::list<unsigned int> start_times;
+	node_subt* curr_node = tree;
+	std::map<unsigned int, node_subt*>::iterator node_it;
+	std::list<node_subt*> decomp;
+	std::list<unsigned int> times;
 	unsigned int size_dec = 0;
 
 	Trajectory::iterator it = traj->begin();
@@ -228,8 +259,7 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 		else
 		{
 			decomp.push_back(node_it->second);
-			end_times.push_back((*it)->end_time);
-			start_times.push_back((*it)->start_time);
+			times.push_back((*it)->time);
 			curr_node = node_it->second;
 			++it;
 			size_dec++;
@@ -237,40 +267,42 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj) const
 	}
 
 	unsigned int l = 0;
-	unsigned int end_time;
-	unsigned int start_time;
+	unsigned int time;
 
 	while(size_dec > 0)
 	{
 		curr_node = decomp.back();
-		end_time = end_times.back();
-		start_time = start_times.back();
+		time = times.back();
 
 		decomp.pop_back();
-		end_times.pop_back();
-		start_times.pop_back();
+		times.pop_back();
 		size_dec--;
 
 		if(l == 0)
 		{
-			comp_traj->add_update_front(curr_node->id, start_time, end_time);
+			comp_traj->add_update_front(curr_node->id, time, 0);
 			l =  curr_node->depth - 1;
 		}
 		else
 		{
-			comp_traj->front()->start_time = start_time;
+			comp_traj->front()->time = time;
 			l--;
 		}
 	}
 	
-//	comp_traj->set_end_times();
+	_num_updates_orig += traj->size();
+	_num_updates_comp += comp_traj->size();
+	_num_traj_comp++;
 
+	comp_t->stop();
+	_compression_time = comp_t->get_seconds();
+	
 	return comp_traj;
 }
 
-void FreqSubt::delete_tree(NodeSubt* node)
+void FreqSubt::delete_tree(node_subt* node)
 {
-	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
+	for(std::map<unsigned int, node_subt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
 	{
 		delete_tree(it->second);
@@ -281,13 +313,13 @@ void FreqSubt::delete_tree(NodeSubt* node)
 	size_tree--;
 }
 
-void FreqSubt::prune_tree(NodeSubt* root)
+void FreqSubt::prune_tree(node_subt* root)
 {
-	NodeSubt* node;
+	node_subt* node;
 	
-	std::map<unsigned int, NodeSubt*>* new_map = new std::map<unsigned int, NodeSubt*>; 
+	std::map<unsigned int, node_subt*>* new_map = new std::map<unsigned int, node_subt*>; 
 
-	std::map<unsigned int, NodeSubt*>::iterator it = root->children->begin(); 
+	std::map<unsigned int, node_subt*>::iterator it = root->children->begin(); 
 	 
 	while(it != root->children->end())
 	{
@@ -299,7 +331,7 @@ void FreqSubt::prune_tree(NodeSubt* root)
 		}
 		else
 		{
-			new_map->insert(std::pair<unsigned int, NodeSubt*>(it->first, node));
+			new_map->insert(std::pair<unsigned int, node_subt*>(it->first, node));
 			prune_tree(node);
 		}
 		
@@ -312,9 +344,9 @@ void FreqSubt::prune_tree(NodeSubt* root)
 
 void FreqSubt::prune_unfrequent_subtraj()
 {
-	NodeSubt* node;
+	node_subt* node;
 
-	for(std::map<unsigned int, NodeSubt*>::iterator it = tree->children->begin();
+	for(std::map<unsigned int, node_subt*>::iterator it = tree->children->begin();
 		it != tree->children->end(); ++it)
 	{
 		node = it->second;
@@ -322,11 +354,11 @@ void FreqSubt::prune_unfrequent_subtraj()
 	}
 }
 
-void FreqSubt::set_seg_index(NodeSubt* root)
+void FreqSubt::set_seg_index(node_subt* root)
 {
-	NodeSubt* node;
+	node_subt* node;
 	
-	for(std::map<unsigned int, NodeSubt*>::iterator it = root->children->begin(); 
+	for(std::map<unsigned int, node_subt*>::iterator it = root->children->begin(); 
 		it != root->children->end(); ++it)
 	{
 		node = it->second;
@@ -337,9 +369,9 @@ void FreqSubt::set_seg_index(NodeSubt* root)
 
 void FreqSubt::set_seg_index()
 {
-	NodeSubt* node;
+	node_subt* node;
 
-	for(std::map<unsigned int, NodeSubt*>::iterator it = tree->children->begin();
+	for(std::map<unsigned int, node_subt*>::iterator it = tree->children->begin();
 		it != tree->children->end(); ++it)
 	{
 		node = it->second;
@@ -347,11 +379,11 @@ void FreqSubt::set_seg_index()
 	}
 }
 
-void FreqSubt::print_tree(NodeSubt* node)
+void FreqSubt::print_tree(node_subt* node)
 {
 	std::string str;
 	
-	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
+	for(std::map<unsigned int, node_subt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
 	{
 		str = "[" + to_string(net->seg_name(it->first)) + "]";
@@ -359,13 +391,13 @@ void FreqSubt::print_tree(NodeSubt* node)
 	}
 }
 
-void FreqSubt::print_tree(NodeSubt* node, const std::string str) 
+void FreqSubt::print_tree(node_subt* node, const std::string str) 
 {
 	std::string new_str;
 	
 	std::cout << str << " " << node->id << std::endl;
 
-	for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
+	for(std::map<unsigned int, node_subt*>::iterator it = node->children->begin(); 
 		it != node->children->end(); ++it)
 	{
 		new_str = str +"-["+ to_string(net->seg_name(it->first)) + "]";
@@ -376,7 +408,7 @@ void FreqSubt::print_tree(NodeSubt* node, const std::string str)
 void FreqSubt::freq_sub_traj
 	(
 		std::list<std::pair<unsigned int, Trajectory * > * >& fsts,
-		NodeSubt* node, 
+		node_subt* node, 
 		Trajectory* traj
 	)
 {
@@ -395,7 +427,7 @@ void FreqSubt::freq_sub_traj
 
 		Trajectory* new_traj;
 
-		for(std::map<unsigned int, NodeSubt*>::iterator it = node->children->begin(); 
+		for(std::map<unsigned int, node_subt*>::iterator it = node->children->begin(); 
 			it != node->children->end(); ++it)
 		{
 			new_traj = new Trajectory(*traj);
@@ -409,7 +441,7 @@ void FreqSubt::freq_sub_traj
 		std::list<std::pair<unsigned int, Trajectory * > * >& fsts
 	)
 {
-	for(std::map<unsigned int, NodeSubt*>::iterator it = tree->children->begin(); 
+	for(std::map<unsigned int, node_subt*>::iterator it = tree->children->begin(); 
 		it != tree->children->end(); ++it)
 	{
 		freq_sub_traj(fsts, it->second);
@@ -436,6 +468,7 @@ void FreqSubt::get_freq_subt_ids
 	}
 }
 
+/*
 const bool FreqSubtCompTrajDB::insert
 	(       
 		const std::string& obj,
@@ -547,6 +580,7 @@ const bool FreqSubtCompTrajDB::center_radius_query
 
 	return status;
 }
+*/
 
 NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
 {
@@ -560,30 +594,37 @@ NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
 	return node;
 }
 
-const unsigned int PredPartMatch::train(const std::string training_traj_file_name)
+void PredPartMatch::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
 	
+	train_t->start();
+
 	//Adds each trajectory into the tree
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
+		_num_traj_train++;
+		_num_updates_train += (*it)->size();
+		(*it)->extend_traj_shortest_paths(net);
+		(*it)->remove_repeated_segments();
+		
 		add_trajectory(*it);
 
 		delete *it;
 	}
 
-	return size_tree;
+	train_t->stop();
+	_training_time = train_t->get_seconds();
 }
 
-const unsigned int PredPartMatch::test(const std::string test_traj_file_name)
+void PredPartMatch::test(const std::string test_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
-	unsigned int updates = 0;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	std::list<NodeSubt*> compressed;
+	std::list<node_subt*> compressed;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
 
@@ -593,14 +634,13 @@ const unsigned int PredPartMatch::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
 		comp_traj = compress(traj);
-		updates += comp_traj->size();
 		delete comp_traj;
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
-
-	return updates;
 }
 
 void PredPartMatch::add_trajectory
@@ -698,12 +738,14 @@ const unsigned int PredPartMatch::next_segment
 	}
 }
 
-CompTrajectory* PredPartMatch::compress(Trajectory* traj) const
+CompTrajectory* PredPartMatch::compress(Trajectory* traj)
 {
+	comp_t->start();
+	
 	CompTrajectory* comp_traj = new CompTrajectory();
 	
 	Trajectory::iterator it = traj->begin();
-	comp_traj->add_update((*it)->segment, (*it)->start_time, (*it)->end_time);
+	comp_traj->add_update((*it)->segment, (*it)->time, (*it)->dist);
 	unsigned int next;
 
 	while(it != traj->end())
@@ -716,11 +758,18 @@ CompTrajectory* PredPartMatch::compress(Trajectory* traj) const
 			comp_traj->add_update
 				(
 					(*it)->segment, 
-					(*it)->start_time, 
-					(*it)->end_time
+					(*it)->time, 
+					(*it)->dist
 				);
 		}
 	}
+	
+	_num_updates_orig += traj->size();
+	_num_updates_comp += comp_traj->size();
+	_num_traj_comp++;
+
+	comp_t->stop();
+	_compression_time = comp_t->get_seconds();
 
 	return comp_traj;
 }
@@ -742,14 +791,16 @@ void PredPartMatch::delete_tree(NodePPM* tree)
 	delete tree;
 }
 
-const unsigned int ShortestPath::test(const std::string test_traj_file_name)
+void ShortestPath::test(const std::string test_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
-	unsigned int updates = 0;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
+	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	std::list<Trajectory*> decomp;
+	std::list<Trajectory*>::iterator t;
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -757,15 +808,24 @@ const unsigned int ShortestPath::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		comp_traj = compress(traj);
-		updates += comp_traj->size();
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
 		
+		traj->decompose_online(decomp);
+		comp_traj = new CompTrajectory;
+		
+		for(t = decomp.begin(); t != decomp.end(); ++t)
+		{
+			comp_traj_up = compress(*t);
+			comp_traj->append(comp_traj_up);
+			delete comp_traj_up;
+		}
+		
+		decomp.clear();
 		delete comp_traj;
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
-
-	return updates;
 }
 
 bool ShortestPath::check_sp_through
@@ -790,20 +850,20 @@ bool ShortestPath::check_sp_through
 	return false;
 }
 
-CompTrajectory* ShortestPath::compress(Trajectory* traj) const
+CompTrajectory* ShortestPath::compress(Trajectory* traj) 
 {
+	comp_t->start();
 	CompTrajectory* comp_traj = new CompTrajectory();
 		
 	Trajectory::iterator it = traj->begin();
 	unsigned int start = (*it)->segment;
 		
-	comp_traj->add_update(start, (*it)->start_time, (*it)->end_time);
+	comp_traj->add_update(start, (*it)->time, (*it)->dist);
 		
 	++it;
 	unsigned int b_end = (*it)->segment;
 	unsigned int end;
-	unsigned int b_start_time = (*it)->start_time;
-	unsigned int b_end_time = (*it)->end_time;
+	unsigned int b_time = (*it)->time;
 	++it;
 
 	while(it != traj->end())
@@ -812,17 +872,23 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj) const
 			
 		if(! check_sp_through(start, end, b_end))	
 		{
-			comp_traj->add_update(b_end, b_start_time, b_end_time);
+			comp_traj->add_update(b_end, b_time, 0);
 			start = b_end;
 		}
 
 		b_end = (*it)->segment;
-		b_start_time = (*it)->start_time;
-		b_end_time = (*it)->end_time;
+		b_time = (*it)->time;
 		++it;
 	}
 
-	comp_traj->add_update(b_end, b_start_time, b_end_time);
+	comp_traj->add_update(b_end, b_time, 0);
+	
+	_num_updates_orig += traj->size();
+	_num_updates_comp += comp_traj->size();
+	_num_traj_comp++;
+
+	comp_t->stop();
+	_compression_time += comp_t->get_seconds();
 
 	return comp_traj;
 }
@@ -850,16 +916,23 @@ void ShortestPath::delete_shortest_paths()
 	}
 }
 
-const unsigned int ShortestPathFreqSubt::train(const std::string training_traj_file_name)
+void ShortestPathFreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
-	CompTrajectory* sp_comp;
 	
+	train_t->start();
+
+	CompTrajectory* sp_comp;
 	//Adds each trajectory into the tree
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
+		_num_traj_train++;
+		_num_updates_train += (*it)->size();
+		(*it)->extend_traj_shortest_paths(net);
+		(*it)->remove_repeated_segments();
+		
 		sp_comp = shortest_path_comp->compress(*it);
 		freq_subt_comp->add_trajectory(sp_comp);
 
@@ -873,18 +946,20 @@ const unsigned int ShortestPathFreqSubt::train(const std::string training_traj_f
 	//Sets an index for the frequent subtrajectories that contain a given segment
 	freq_subt_comp->set_seg_index();
 
-	return freq_subt_comp->size_tree;
+	train_t->stop();
+	_training_time = train_t->get_seconds();
 }
 
-const unsigned int ShortestPathFreqSubt::test(const std::string test_traj_file_name)
+void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
-	unsigned int updates = 0;
 	Trajectory* traj;
-	CompTrajectory* sp_comp;
-	CompTrajectory* fs_comp;
+	CompTrajectory* comp_traj;
+	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	std::list<Trajectory*> decomp;
+	std::list<Trajectory*>::iterator t;
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -892,18 +967,45 @@ const unsigned int ShortestPathFreqSubt::test(const std::string test_traj_file_n
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		sp_comp = shortest_path_comp->compress(traj);
-		fs_comp = freq_subt_comp->compress(sp_comp);
-		updates += fs_comp->size();
-//		traj->print();
-	//	sp_comp->print();
-//		fs_comp->print();
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
 		
-		delete sp_comp;
-		delete fs_comp;
+		traj->decompose_online(decomp);
+		comp_traj = new CompTrajectory;
+		
+		for(t = decomp.begin(); t != decomp.end(); ++t)
+		{
+			comp_traj_up = compress(*t);
+			comp_traj->append(comp_traj_up);
+			delete comp_traj_up;
+		}
+		
+		decomp.clear();
+		delete comp_traj;
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
-
-	return updates;
 }
+	
+CompTrajectory* ShortestPathFreqSubt::compress(Trajectory* traj)
+{
+	comp_t->start();
+
+	CompTrajectory* sp_comp;
+	CompTrajectory* fs_comp;
+	
+	sp_comp = shortest_path_comp->compress(traj);
+	fs_comp = freq_subt_comp->compress(sp_comp);
+	
+	delete sp_comp;
+	
+	_num_updates_orig += traj->size();
+	_num_updates_comp += fs_comp->size();
+	_num_traj_comp++;
+	
+	comp_t->stop();
+	_compression_time += comp_t->get_seconds();
+
+	return fs_comp;
+}
+

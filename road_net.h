@@ -502,9 +502,7 @@ class RoadNet
 		**/
 		const double shortest_path(
 			std::list<unsigned int>& shortest_path, const unsigned int s1, 
-			const unsigned int s2, const double latit_from,
-			const double latit_to, const double longit_from,
-			const double longit_to) const;
+			const unsigned int s2) const;
 		
 		/**
 		 * Computes the distance between a point and a segment.
@@ -522,6 +520,8 @@ class RoadNet
 				const;
 	
 		void clear_distances();
+		
+		void precompute_shortest_paths(const double max_length);
 
 		void fill_short_path_struct
 			(
@@ -680,7 +680,6 @@ class RoadNet
 		SegIndex* seg_index;
 		std::vector< std::map<unsigned int, double>* > distances;
 		double length_longest_segment;
-		static const double max_length_short_path;
 		std::vector < std::map <unsigned int, bool> * > neigh_check;
 		graph_t boost_graph;
 		
@@ -704,8 +703,7 @@ class RoadNet
 		const unsigned int flip_segment(const unsigned int seg) const;
 		void compute_segment_lengths();
 		void project_segments();
-		void shortest_path(const unsigned int s1);
-		void compute_distances();
+		void shortest_path(const unsigned int s1, const double max_length);
 
 		const bool create
 			(

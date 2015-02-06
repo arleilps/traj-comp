@@ -35,9 +35,7 @@ const bool test_traj_comp_freq_subt()
 	
 	traj_comp->train("map_matched_cab_stream_sfo.txt");
 	
-	unsigned int n = traj_comp->test("map_matched_cab_stream_sfo.txt");
-
-	std::cout << "num updates = " << n << std::endl; 
+	traj_comp->test("map_matched_cab_stream_sfo.txt");
 
 	delete traj_comp;
 	delete net;
@@ -64,7 +62,7 @@ const bool map_matching()
 
 	return true;
 }
-
+/*
 void print_freq_sub_traj(FreqSubtCompTrajDB* db)
 {
 	std::list<std::pair<unsigned int, Trajectory*>*> fsts;
@@ -89,17 +87,17 @@ void print_freq_sub_traj(FreqSubtCompTrajDB* db)
 		delete *it;
 	}
 }
-
-const bool freq_sub_traj_queries()
-{
-	RoadNet* net = new RoadNet("road_net_sf.csv");
+*/
+//const bool freq_sub_traj_queries()
+//{
+//	RoadNet* net = new RoadNet("road_net_sf.csv");
 	
 	//Frequent subtrajectories of size at most two
 	//and frequency at most 10
-	FreqSubtCompTrajDB* db = new FreqSubtCompTrajDB("map_matched_cab_stream_sfo.txt", 10, 4, net);
+//	FreqSubtCompTrajDB* db = new FreqSubtCompTrajDB("map_matched_cab_stream_sfo.txt", 10, 4, net);
 	
 	//Printing frequent subtrajectories with respective ids
-	print_freq_sub_traj(db);
+//	print_freq_sub_traj(db);
 
 	//Use db->drop(); to erase the content of the database
 	//db->drop(); 
@@ -113,26 +111,26 @@ const bool freq_sub_traj_queries()
 	//std::cout << "#original updates: " << db->updates() << std::endl;
 	//std::cout << "#database updates: " << db->db_updates() << std::endl;
 
-	std::list<std::string> q_results;
+//	std::list<std::string> q_results;
 
 	//center = (lat,long), distance in meters
 	//Accepts time range arguments (optional) not tested yet
-	db->center_radius_query(37.78,-122.39, 100, q_results);
+//	db->center_radius_query(37.78,-122.39, 100, q_results);
 
 	//Printing query results
-	for(std::list<std::string>::iterator it = q_results.begin();
-		it != q_results.end(); it++)
-	{
-		std::cout << *it << std::endl;
-	}
+//	for(std::list<std::string>::iterator it = q_results.begin();
+//		it != q_results.end(); it++)
+//	{
+//		std::cout << *it << std::endl;
+//	}
 
-	delete net;
-	delete db;
-	return true;
-}
+//	delete net;
+//	delete db;
+//	return true;
+//}
 	
-const bool test_traj_comp_freq_subt_sf_cab()
-{
+//const bool test_traj_comp_freq_subt_sf_cab()
+//{
 	//Indexes the segments and creates
 	//a file road_net_sf.csv, needs to
 	//be executed only once.
@@ -148,10 +146,10 @@ const bool test_traj_comp_freq_subt_sf_cab()
 	//Creating trajectory database
 	//and performing queries using
 	//frequent subtrajectories
-	freq_sub_traj_queries();
+//	freq_sub_traj_queries();
 
-	return true;
-}
+//	return true;
+//}
 
 const bool test_traj_comp_short_path()
 {
@@ -192,9 +190,9 @@ const bool test_traj_comp_short_path_freq_subt()
 	//TrajCompAlgo* traj_comp = new ShortestPath(net, std::numeric_limits<double>::max());
 	TrajCompAlgo* traj_comp = new ShortestPathFreqSubt(2, 100, std::numeric_limits<double>::max(), net);
 	
-	std::cout << traj_comp->train("map_matched_cab_stream.txt") << std::endl;
+	traj_comp->train("map_matched_cab_stream.txt");
 
-	std::cout << traj_comp->test("map_matched_cab_stream.txt") << std::endl;
+	traj_comp->test("map_matched_cab_stream.txt");
 	
 	delete traj_comp;
 	
@@ -211,10 +209,8 @@ const bool test_traj_comp_ppm()
 	traj_comp->train("map_matched_cab_stream_sfo.txt");
 	//traj_comp->train("map_matched.txt");
 	
-	unsigned int n = traj_comp->test("map_matched_cab_stream_sfo.txt");
+	traj_comp->test("map_matched_cab_stream_sfo.txt");
 	//unsigned int n = traj_comp->test("map_matched.txt");
-
-	std::cout << "num updates = " << n << std::endl; 
 
 	delete traj_comp;
 	delete net;

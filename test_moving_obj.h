@@ -25,4 +25,6 @@ const bool test_moving_obj();
 const bool test_moving_obj_file();
 
 const bool test_moving_obj_traj_file();
+
+const bool test_dist_times();
 #endif

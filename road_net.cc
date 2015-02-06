@@ -44,9 +44,6 @@ const std::string PostGisIndex::password="traj_comp";
 const unsigned int PostGisIndex::num_connections = 16;
 unsigned int PostGisIndex::sleep_time_conn = 1;
 
-//const double RoadNet::max_length_short_path = 1000;
-const double RoadNet::max_length_short_path = 0;
-
 //Projection
 const std::string PostGisIndex::srid = "26943";
 const std::string PostGisIndex::spatial_ref = "4326";
@@ -98,8 +95,6 @@ RoadNet::RoadNet(const std::string& input_file_name)
 	seg_index = new PostGisIndex();
 	read(input_file_name);
 	build_boost_graph();
-	
-	compute_distances();
 }
 
 RoadNet::RoadNet
@@ -1159,7 +1154,7 @@ const double RoadNet::distance_point_segment
 		);
 }
 
-void RoadNet::compute_distances()
+void RoadNet::precompute_shortest_paths(const double max_length)
 {
 	distances.reserve(segments.size());
 
@@ -1170,9 +1165,9 @@ void RoadNet::compute_distances()
 				new std::map<unsigned int, double>
 			);
 
-		if(max_length_short_path > 0)
+		if(max_length > 0)
 		{
-			shortest_path(s);
+			shortest_path(s, max_length);
 		}
 	}
 }
@@ -1187,12 +1182,9 @@ void RoadNet::build_boost_graph()
 			add_edge(s, *it, segments.at(s)->length, boost_graph);
 		}
 	}
-
-//	graph_t g(edges, edge + num_arcs, weights, num_nodes);
-//	property_map<graph_t, edge_weight_t>::type weightmap = get(edge_weight, g);
 }
 
-void RoadNet::shortest_path(const unsigned int s1)
+void RoadNet::shortest_path(const unsigned int s1, const double max_length)
 {
 	std::vector<vertex_descriptor> p(num_vertices(boost_graph));
 	std::vector<double> d(num_vertices(boost_graph));
@@ -1202,7 +1194,7 @@ void RoadNet::shortest_path(const unsigned int s1)
 	
 	for (tie(vi, vend) = vertices(boost_graph); vi != vend; ++vi) 
 	{
-		if(d[*vi] <= max_length_short_path)
+		if(d[*vi] <= max_length)
 		{
 			distances.at(s1)->insert(std::pair<unsigned int, double>(*vi,d[*vi]));
 		}
@@ -1222,6 +1214,8 @@ const double RoadNet::shortest_path
 	) 
 		const
 {
+//	std::cout << s1 << "," << s2 << "," << proj_latit_s1 << "," << proj_latit_s2 << "," << proj_longit_s1 << "," << proj_longit_s2 << "," << max_dist << "\n";
+
 	if(s1 == s2)
 	{
 		//If segments are the same, compute distance between points
@@ -1284,68 +1278,18 @@ const double RoadNet::shortest_path
 	(
 		std::list<unsigned int>& short_path, 
 		const unsigned int s1, 
-		const unsigned int s2, 
-		const double latit_from,
-		const double latit_to, 
-		const double longit_from,
-		const double longit_to
+		const unsigned int s2
 	) 
 		const
 {
-	double proj_latit_s1;
-	double proj_longit_s1;
-	double proj_latit_s2;
-	double proj_longit_s2;
-	
 	short_path.clear();
 
 	std::vector<unsigned int> reverse_edges;
 	reverse_edges.reserve(n_segments);
 
-	closest_point_segment
-		(
-			s1, 
-			latit_from, 
-			longit_from, 
-			proj_latit_s1, 
-			proj_longit_s1
-		);
-	
-	closest_point_segment
-		(
-			s2, 
-			latit_to, 
-			longit_to, 
-			proj_latit_s2, 
-			proj_longit_s2
-		);
-	
-	segment* from = segments.at(s1);
-	segment* to = segments.at(s2);
-	
-	double dist_over_seg  = std_distance
-		(
-			proj_latit_s1,
-			from->proj_latit_end,
-			proj_longit_s1,
-			from->proj_longit_end
-		) + std_distance
-		(
-			proj_latit_s2,
-			to->proj_latit_begin,
-			proj_longit_s2,
-			to->proj_longit_begin
-		);
-	
 	if(s1 == s2)
 	{
-		return std_distance
-			(
-				proj_latit_s1, 
-				proj_latit_s2, 
-				proj_longit_s1, 
-				proj_longit_s2
-			);
+		return 0;
 	}
 
 	std::vector<vertex_descriptor> p(num_vertices(boost_graph));
@@ -1370,9 +1314,7 @@ const double RoadNet::shortest_path
 		}
 	}
 
-	return d[s2] 
-		+ dist_over_seg
-		- segments.at(s1)->length;
+	return d[s2] - segments.at(s1)->length;
 
 }
 
