@@ -51,6 +51,9 @@ int main(int argc, char** argv)
 //	test_traj_comp_short_path_freq_subt();
 //	test_dist_times();
 //	test_moving_obj_traj_file();
+	test_TSND();
+
+	exit(1);
 
 	/*Setting the compression algorithms*/
 	std::vector<std::string> compression_algorithms;

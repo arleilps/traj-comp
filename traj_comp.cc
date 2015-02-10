@@ -58,6 +58,8 @@ TrajCompAlgo::TrajCompAlgo(RoadNet* _net)
 
 TrajCompAlgo::~TrajCompAlgo()
 {
+	delete comp_t;
+	delete train_t;
 }
 
 //Frequent subtrajectories are identified in the training file by building
@@ -236,7 +238,6 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj)
 	node_subt* curr_node = tree;
 	std::map<unsigned int, node_subt*>::iterator node_it;
 	std::list<node_subt*> decomp;
-	std::list<unsigned int> times;
 	unsigned int size_dec = 0;
 
 	Trajectory::iterator it = traj->begin();
@@ -259,7 +260,6 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj)
 		else
 		{
 			decomp.push_back(node_it->second);
-			times.push_back((*it)->time);
 			curr_node = node_it->second;
 			++it;
 			size_dec++;
@@ -267,34 +267,31 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj)
 	}
 
 	unsigned int l = 0;
-	unsigned int time;
 
 	while(size_dec > 0)
 	{
 		curr_node = decomp.back();
-		time = times.back();
 
 		decomp.pop_back();
-		times.pop_back();
 		size_dec--;
 
 		if(l == 0)
 		{
-			comp_traj->add_update_front(curr_node->id, time, 0);
+			comp_traj->add_update_front(curr_node->id, 0, 0);
 			l =  curr_node->depth - 1;
 		}
 		else
 		{
-			comp_traj->front()->time = time;
+			comp_traj->front()->time = 0;
 			l--;
 		}
 	}
 	
+	comp_t->stop();
 	_num_updates_orig += traj->size();
 	_num_updates_comp += comp_traj->size();
 	_num_traj_comp++;
 
-	comp_t->stop();
 	_compression_time = comp_t->get_seconds();
 	
 	return comp_traj;
@@ -764,11 +761,11 @@ CompTrajectory* PredPartMatch::compress(Trajectory* traj)
 		}
 	}
 	
+	comp_t->stop();
 	_num_updates_orig += traj->size();
 	_num_updates_comp += comp_traj->size();
 	_num_traj_comp++;
 
-	comp_t->stop();
 	_compression_time = comp_t->get_seconds();
 
 	return comp_traj;
@@ -863,7 +860,6 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 	++it;
 	unsigned int b_end = (*it)->segment;
 	unsigned int end;
-	unsigned int b_time = (*it)->time;
 	++it;
 
 	while(it != traj->end())
@@ -872,22 +868,21 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 			
 		if(! check_sp_through(start, end, b_end))	
 		{
-			comp_traj->add_update(b_end, b_time, 0);
+			comp_traj->add_update(b_end, 0, 0);
 			start = b_end;
 		}
 
 		b_end = (*it)->segment;
-		b_time = (*it)->time;
 		++it;
 	}
 
-	comp_traj->add_update(b_end, b_time, 0);
+	comp_traj->add_update(b_end, 0, 0);
 	
+	comp_t->stop();
 	_num_updates_orig += traj->size();
 	_num_updates_comp += comp_traj->size();
 	_num_traj_comp++;
 
-	comp_t->stop();
 	_compression_time += comp_t->get_seconds();
 
 	return comp_traj;
@@ -999,13 +994,305 @@ CompTrajectory* ShortestPathFreqSubt::compress(Trajectory* traj)
 	
 	delete sp_comp;
 	
+	comp_t->stop();
 	_num_updates_orig += traj->size();
 	_num_updates_comp += fs_comp->size();
 	_num_traj_comp++;
 	
-	comp_t->stop();
 	_compression_time += comp_t->get_seconds();
 
 	return fs_comp;
+}
+
+void TSND::test(const std::string test_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory* traj;
+	std::list < dist_time* > dist_times;
+	std::list < dist_time* > comp_dist_times;
+	
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		traj->extend_traj_shortest_paths(net);
+		traj->get_dist_times_uniform(dist_times, net);
+
+		compress(dist_times, comp_dist_times);
+		Trajectory::delete_dist_times(dist_times);
+
+		Trajectory::delete_dist_times(comp_dist_times);
+	}
+	
+	Trajectory::delete_trajectories(&trajectories);
+}
+
+void TSND::compress
+	(
+		std::list < dist_time* >& dist_times,
+		std::list < dist_time* >& comp_dist_times
+	)
+{
+	comp_dist_times.clear();
+	comp_t->start();
+	dist_time* p_i;
+	dist_time* p_i_minus_one;
+	dist_time* p_index;
+	angle R;
+
+	p_i = new dist_time;
+	p_i->dist = dist_times.front()->dist;
+	p_i->time = dist_times.front()->time;
+	p_index = dist_times.front();
+
+	comp_dist_times.push_back(p_i);
+
+	std::list < dist_time* >::iterator it = dist_times.begin();
+	p_i_minus_one = *it;
+	++it;
+	R.from = (double) -PI / 2;
+	R.to = (double) PI / 2;
+
+	while(it != dist_times.end())
+	{
+		p_i = *it;
+		
+		if(fall_inside(R, *p_index, *p_i))
+		{
+			constrain(R, *p_index, *p_i, max_error);
+		}
+		else
+		{
+			p_index = new dist_time;
+			p_index->dist = p_i_minus_one->dist;
+			p_index->time = p_i_minus_one->time;
+
+			comp_dist_times.push_back(p_index);
+
+			R.from = (double) -PI / 2;
+			R.to = (double) PI / 2;
+		}
+		
+		p_i_minus_one = p_i;
+		++it;
+	}
+			
+	p_index = new dist_time;
+	p_index->dist = dist_times.back()->dist;
+	p_index->time = dist_times.back()->time;
+	comp_dist_times.push_back(p_index);
+	
+	comp_t->stop();
+	_num_updates_orig += dist_times.size();
+	_num_updates_comp += comp_dist_times.size();
+	_num_traj_comp++;
+	
+	_compression_time += comp_t->get_seconds();
+}
+
+bool TSND::fall_inside
+	(
+		const angle& R, 
+		const dist_time& p_index,
+		const dist_time& p_i	
+	)
+{
+	double tan_from;
+	double tan_to;
+	double b_from;
+	double b_to;
+
+	tan_from = tan(R.from);
+	tan_to = tan(R.to);
+
+	if(p_index.time == 0)
+	{
+		if(abs(R.from - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_from = std::numeric_limits<double>::max();
+			tan_from = 0;
+		}
+		else
+		{
+			b_from = p_index.dist;
+		}
+			
+		if(abs(R.to - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_to = std::numeric_limits<double>::max();
+			tan_to = 0;
+		}
+		else
+		{
+			b_to = p_index.dist;
+		}
+	}
+	else
+	{
+		if(abs(R.from - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_from = std::numeric_limits<double>::max();
+			tan_from = 0;
+		}
+		else
+		{
+			if(abs(tan_from)
+				<= std::numeric_limits<double>::epsilon())
+			{
+				b_from = p_index.dist;
+			}
+			else
+			{
+				b_from = (float) p_index.dist / (tan_from * p_index.time);
+			}
+		}
+			
+		if(abs(R.to - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_to = std::numeric_limits<double>::max();
+			tan_to = 0;
+		}
+		else
+		{
+			if(abs(tan_to)
+				<= std::numeric_limits<double>::epsilon())
+			{
+				b_to = p_index.dist;
+			}
+			else
+			{
+				b_to = (float) p_index.dist / (tan_to * p_index.time);
+			}
+		}
+	}
+
+	if(p_i.dist <= (double) tan_to * p_i.time + b_to
+		&& p_i.dist >= (double) tan_from * p_i.time + b_from)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void TSND::constrain
+	(
+		angle& R, 
+		const dist_time& p_index,
+		const dist_time& p_i,
+		const double error
+	)
+{
+	double tan_from;
+	double tan_to;
+	double b_from;
+	double b_to;
+
+	tan_from = tan(R.from);
+	tan_to = tan(R.to);
+
+	if(p_index.time == 0)
+	{
+		if(abs(R.from - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_from = std::numeric_limits<double>::max();
+			tan_from = 0;
+		}
+		else
+		{
+			b_from = p_index.dist;
+		}
+			
+		if(abs(R.to - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_to = std::numeric_limits<double>::max();
+			tan_to = 0;
+		}
+		else
+		{
+			b_to = p_index.dist;
+		}
+	}
+	else
+	{
+		if(abs(R.from - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_from = std::numeric_limits<double>::max();
+			tan_from = 0;
+		}
+		else
+		{
+			if(abs(tan_from)
+				<= std::numeric_limits<double>::epsilon())
+			{
+				b_from = p_index.dist;
+			}
+			else
+			{
+				b_from = (float) p_index.dist / (tan_from * p_index.time);
+			}
+		}
+			
+		if(abs(R.to - (double) PI / 2.) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			b_to = std::numeric_limits<double>::max();
+			tan_to = 0;
+		}
+		else
+		{
+			if(abs(tan_to)
+				<= std::numeric_limits<double>::epsilon())
+			{
+				b_to = p_index.dist;
+			}
+			else
+			{
+				b_to = (float) p_index.dist / (tan_to * p_index.time);
+			}
+		}
+	}
+
+	if(p_i.dist + error < tan_to * p_i.time + b_to)
+	{
+		if(abs(p_i.time - p_index.time) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			R.to = (double) PI / 2;
+		}
+		else
+		{
+			R.to = atan2((p_i.dist + error - p_index.dist), (p_i.time - p_index.time));
+		}
+		
+	}
+
+	if(p_i.dist - error > tan_from * p_i.time + b_from)
+	{
+		if(abs(p_i.time - p_index.time) 
+			<= std::numeric_limits<double>::epsilon())
+		{
+			R.from = (double) PI / 2;
+		}
+		else
+		{
+			tan_from = 
+				(double) (p_i.dist - error - p_index.dist) / (p_i.time - p_index.time);
+			R.from = atan2((p_i.dist - error - p_index.dist), (p_i.time - p_index.time));
+		}
+	}
 }
 

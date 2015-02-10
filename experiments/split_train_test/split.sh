@@ -2,8 +2,7 @@ input_file_name=$1
 output_file_name=$2
 size_train=(5 10 20 40)
 num_lines=`wc -l $input_file_name | awk '{print $1}'`
-e=$num_lines
-num_lines=`echo "scale=10; $num_lines-1" | bc`
+e=`echo "scale=10; $num_lines+1" | bc`
 
 for s in ${size_train[@]}
 do

@@ -223,6 +223,8 @@ class Trajectory
 				const double _time_div=TIMEDIV
 			);
 
+		static void delete_dist_times(std::list < dist_time* >& dist_times);
+
 		 /*OBJECT METHODS*/
 
 		void get_dist_times_uniform

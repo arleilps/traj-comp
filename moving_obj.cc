@@ -203,7 +203,7 @@ void Trajectory::get_dist_times_uniform
 	{
 		sti = (*iti);
 		
-		if(sti->up != NULL)
+		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
 		{
 			dist = net->segment_length(sti->segment) - sti->dist;
 
@@ -211,7 +211,7 @@ void Trajectory::get_dist_times_uniform
 			++itj;
 
 			while(itj != seg_time_lst.end() 
-				&& (*itj)->up == NULL)
+				&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
 			{
 				stj = (*itj);
 				dist += net->segment_length(stj->segment);
@@ -251,6 +251,17 @@ void Trajectory::get_dist_times_uniform
 			++iti;
 		}
 	}
+}
+
+void Trajectory::delete_dist_times(std::list < dist_time* >& dist_times)
+{
+	for(std::list< dist_time* >::iterator it = dist_times.begin(); 
+		it != dist_times.end(); ++it)
+	{
+		delete *it;
+	}
+
+	dist_times.clear();
 }
 
 void Trajectory::add_update
@@ -762,12 +773,8 @@ const unsigned int Trajectory::read_trajectories
 	double dist;
 	std::getline(traj_file, line_str);
 	Trajectory* traj;
+	unsigned int num_traj = 0;
 	
-	//First line contains number of trajectories
-	unsigned int num_traj = atoi(line_str.c_str());
-	
-	std::getline(traj_file, line_str);
-
 	while(! traj_file.eof())
 	{
 		line_vec = split(line_str,',');
@@ -799,6 +806,8 @@ const unsigned int Trajectory::read_trajectories
 
 			traj_map.insert(std::pair<std::string, Trajectory*>
 				(id, traj));
+
+			num_traj++;
 		}
 		else
 		{
@@ -871,14 +880,10 @@ const bool Trajectory::write_map_matched_trajectories
 	//Precomputing shortest paths
 	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH);
 
-	output_file << updates.size() << "\n";
-
 	for(unsigned int u = 0; u < updates.size(); u++)
 	{
 		//Map-matching updates
 		traj = map_matching(*(updates.at(u)), net);
-		//traj->extend_traj_shortest_paths(net);
-		//traj->remove_repeated_segments();
 		traj->write(output_file, net);
 		delete traj;
 		delete_list_updates(updates.at(u));

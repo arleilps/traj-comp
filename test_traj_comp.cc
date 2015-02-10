@@ -217,3 +217,128 @@ const bool test_traj_comp_ppm()
 
 	return true;
 }
+
+const bool test_TSND()
+{
+	/*
+	angle R;
+	dist_time p_index;
+	dist_time p_i;
+
+	R.from = (double) 0;
+	R.to = (double) PI / 4;
+	
+	p_index.dist = 0;
+	p_index.time = 0;
+
+	p_i.dist = 0.99;
+	p_i.time = 100;
+	
+	std::cout << TSND::fall_inside(R, p_index, p_i) << std::endl;
+
+	p_index.dist = 10;
+	p_index.time = 10;
+
+	std::cout << TSND::fall_inside(R, p_index, p_i) << std::endl;
+
+	p_i.dist = 99;
+	p_i.time = 100;
+	
+	std::cout << TSND::fall_inside(R, p_index, p_i) << std::endl;
+
+	std::cout << "R: " << R.from << " " << R.to << std::endl;
+	
+	TSND::constrain(R, p_index, p_i, 0);
+
+	std::cout << "R: " << R.from << " " << R.to << std::endl;
+
+	R.from = (double) 0;
+	R.to = (double) PI / 4;
+	
+	std::cout << "R: " << R.from << " " << R.to << std::endl;
+	
+	TSND::constrain(R, p_index, p_i, 100000);
+	
+	std::cout << "R: " << R.from << " " << R.to << std::endl;
+	*/
+
+	std::list < dist_time* > dist_times;
+	std::list < dist_time* > comp_dist_times;
+	
+	dist_time* dt = new dist_time;
+	dt->dist = 0;
+	dt->time = 0;
+	dist_times.push_back(dt);
+	
+	dt = new dist_time;
+	dt->dist = 0;
+	dt->time = 1;
+	dist_times.push_back(dt);
+
+	dt = new dist_time;
+	dt->dist = 0;
+	dt->time = 2;
+	dist_times.push_back(dt);
+
+	dt = new dist_time;
+	dt->dist = 1;
+	dt->time = 3;
+	dist_times.push_back(dt);
+
+	dt = new dist_time;
+	dt->dist = 2;
+	dt->time = 4;
+	dist_times.push_back(dt);
+	
+	dt = new dist_time;
+	dt->dist = 3;
+	dt->time = 5;
+	dist_times.push_back(dt);
+	
+	dt = new dist_time;
+	dt->dist = 3;
+	dt->time = 6;
+	dist_times.push_back(dt);
+	
+	dt = new dist_time;
+	dt->dist = 3;
+	dt->time = 7;
+	dist_times.push_back(dt);
+	
+	TSND* tsnd = new TSND(NULL, 1.01);
+
+	tsnd->compress(dist_times, comp_dist_times);
+
+	for(std::list< dist_time* >::iterator it = comp_dist_times.begin();
+		it != comp_dist_times.end(); ++it)
+	{
+		std::cout << (*it)->dist << " " << (*it)->time << std::endl;
+	}
+
+	Trajectory::delete_dist_times(comp_dist_times);
+	Trajectory::delete_dist_times(dist_times);
+
+	delete tsnd;
+
+	return true;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

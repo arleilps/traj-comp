@@ -32,6 +32,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "moving_obj.h"
 #include "perf.h"
 
+#define PI 3.14159265
+
 /*Node in the frequent subtrajectory tree*/
 typedef struct t_node_subt
 {
@@ -56,6 +58,12 @@ class CompTrajectory: public Trajectory
 
 		virtual ~CompTrajectory(){};
 };
+
+typedef struct t_angle
+{
+	double from;
+	double to;
+}angle;
 
 /**
  * Generic trajectory compression algorithm
@@ -435,6 +443,29 @@ class TSND: public TrajCompAlgo
 		{
 			max_error = _max_error;
 		}
+		
+		void test(const std::string test_traj_file_name);
+		
+		void compress
+			(
+				std::list < dist_time* >& dist_times,
+				std::list < dist_time* >& comp_dist_times
+			);
+		
+		static bool fall_inside
+			(
+				const angle& R,
+				const dist_time& p_index,
+				const dist_time& p_i
+			);
+
+		static void constrain
+			(
+				angle& R,
+				const dist_time& p_index,
+				const dist_time& p_i,
+				const double error
+			);
 	private:
 		double max_error;
 };
