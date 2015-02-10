@@ -14,6 +14,7 @@ length_subt=6
 min_sup=100
 short_path=1600
 order=2
+n_threads=6
 
 map_matched_traj='../../../data/map_matched_cab_stream_sfo'
 road_net='../../../data/road_net_sfo.csv'
