@@ -115,7 +115,7 @@ seg_time* new_seg_time
 	return st;
 }
 
-p_thread_param* new_p_thread_param
+p_thread_param_map* new_p_thread_param_map
 	(
 		std::vector<std::list< update* > * >* updates,
 		unsigned int* pointer,
@@ -125,13 +125,31 @@ p_thread_param* new_p_thread_param
 		RoadNet* net
 	)
 {
-	p_thread_param* param = new p_thread_param;
+	p_thread_param_map* param = new p_thread_param_map;
 	
 	param->updates = updates;
 	param->pointer = pointer;
 	param->mutex_pool = mutex_pool;
 	param->mutex_file = mutex_file;
 	param->output_file = output_file;
+	param->net = net;
+
+	return param;
+}
+
+p_thread_param_exp* new_p_thread_param_exp
+	(
+		std::list< Trajectory* >*  trajectories,
+		std::list< Trajectory* >::iterator* pointer,
+		pthread_mutex_t* mutex_pool,
+		RoadNet* net
+	)
+{
+	p_thread_param_exp* param = new p_thread_param_exp;
+	
+	param->trajectories = trajectories;
+	param->pointer = pointer;
+	param->mutex_pool = mutex_pool;
 	param->net = net;
 
 	return param;
@@ -896,7 +914,7 @@ const bool Trajectory::write_map_matched_trajectories
 	return true;
 }
 
-void run_thread
+void run_thread_map
 	(
 		std::vector<std::list< update* > * >* updates,
 		unsigned int* pointer,
@@ -935,11 +953,50 @@ void run_thread
 	}
 }
 
-void* start_thread(void* v_param)
+void run_thread_exp
+	(
+		std::list< Trajectory* >*  trajectories,
+		std::list< Trajectory* >::iterator* pointer,
+		pthread_mutex_t* mutex_pool,
+		RoadNet* net
+	)
 {
-	p_thread_param* param = (p_thread_param*) v_param;
-	run_thread(param->updates, param->pointer, param->mutex_pool,
+	Trajectory* traj;
+
+	while(true)
+	{
+		pthread_mutex_lock(mutex_pool);
+		
+		if(*pointer == trajectories->end())
+		{
+			pthread_mutex_unlock(mutex_pool);
+			break;
+		}
+		else
+		{
+			traj = *(*pointer);
+			++(*pointer);
+			pthread_mutex_unlock(mutex_pool);
+		}
+		
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
+	}
+}
+
+void* start_thread_map(void* v_param)
+{
+	p_thread_param_map* param = (p_thread_param_map*) v_param;
+	run_thread_map(param->updates, param->pointer, param->mutex_pool,
 		param->mutex_file, param->output_file, param->net);
+	pthread_exit(NULL);
+}
+
+void* start_thread_exp(void* v_param)
+{
+	p_thread_param_exp* param = (p_thread_param_exp*) v_param;
+	run_thread_exp(param->trajectories, param->pointer, param->mutex_pool,
+		param->net);
 	pthread_exit(NULL);
 }
 
@@ -976,19 +1033,19 @@ const bool Trajectory::write_map_matched_trajectories_multithreads
 	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH);
 
 	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
-	p_thread_param* param;
+	p_thread_param_map* param;
 	pthread_mutex_t* mutex_pool = new pthread_mutex_t;
 	pthread_mutex_init(mutex_pool, NULL);
 	pthread_mutex_t* mutex_file = new pthread_mutex_t;
 	pthread_mutex_init(mutex_file, NULL);
 	unsigned int pointer = 0;
-	std::vector<p_thread_param*> params;
+	std::vector<p_thread_param_map*> params;
 
 	for(unsigned int t = 0; t < num_threads; t++)
 	{
-		param = new_p_thread_param(&updates, &pointer, mutex_pool, mutex_file, &output_file, net);
+		param = new_p_thread_param_map(&updates, &pointer, mutex_pool, mutex_file, &output_file, net);
 		params.push_back(param);
-		pthread_create(&threads[t], NULL, start_thread, param);
+		pthread_create(&threads[t], NULL, start_thread_map, param);
 	}
 
 	for(unsigned int t = 0; t < num_threads; t++)
@@ -1015,6 +1072,40 @@ const bool Trajectory::write_map_matched_trajectories_multithreads
 	net->clear_distances();
 
 	return true;
+}
+
+void Trajectory::expand_trajectories
+	(
+		std::list< Trajectory * >& trajectories,
+		RoadNet* net
+	)
+{
+	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
+	p_thread_param_exp* param;
+	pthread_mutex_t* mutex_pool = new pthread_mutex_t;
+	pthread_mutex_init(mutex_pool, NULL);
+	std::list < Trajectory* >::iterator pointer = trajectories.begin();
+	std::vector<p_thread_param_exp*> params;
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		param = new_p_thread_param_exp(&trajectories, &pointer, mutex_pool, net);
+		params.push_back(param);
+		pthread_create(&threads[t], NULL, start_thread_exp, param);
+	}
+	
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		pthread_join(threads[t], NULL);
+	}
+	 
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		delete params[t];
+	}
+	
+	free(threads);
+	delete mutex_pool;
 }
 
 const unsigned int Trajectory::read_updates

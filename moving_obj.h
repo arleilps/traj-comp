@@ -94,7 +94,7 @@ seg_time* new_seg_time
 		const update* up=NULL
 	);
 
-typedef struct t_p_thread_param
+typedef struct t_p_thread_param_map
 {
 	std::vector<std::list< update* > * >* updates;
 	unsigned int* pointer;
@@ -102,7 +102,7 @@ typedef struct t_p_thread_param
 	pthread_mutex_t* mutex_file;
 	std::ofstream* output_file;
 	RoadNet* net;
-}p_thread_param;
+}p_thread_param_map;
 
 typedef struct t_dist_time
 {
@@ -189,6 +189,12 @@ class Trajectory
 				const RoadNet* net
 			) 
 				throw (std::ios_base::failure);
+
+		static void expand_trajectories
+			(
+				std::list< Trajectory * >& trajectories,
+				RoadNet* net
+			);
 		/**
 		 * Map-matches trajectories from an input file and writes
 		 * them into an output file.
@@ -398,6 +404,14 @@ class Trajectory
 				const update* up, const RoadNet* net
 			);
 };
+
+typedef struct t_p_thread_param_exp
+{
+	std::list < Trajectory* >* trajectories;
+	std::list < Trajectory* >::iterator* pointer;
+	pthread_mutex_t* mutex_pool;
+	RoadNet* net;
+}p_thread_param_exp;
 
 /**
  * Generic class for managing trajectory data using a database.

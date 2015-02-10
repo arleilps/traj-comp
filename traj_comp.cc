@@ -595,7 +595,8 @@ void PredPartMatch::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
-	
+	Trajectory::expand_trajectories(trajectories, net);
+
 	train_t->start();
 
 	//Adds each trajectory into the tree
@@ -604,8 +605,6 @@ void PredPartMatch::train(const std::string training_traj_file_name)
 	{
 		_num_traj_train++;
 		_num_updates_train += (*it)->size();
-		(*it)->extend_traj_shortest_paths(net);
-		(*it)->remove_repeated_segments();
 		
 		add_trajectory(*it);
 
@@ -624,6 +623,7 @@ void PredPartMatch::test(const std::string test_traj_file_name)
 	std::list<node_subt*> compressed;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -631,8 +631,6 @@ void PredPartMatch::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->extend_traj_shortest_paths(net);
-		traj->remove_repeated_segments();
 		comp_traj = compress(traj);
 		delete comp_traj;
 	}
