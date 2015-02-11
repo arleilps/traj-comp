@@ -68,6 +68,7 @@ void FreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 	
 	train_t->start();
 	
@@ -77,8 +78,6 @@ void FreqSubt::train(const std::string training_traj_file_name)
 	{
 		_num_traj_train++;
 		_num_updates_train += (*it)->size();
-		(*it)->extend_traj_shortest_paths(net);
-		(*it)->remove_repeated_segments();
 		
 		add_trajectory(*it);
 
@@ -104,6 +103,7 @@ void FreqSubt::test(const std::string test_traj_file_name)
 	std::list<node_subt*> compressed;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 	std::list<Trajectory*> decomp;
 	std::list<Trajectory*>::iterator t;
 
@@ -113,8 +113,6 @@ void FreqSubt::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->extend_traj_shortest_paths(net);
-		traj->remove_repeated_segments();
 		
 		traj->decompose_online(decomp);
 		comp_traj = new CompTrajectory;
@@ -131,6 +129,7 @@ void FreqSubt::test(const std::string test_traj_file_name)
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
+	_compression_time = comp_t->get_seconds();
 }
 
 //Each node in the tree has a map from a segment id to a child node
@@ -291,8 +290,6 @@ CompTrajectory* FreqSubt::compress(Trajectory* traj)
 	_num_updates_orig += traj->size();
 	_num_updates_comp += comp_traj->size();
 	_num_traj_comp++;
-
-	_compression_time = comp_t->get_seconds();
 	
 	return comp_traj;
 }
@@ -636,6 +633,7 @@ void PredPartMatch::test(const std::string test_traj_file_name)
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
+	_compression_time = comp_t->get_seconds();
 }
 
 void PredPartMatch::add_trajectory
@@ -764,8 +762,6 @@ CompTrajectory* PredPartMatch::compress(Trajectory* traj)
 	_num_updates_comp += comp_traj->size();
 	_num_traj_comp++;
 
-	_compression_time = comp_t->get_seconds();
-
 	return comp_traj;
 }
 
@@ -794,6 +790,7 @@ void ShortestPath::test(const std::string test_traj_file_name)
 	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 	std::list<Trajectory*> decomp;
 	std::list<Trajectory*>::iterator t;
 
@@ -803,8 +800,6 @@ void ShortestPath::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->extend_traj_shortest_paths(net);
-		traj->remove_repeated_segments();
 		
 		traj->decompose_online(decomp);
 		comp_traj = new CompTrajectory;
@@ -821,6 +816,7 @@ void ShortestPath::test(const std::string test_traj_file_name)
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
+	_compression_time = comp_t->get_seconds();
 }
 
 bool ShortestPath::check_sp_through
@@ -881,8 +877,6 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 	_num_updates_comp += comp_traj->size();
 	_num_traj_comp++;
 
-	_compression_time += comp_t->get_seconds();
-
 	return comp_traj;
 }
 
@@ -913,6 +907,7 @@ void ShortestPathFreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 	
 	train_t->start();
 
@@ -923,8 +918,6 @@ void ShortestPathFreqSubt::train(const std::string training_traj_file_name)
 	{
 		_num_traj_train++;
 		_num_updates_train += (*it)->size();
-		(*it)->extend_traj_shortest_paths(net);
-		(*it)->remove_repeated_segments();
 		
 		sp_comp = shortest_path_comp->compress(*it);
 		freq_subt_comp->add_trajectory(sp_comp);
@@ -951,6 +944,7 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 	std::list<Trajectory*> decomp;
 	std::list<Trajectory*>::iterator t;
 
@@ -960,8 +954,6 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->extend_traj_shortest_paths(net);
-		traj->remove_repeated_segments();
 		
 		traj->decompose_online(decomp);
 		comp_traj = new CompTrajectory;
@@ -978,6 +970,7 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
+	_compression_time = comp_t->get_seconds();
 }
 	
 CompTrajectory* ShortestPathFreqSubt::compress(Trajectory* traj)
@@ -997,8 +990,6 @@ CompTrajectory* ShortestPathFreqSubt::compress(Trajectory* traj)
 	_num_updates_comp += fs_comp->size();
 	_num_traj_comp++;
 	
-	_compression_time += comp_t->get_seconds();
-
 	return fs_comp;
 }
 
@@ -1010,6 +1001,7 @@ void TSND::test(const std::string test_traj_file_name)
 	std::list < dist_time* > comp_dist_times;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	Trajectory::expand_trajectories(trajectories, net);
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -1017,7 +1009,6 @@ void TSND::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->extend_traj_shortest_paths(net);
 		traj->get_dist_times_uniform(dist_times, net);
 
 		compress(dist_times, comp_dist_times);
@@ -1027,6 +1018,7 @@ void TSND::test(const std::string test_traj_file_name)
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
+	_compression_time = comp_t->get_seconds();
 }
 
 void TSND::compress
@@ -1088,8 +1080,6 @@ void TSND::compress
 	_num_updates_orig += dist_times.size();
 	_num_updates_comp += comp_dist_times.size();
 	_num_traj_comp++;
-	
-	_compression_time += comp_t->get_seconds();
 }
 
 bool TSND::fall_inside
