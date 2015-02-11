@@ -852,25 +852,29 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 	comp_traj->add_update(start, (*it)->time, (*it)->dist);
 		
 	++it;
-	unsigned int b_end = (*it)->segment;
-	unsigned int end;
-	++it;
 
-	while(it != traj->end())
+	if(it != traj->end())
 	{
-		end = (*it)->segment;
-			
-		if(! check_sp_through(start, end, b_end))	
+		unsigned int b_end = (*it)->segment;
+		unsigned int end;
+		++it;
+
+		while(it != traj->end())
 		{
-			comp_traj->add_update(b_end, 0, 0);
-			start = b_end;
+			end = (*it)->segment;
+				
+			if(! check_sp_through(start, end, b_end))	
+			{
+				comp_traj->add_update(b_end, 0, 0);
+				start = b_end;
+			}
+
+			b_end = (*it)->segment;
+			++it;
 		}
 
-		b_end = (*it)->segment;
-		++it;
+		comp_traj->add_update(b_end, 0, 0);
 	}
-
-	comp_traj->add_update(b_end, 0, 0);
 	
 	comp_t->stop();
 	_num_updates_orig += traj->size();
