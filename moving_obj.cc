@@ -293,6 +293,11 @@ void Trajectory::add_update
 	seg_time* st = new_seg_time(segment, time, dist, up);
 	seg_time_lst.push_back(st);
 	size_traj++;
+
+	if(up != NULL)
+	{
+		obj = up->object;
+	}
 }
 
 void Trajectory::add_update_front
@@ -306,6 +311,11 @@ void Trajectory::add_update_front
 	seg_time* st = new_seg_time(segment, time, dist, up);
 	seg_time_lst.push_front(st);
 	size_traj++;
+
+	if(up != NULL)
+	{
+		obj = up->object;
+	}
 }
 
 const double cdf_normal(const double sigma, const double x)
@@ -861,14 +871,12 @@ void Trajectory::write(std::ofstream& output_file, const RoadNet* net) const
 
 	std::list < Trajectory* > decomp;
 	decompose_online(decomp);
-	std::string obj;
 	Trajectory* traj;
-	
+
 	for(std::list < Trajectory* >::iterator itt = decomp.begin();
 		itt != decomp.end(); itt++)
 	{
 		traj = *itt;
-		obj = traj->back()->up->object;
 		output_file << obj << ",";
 		
 		for(std::list< seg_time* >::const_iterator its = traj->seg_time_lst.begin();
@@ -1051,7 +1059,6 @@ const bool Trajectory::write_map_matched_trajectories_multithreads
 		return false;
 	}
 
-	output_file << updates.size() << "\n";
 	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH);
 
 	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
@@ -1245,7 +1252,14 @@ void Trajectory::print() const
 	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
 		it != seg_time_lst.end(); ++it)
 	{
-		std::cout << "(" << (*it)->segment << " , " << (*it)->time << "," << (*it)->dist << ") ";
+		if((*it)->up == NULL)
+		{
+			std::cout << "(" << (*it)->segment << "," << (*it)->time << "," << (*it)->dist << ") ";
+		}
+		else
+		{
+			std::cout << "(" << (*it)->up->object << "," << (*it)->segment << "," << (*it)->time << "," << (*it)->dist << ") ";
+		}
 	}
 
 	std::cout << std::endl;

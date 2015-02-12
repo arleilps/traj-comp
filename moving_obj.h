@@ -273,8 +273,7 @@ class Trajectory
 			(
 				std::ofstream& output_file, 
 				const RoadNet* net
-			) 
-				const;
+			) const;
 
 		/**
 		 * Prints a trajectory on the screen (for testing).

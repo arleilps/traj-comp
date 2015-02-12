@@ -68,7 +68,6 @@ void FreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 	
 	train_t->start();
 	
@@ -103,7 +102,6 @@ void FreqSubt::test(const std::string test_traj_file_name)
 	std::list<node_subt*> compressed;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 	std::list<Trajectory*> decomp;
 	std::list<Trajectory*>::iterator t;
 
@@ -592,7 +590,6 @@ void PredPartMatch::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 
 	train_t->start();
 
@@ -620,7 +617,6 @@ void PredPartMatch::test(const std::string test_traj_file_name)
 	std::list<node_subt*> compressed;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -790,7 +786,6 @@ void ShortestPath::test(const std::string test_traj_file_name)
 	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 	std::list<Trajectory*> decomp;
 	std::list<Trajectory*>::iterator t;
 
@@ -911,7 +906,6 @@ void ShortestPathFreqSubt::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 	
 	train_t->start();
 
@@ -948,7 +942,6 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 	std::list<Trajectory*> decomp;
 	std::list<Trajectory*>::iterator t;
 
@@ -1005,7 +998,6 @@ void TSND::test(const std::string test_traj_file_name)
 	std::list < dist_time* > comp_dist_times;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	Trajectory::expand_trajectories(trajectories, net);
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
