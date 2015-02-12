@@ -793,12 +793,13 @@ const unsigned int Trajectory::read_trajectories
 	std::getline(traj_file, line_str);
 	Trajectory* traj;
 	unsigned int num_traj = 0;
+	unsigned int i;
 	
 	while(! traj_file.eof())
 	{
 		line_vec = split(line_str,',');
 
-		if(line_vec.size() != 4)
+		if(line_vec.size() < 4)
 		{
 			 std::cerr << "Error: Invalid trajectory file format, check the README file: "
 			 	<< input_file_name << std::endl << std::endl;
@@ -808,20 +809,10 @@ const unsigned int Trajectory::read_trajectories
 		}
 
 		id = line_vec[0];
-		seg_name = line_vec[1];
-		seg = net->seg_ID(seg_name);
-		
-		std::stringstream ss(line_vec[2]);
-		ss >> time;
-		
-		std::stringstream se_dist(line_vec[3]);
-		se_dist >> dist;
 
 		if(traj_map.find(id) == traj_map.end())
 		{
 			traj = new Trajectory(id);
-
-			traj->add_update(seg, time, dist);
 
 			traj_map.insert(std::pair<std::string, Trajectory*>
 				(id, traj));
@@ -831,9 +822,23 @@ const unsigned int Trajectory::read_trajectories
 		else
 		{
 			traj = traj_map.at(id);
-			
-			traj->add_update(seg, time, dist);
 		}
+		
+		i = 1;
+		for(; i < line_vec.size() - 3; i++)
+		{
+			seg_name = line_vec[i];
+			seg = net->seg_ID(seg_name);
+			traj->add_update(seg, 0, 0);
+		}
+		
+		seg_name = line_vec[i];
+		seg = net->seg_ID(seg_name);
+		std::stringstream ss(line_vec[i+1]);
+		ss >> time;
+		std::stringstream se_dist(line_vec[i+2]);
+		se_dist >> dist;
+		traj->add_update(seg, time, dist);
 		
 		std::getline(traj_file, line_str);
 	}
@@ -853,15 +858,31 @@ const unsigned int Trajectory::read_trajectories
 void Trajectory::write(std::ofstream& output_file, const RoadNet* net) const
 {
 	seg_time* st;
-	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
-		it != seg_time_lst.end(); ++it)
+
+	std::list < Trajectory* > decomp;
+	decompose_online(decomp);
+	std::string obj;
+	Trajectory* traj;
+	
+	for(std::list < Trajectory* >::iterator itt = decomp.begin();
+		itt != decomp.end(); itt++)
 	{
-		st = *it;
-		output_file << st->up->object << "," << 
-			net->seg_name(st->segment) << "," <<
-			st->time << "," <<
-			st->dist << "\n";
+		traj = *itt;
+		obj = traj->back()->up->object;
+		output_file << obj << ",";
+		
+		for(std::list< seg_time* >::const_iterator its = traj->seg_time_lst.begin();
+			its != traj->seg_time_lst.end(); ++its)
+		{
+			st = *its;
+			output_file << net->seg_name(st->segment) << ",";
+		}
+		
+		output_file << traj->back()->time << "," <<
+			traj->back()->dist << "\n";
 	}
+
+	delete_trajectories(&decomp);
 
 	output_file.flush();
 }
@@ -945,8 +966,8 @@ void run_thread_map
 		}
 		
 		traj = Trajectory::map_matching(*object_updates, net);
-		//traj->extend_traj_shortest_paths(net);
-		//traj->remove_repeated_segments();
+		traj->extend_traj_shortest_paths(net);
+		traj->remove_repeated_segments();
 
 		pthread_mutex_lock(mutex_file);
 		traj->write(*output_file, net);
@@ -1230,7 +1251,7 @@ void Trajectory::print() const
 	std::cout << std::endl;
 }
 
-void Trajectory::decompose_online(std::list<Trajectory*>& decomp)
+void Trajectory::decompose_online(std::list<Trajectory*>& decomp) const
 {
 	seg_time* st;
 	decomp.push_back(new Trajectory);

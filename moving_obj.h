@@ -293,7 +293,7 @@ class Trajectory
 		**/
 		void remove_repeated_segments();
 
-		void decompose_online(std::list<Trajectory*>& decomp);
+		void decompose_online(std::list<Trajectory*>& decomp) const;
 		
 		void append(Trajectory* traj);
 		
