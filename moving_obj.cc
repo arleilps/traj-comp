@@ -715,13 +715,13 @@ void Trajectory::extend_traj_shortest_paths(const RoadNet*net)
 			{
 				for(std::list<unsigned int>::iterator s = sp.begin(); s != sp.end(); ++s)
 				{
-					//FIXME
 					seg_time_lst.insert
 						(
 							st_next, 
 							new_seg_time(*s, 0, 0)
 						);
-				
+					
+					size_traj++;
 					++st;
 				}
 			}
@@ -750,6 +750,7 @@ void Trajectory::remove_repeated_segments()
 			if((*st)->segment == (*st_next)->segment)
 			{
 				st = seg_time_lst.erase(st);
+				size_traj--;
 			}
 			else
 			{

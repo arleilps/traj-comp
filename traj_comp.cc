@@ -800,7 +800,7 @@ void ShortestPath::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		
+
 		traj->decompose_online(decomp);
 		comp_traj = new CompTrajectory;
 		
@@ -813,6 +813,7 @@ void ShortestPath::test(const std::string test_traj_file_name)
 		
 		decomp.clear();
 		delete comp_traj;
+		_num_traj_comp++;
 	}
 	
 	Trajectory::delete_trajectories(&trajectories);
@@ -879,7 +880,6 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 	comp_t->stop();
 	_num_updates_orig += traj->size();
 	_num_updates_comp += comp_traj->size();
-	_num_traj_comp++;
 
 	return comp_traj;
 }
