@@ -9,6 +9,8 @@ e=`echo "scale=10; $num_lines+1" | bc`
 
 for s in ${size_train[@]}
 do
+  rm $output_file_name\_train_$s
+  rm $output_file_name\_test_$s
   t=`echo "scale=10; $num_lines*$s/100" | bc`
   t=`echo "$t" | python -c "print int(round(float(raw_input())))"`
   t=`echo "scale=10; $t+1" | bc`
