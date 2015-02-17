@@ -52,6 +52,7 @@ int main(int argc, char** argv)
 //	test_dist_times();
 //	test_moving_obj_traj_file();
 //	test_TSND();
+//	test_least_squares();
 
 //	exit(1);
 

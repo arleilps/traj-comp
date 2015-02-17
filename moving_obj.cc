@@ -27,6 +27,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <fstream>
 #include <limits>
 #include <pthread.h>
+#include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 #include "io.h"
 #include "moving_obj.h"
@@ -38,8 +40,7 @@ const double Trajectory::BETACONST = 1;
 const double Trajectory::RADIUS = 30;
 const double Trajectory::MAXSPEED = 32;	//in m/s
 const unsigned int Trajectory::MAXCANDMATCHES = 5;
-//const double Trajectory::MAXLENGTHSHORTESTPATH = 1000;
-const double Trajectory::MAXLENGTHSHORTESTPATH = 0;
+const double Trajectory::MAXLENGTHSHORTESTPATH = 1000;
 
 double Trajectory::time_div = TIMEDIV;
 double Trajectory::sigma = SIGMA;
@@ -267,6 +268,145 @@ void Trajectory::get_dist_times_uniform
 		else
 		{
 			++iti;
+		}
+	}
+}
+
+void Trajectory::get_dist_times_least_squares
+	(
+		std::list < dist_time* >& dist_times,
+		const Eigen::VectorXd& f,
+		RoadNet* net
+	) 
+		const
+{
+	std::list< seg_time* >::const_iterator iti = seg_time_lst.begin();
+	std::list< seg_time* >::const_iterator itj;
+	seg_time* sti;
+	seg_time* stj;
+	double dist;
+	double total_dist;
+	unsigned int s_time;
+	unsigned int e_time;
+	double conv_ratio;
+	double pred_time;
+
+	sti = (*iti);
+	dist_times.push_back(new_dist_time(sti->dist, sti->time));
+	total_dist = sti->dist;
+
+	while(iti != seg_time_lst.end())
+	{
+		sti = (*iti);
+		
+		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
+		{
+			dist = net->segment_length(sti->segment) - sti->dist;
+			pred_time = f[sti->segment] 
+				* (double) dist / (net->segment_length(sti->segment));
+
+			itj = iti;
+			++itj;
+
+			while(itj != seg_time_lst.end() 
+				&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+			{
+				stj = (*itj);
+				dist += net->segment_length(stj->segment);
+				pred_time += f[stj->segment];
+				++itj;
+			}
+
+			stj = (*itj);
+			dist += stj->dist;
+			pred_time += f[stj->segment] 
+				* (double) stj->dist / (net->segment_length(sti->segment));
+
+			s_time = sti->time;
+			e_time = stj->time;
+			conv_ratio = (double) (e_time-s_time) / pred_time;
+
+			itj = iti;
+			++itj;
+			
+			dist = net->segment_length(sti->segment) - sti->dist;
+			pred_time = f[sti->segment] 
+				* (double) dist / (net->segment_length(sti->segment));
+
+			e_time = s_time + static_cast<int>(pred_time * conv_ratio);
+			dist_times.push_back(new_dist_time(total_dist + dist, e_time));
+
+			while(itj != seg_time_lst.end() 
+				&& (*itj)->up == NULL)
+			{
+				dist += net->segment_length(stj->segment);
+				pred_time += f[stj->segment];
+				e_time = s_time + static_cast<int>(pred_time * conv_ratio);
+				dist_times.push_back(new_dist_time(total_dist + dist, e_time));
+			}
+	
+			dist += stj->dist;
+			dist_times.push_back(new_dist_time(total_dist + dist, stj->time));
+			total_dist += dist;
+
+			iti = itj;
+		}
+		else
+		{
+			++iti;
+		}
+	}
+}
+
+void Trajectory::get_sparse_rep
+	(
+		std::vector < Eigen::Triplet<double> >& Q,
+		std::vector < double >& y, 
+		unsigned int& sz,
+		RoadNet* net
+	) 
+		const
+{
+	seg_time* st;
+	double frac;
+	unsigned int time;
+	unsigned int start;
+	
+	std::list < seg_time* >::const_iterator it_st = seg_time_lst.begin();
+	st = *it_st;
+	frac = (double) (net->segment_length(st->segment) - st->dist) / net->segment_length(st->segment);
+	Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+	start = st->time;
+	++it_st;
+
+	while(it_st != seg_time_lst.end())
+	{
+		st = *it_st;
+
+		if(st->time == 0 && st->dist == 0)	//shortest path completion
+		{
+			frac = 1;
+			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+		}
+		else
+		{
+			frac = (double) st->dist / net->segment_length(st->segment);
+			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+			time = st->time - start;
+			y.push_back(time);
+			sz++;
+		}
+		
+		++it_st;
+
+		if((st->time != 0 || st->dist != 0) &&
+			it_st != seg_time_lst.end())
+		{
+			frac = (double) (net->segment_length(st->segment) - st->dist) 
+				/ net->segment_length(st->segment);
+			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+			start = st->time;
+			++it_st;
 		}
 	}
 }

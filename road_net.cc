@@ -1214,8 +1214,6 @@ const double RoadNet::shortest_path
 	) 
 		const
 {
-//	std::cout << s1 << "," << s2 << "," << proj_latit_s1 << "," << proj_latit_s2 << "," << proj_longit_s1 << "," << proj_longit_s2 << "," << max_dist << "\n";
-
 	if(s1 == s2)
 	{
 		//If segments are the same, compute distance between points
@@ -1316,6 +1314,43 @@ const double RoadNet::shortest_path
 
 	return d[s2] - segments.at(s1)->length;
 
+}
+
+void RoadNet::get_num_hops_from
+	(
+		std::map<unsigned int, unsigned int>& distances,
+		const unsigned int s,
+		const unsigned int max_dist
+	) 
+		const
+{
+	std::queue<unsigned int> queue;
+	unsigned int u;
+	unsigned int z;
+	unsigned int dist;
+
+	queue.push(s);
+	distances[s] = 0;
+
+	while(! queue.empty())
+	{
+		u = queue.front();
+		queue.pop();
+		dist = distances[u];
+ 
+		for (std::list<unsigned int>::iterator it = adj_list[u]->begin();
+			it != adj_list[u]->end(); ++it)
+		{
+			z = *it;
+			
+			if(distances.find(z) == distances.end() 
+				&& dist + 1 <= max_dist)
+			{
+				queue.push(z);
+				distances[z] = dist + 1;
+			}
+		}
+	}
 }
 
 void RoadNet::fill_short_path_struct

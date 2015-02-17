@@ -218,6 +218,17 @@ const bool test_traj_comp_ppm()
 	return true;
 }
 
+const bool test_least_squares()
+{
+	//RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
+	RoadNet* net = new RoadNet("../data/road_net.csv");
+	TrajCompAlgo* traj_comp = new LeastSquares(net, 0, 0.001);
+	//traj_comp->train("../data/map_matched_cab_stream_sfo.txt");
+	traj_comp->train("../data/map_matched_cab_stream.txt");
+
+	return true;
+}
+
 const bool test_TSND()
 {
 	/*

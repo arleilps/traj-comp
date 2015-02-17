@@ -530,6 +530,13 @@ class RoadNet
 				std::map < unsigned int , unsigned int >* s_paths
 			);
 
+		void get_num_hops_from
+			(
+				std::map<unsigned int, unsigned int>& distances,
+				const unsigned int s,
+				const unsigned int max_dist
+			) 
+				const;
 		/*INLINES*/
 
 		/**
@@ -670,6 +677,7 @@ class RoadNet
 		{
 			return segments.size();
 		}
+
 	private:
 		/*VARIABLES*/
 		std::vector<std::list<unsigned int>*> adj_list;

@@ -26,6 +26,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <Eigen/Core>
+#include <Eigen/SparseCore>
 
 /*my includes*/
 #include "road_net.h"
@@ -443,6 +445,8 @@ class TSND: public TrajCompAlgo
 		{
 			max_error = _max_error;
 		}
+
+		virtual ~TSND(){};
 		
 		void test(const std::string test_traj_file_name);
 		
@@ -468,6 +472,62 @@ class TSND: public TrajCompAlgo
 			);
 	private:
 		double max_error;
+};
+
+class LeastSquares: public TrajCompAlgo
+{
+	public:	
+		LeastSquares
+			(
+				RoadNet* net, 
+				const double _max_error,
+				const double _lambda
+			)
+				:TrajCompAlgo(net)
+		{
+			max_error = _max_error;
+			if(_lambda > 0)
+			{
+				lambda = _lambda;
+			}
+			else
+			{
+				lambda = std::numeric_limits<double>::epsilon();
+			}
+			sz = 0;
+		}
+
+		virtual ~LeastSquares(){};
+		
+		void train(const std::string training_traj_file_name);
+		
+		void test(const std::string test_traj_file_name);
+	private:
+		double max_error;
+		double lambda;
+		unsigned int sz;
+		static const unsigned int d0;
+		static const double w;
+		std::vector < Eigen::Triplet<double> > Q;
+		std::vector <double> y;
+		std::vector < Eigen::Triplet<double> > L;
+		Eigen::VectorXd f;
+
+		void least_squares_regression();
+		void laplacian_affinity_matrix();
+		void compress
+			(
+				std::list < dist_time* >& comp_traj, 
+				const std::list < dist_time* >& dist_times,
+				Trajectory* traj
+			) 
+				const;
+		void get_pred_dist_times_least_squares
+			(
+				std::list < dist_time* >& pred_dist_times,
+				const std::list < dist_time*>& dist_times,
+				Trajectory* traj
+			) const;
 };
 
 /**

@@ -23,10 +23,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <map>
 #include <algorithm>
 #include <iostream>
+#include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_io.hpp>
+#include <Eigen/Core>
+#include <Eigen/SparseCore>
+#include <Eigen/IterativeLinearSolvers>
 
 /*my includes*/
 #include "traj_comp.h"
 #include "io.h"
+
+const double LeastSquares::w = 0.5;
+const unsigned int LeastSquares::d0 = 2;
 
 node_subt* FreqSubt::new_node()
 {
@@ -1009,7 +1017,6 @@ void TSND::test(const std::string test_traj_file_name)
 
 		compress(dist_times, comp_dist_times);
 		Trajectory::delete_dist_times(dist_times);
-
 		Trajectory::delete_dist_times(comp_dist_times);
 	}
 	
@@ -1279,4 +1286,246 @@ void TSND::constrain
 		}
 	}
 }
+
+void LeastSquares::train(const std::string training_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory* traj;
+	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	train_t->start();
+	
+	y.reserve(1000 * trajectories.size());
+	Q.reserve(1000 * trajectories.size());
+	
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		_num_traj_train++;
+		_num_updates_train += traj->size();
+		
+		traj->get_sparse_rep(Q, y, sz, net);
+		delete traj;
+	}
+	
+	laplacian_affinity_matrix();
+	least_squares_regression();
+
+	train_t->stop();
+	_training_time = train_t->get_seconds();
+}
+
+
+void LeastSquares::test(const std::string test_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory* traj;
+	std::list < dist_time* > comp_dist_times;
+	std::list < dist_time* > dist_times;
+	
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		traj->get_dist_times_least_squares
+			(
+				dist_times,
+				f,
+				net
+			);
+
+		compress(dist_times, comp_dist_times, traj);
+		Trajectory::delete_dist_times(dist_times);
+		Trajectory::delete_dist_times(comp_dist_times);
+	}
+	
+	Trajectory::delete_trajectories(&trajectories);
+	_compression_time = comp_t->get_seconds();
+}
+
+void LeastSquares::get_pred_dist_times_least_squares
+	(
+		std::list < dist_time* >& pred_dist_times, 
+		const std::list < dist_time*>& dist_times, 
+		Trajectory* traj 
+	) 
+		const
+{
+	Trajectory::const_iterator itraj = traj->begin();
+	std::list<dist_time*>::const_iterator idt = dist_times.begin();
+	dist_time* dt = *idt;
+	seg_time* st = *itraj;
+	double dist = 0;
+	double t;
+	pred_dist_times.push_back(new_dist_time(dt->dist, dt->time));
+	++idt;
+	double tr = f[st->segment] * (double) (net->segment_length(st->segment) - st->dist) 
+		/ net->segment_length(st->segment);
+	double dr = net->segment_length(st->segment) - st->dist;
+
+	while(idt != dist_times.end())
+	{
+		t = dt->time - pred_dist_times.back()->time;
+
+		while(t >= tr && itraj != traj->end())
+		{
+			t = t - tr;
+			dist += dr;
+			++itraj;
+
+			if(itraj != traj->end())
+			{
+				st = *itraj;
+				tr = f[st->segment];
+				dr = net->segment_length(st->segment);
+			}
+		}
+
+		if(itraj != traj->end())
+		{
+			dist += (double) (net->segment_length(st->segment) * t) / (tr);
+			dr = net->segment_length(st->segment) - 
+				(double) (net->segment_length(st->segment) * t) / (tr);
+			tr = tr - t;
+		}
+
+		pred_dist_times.push_back(new_dist_time(dist, dt->time));
+		++idt;
+	}
+}
+
+void LeastSquares::compress
+	(
+		std::list < dist_time* >& comp_dist_times, 
+		const std::list < dist_time* >& dist_times,
+		Trajectory* traj
+	) 
+		const
+{
+	std::list < dist_time* > pred_dist_times;
+	dist_time* dt;
+	dist_time* dt_pred;
+	
+	get_pred_dist_times_least_squares
+		(
+			pred_dist_times, 
+			dist_times, traj 
+		);
+
+	std::list<dist_time*>::const_iterator it = dist_times.begin();
+	std::list<dist_time*>::iterator it_pred = pred_dist_times.begin();
+	dt = *it;
+	++it;
+	++it_pred;
+	comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
+	int fix = 0;
+	unsigned int time_pred;
+
+	while(it != dist_times.end())
+	{
+		dt = *it;
+		dt_pred = *it_pred;
+		time_pred = dt_pred->time + fix; 
+		
+		if(abs(dt->dist - time_pred) > max_error)
+		{
+			comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
+			fix = dt->dist - time_pred;
+		}
+
+		++it;
+		++it_pred;
+	}
+}
+
+void LeastSquares::least_squares_regression()
+{
+	Eigen::SparseMatrix<double> QS(net->size(), sz);
+	QS.setFromTriplets(Q.begin(), Q.end());
+	Q.clear();
+	Eigen::SparseMatrix<double> QST(QS.transpose());
+	Eigen::SparseMatrix<double> LS(net->size(), net->size());
+	LS.setFromTriplets(L.begin(), L.end());
+	L.clear();
+	Eigen::SparseMatrix<double> A(QS * QST + lambda * LS);
+	Eigen::Map<Eigen::VectorXd> y_vec(y.data(), y.size());
+	Eigen::VectorXd b(QS * y_vec);
+	Eigen::ConjugateGradient<Eigen::SparseMatrix<double> > cg;
+	cg.compute(A);
+	f.resize(net->size());
+	f = cg.solve(b);
+}
+
+void LeastSquares::laplacian_affinity_matrix()
+{
+	std::vector < std::map<unsigned int, unsigned int>* > distances;
+	std::vector < std::map<unsigned int, double>* > weights;
+	distances.reserve(net->size());
+	weights.reserve(net->size());
+	double weight;
+	std::map<unsigned int, unsigned int>::iterator rev;
+	L.reserve(net->size() * 100);
+
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		distances.push_back(new std::map<unsigned int, unsigned int>);
+		weights.push_back(new std::map<unsigned int, double>);
+		net->get_num_hops_from(*(distances.at(s)), s, d0);
+	}
+
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		for(std::map<unsigned int, unsigned int>::iterator it = 
+			distances.at(s)->begin(); it != distances.at(s)->end();
+			++it)
+		{
+			rev = distances.at(it->first)->find(s);
+
+			if(rev != distances.at(it->first)->end())
+			{
+				if(rev->second < it->second)
+				{
+					weight = pow(w, rev->second);
+				}
+				else
+				{
+					weight = pow(w, it->second);
+				}
+			}
+			else
+			{
+				weight = pow(w, it->second);
+			}
+			
+			if(s < it->first)
+			{
+				weights.at(s)->insert(std::pair<unsigned int, double>(it->first, weight));
+				weights.at(it->first)->insert(std::pair<unsigned int, double>(s, weight));
+			}
+		}
+	}
+
+	double sum_weights;
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		sum_weights = 0;
+		for(std::map<unsigned int, double>::iterator it = 
+			weights.at(s)->begin(); it != weights.at(s)->end();
+			++it)
+		{
+			if(s != it->first)
+			{
+				L.push_back(Eigen::Triplet<double>(s, it->first, -1*(it->second)));
+				sum_weights += it->second;
+			}
+		}
+
+		L.push_back(Eigen::Triplet<double>(s, s, sum_weights));
+	}
+}
+
 

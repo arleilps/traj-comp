@@ -27,6 +27,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <algorithm>
 #include <iostream>
 #include <pthread.h>
+#include <Eigen/Core>
+#include <Eigen/SparseCore>
 
 #include "road_net.h"
 
@@ -109,6 +111,8 @@ typedef struct t_dist_time
 	unsigned int time;
 	double dist;
 } dist_time;
+
+dist_time* new_dist_time(const unsigned int time, const double dist);
 
 /**
  * Implements functionalities for trajectory manipulation (e.g. creation, map-matching etc.)
@@ -240,6 +244,23 @@ class Trajectory
 			) 
 				const;
 		
+		void get_dist_times_least_squares
+			(
+				std::list < dist_time* >& dist_times,
+				const Eigen::VectorXd& f,
+				RoadNet* net
+			) 
+				const;
+		
+		void get_sparse_rep
+			(
+				std::vector < Eigen::Triplet<double> >&	Q, 
+				std::vector < double >& y, 
+				unsigned int& sz,
+				RoadNet* net
+			) 
+				const;
+
 		/**
 		 * Adds a map-matched update to the trajectory
 		 * @param segment 
