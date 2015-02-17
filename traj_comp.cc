@@ -132,9 +132,9 @@ void FreqSubt::test(const std::string test_traj_file_name)
 		
 		decomp.clear();
 		delete comp_traj;
+		delete traj;
 	}
 	
-	Trajectory::delete_trajectories(&trajectories);
 	_compression_time = comp_t->get_seconds();
 }
 
@@ -634,9 +634,9 @@ void PredPartMatch::test(const std::string test_traj_file_name)
 		traj = *it;
 		comp_traj = compress(traj);
 		delete comp_traj;
+		delete traj;
 	}
 	
-	Trajectory::delete_trajectories(&trajectories);
 	_compression_time = comp_t->get_seconds();
 }
 
@@ -816,10 +816,10 @@ void ShortestPath::test(const std::string test_traj_file_name)
 		
 		decomp.clear();
 		delete comp_traj;
+		delete traj;
 		_num_traj_comp++;
 	}
 	
-	Trajectory::delete_trajectories(&trajectories);
 	_compression_time = comp_t->get_seconds();
 }
 
@@ -972,9 +972,9 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 		
 		decomp.clear();
 		delete comp_traj;
+		delete traj;
 	}
 	
-	Trajectory::delete_trajectories(&trajectories);
 	_compression_time = comp_t->get_seconds();
 }
 	
@@ -1018,9 +1018,9 @@ void TSND::test(const std::string test_traj_file_name)
 		compress(dist_times, comp_dist_times);
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
+		delete traj;
 	}
 	
-	Trajectory::delete_trajectories(&trajectories);
 	_compression_time = comp_t->get_seconds();
 }
 
@@ -1341,9 +1341,9 @@ void LeastSquares::test(const std::string test_traj_file_name)
 		compress(dist_times, comp_dist_times, traj);
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
+		delete traj;
 	}
 	
-	Trajectory::delete_trajectories(&trajectories);
 	_compression_time = comp_t->get_seconds();
 }
 
