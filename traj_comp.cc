@@ -1526,6 +1526,12 @@ void LeastSquares::laplacian_affinity_matrix()
 
 		L.push_back(Eigen::Triplet<double>(s, s, sum_weights));
 	}
+	
+	for(unsigned int s = 0; s < net->size(); s++)
+	{
+		delete distances.at(s);
+		delete weights.at(s);
+	}
 }
 
 

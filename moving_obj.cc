@@ -280,6 +280,7 @@ void Trajectory::get_dist_times_least_squares
 	) 
 		const
 {
+	print();
 	std::list< seg_time* >::const_iterator iti = seg_time_lst.begin();
 	std::list< seg_time* >::const_iterator itj;
 	seg_time* sti;
@@ -299,6 +300,8 @@ void Trajectory::get_dist_times_least_squares
 	{
 		sti = (*iti);
 		
+		std::cout << "**segment = " << sti->segment << std::endl;
+		
 		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
 		{
 			dist = net->segment_length(sti->segment) - sti->dist;
@@ -312,6 +315,7 @@ void Trajectory::get_dist_times_least_squares
 				&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
 			{
 				stj = (*itj);
+				std::cout << "*segment = " << stj->segment << std::endl;
 				dist += net->segment_length(stj->segment);
 				pred_time += f[stj->segment];
 				++itj;
@@ -319,8 +323,11 @@ void Trajectory::get_dist_times_least_squares
 
 			stj = (*itj);
 			dist += stj->dist;
+			std::cout << "time = " << stj->time << std::endl;
+			std::cout << "dist = " << stj->dist << std::endl;
+			std::cout << "segment = " << stj->segment << std::endl;
 			pred_time += f[stj->segment] 
-				* (double) stj->dist / (net->segment_length(sti->segment));
+				* (double) stj->dist / (net->segment_length(stj->segment));
 
 			s_time = sti->time;
 			e_time = stj->time;

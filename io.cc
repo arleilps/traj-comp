@@ -155,7 +155,7 @@ void Parameters::print()
 	std::cout << "output = " << output_file_name << std::endl;
 	std::cout << "length_subtrajectories = " << max_length_subt << std::endl;
 	std::cout << "order = " << order << std::endl;
-	std::cout << "min_support =" << min_sup << std::endl;
+	std::cout << "min_support = " << min_sup << std::endl;
 	std::cout << "shortest_paths = " << max_shortest_path << std::endl;
 	std::cout << "gps_updates_file = " << gps_file_name << std::endl;
 	std::cout << "number_of_threads = " << num_threads << std::endl;

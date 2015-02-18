@@ -225,6 +225,10 @@ const bool test_least_squares()
 	TrajCompAlgo* traj_comp = new LeastSquares(net, 0, 0.001);
 	//traj_comp->train("../data/map_matched_cab_stream_sfo.txt");
 	traj_comp->train("../data/map_matched_cab_stream.txt");
+	traj_comp->test("../data/map_matched_cab_stream.txt");
+
+	delete traj_comp;
+	delete net;
 
 	return true;
 }
