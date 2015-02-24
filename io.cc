@@ -138,7 +138,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('o', "output", output_file_name, "")
 		>> GetOpt::Option('c', "compression", compression_algorithm, "")
 		>> GetOpt::Option('d', "gps-updates", gps_file_name, "")
-		>> GetOpt::Option('f', "postgis-conf", conf_file_name, "sfo_postgis.conf")
+		>> GetOpt::Option('f', "postgis-conf", conf_file_name, "../data/sfo_postgis.conf")
 		>> GetOpt::Option('u', "length-subt", max_length_subt)
 		>> GetOpt::Option('r', "order", order)
 		>> GetOpt::Option('s', "min-sup", min_sup)
