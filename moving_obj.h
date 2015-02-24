@@ -112,7 +112,7 @@ typedef struct t_dist_time
 	double dist;
 } dist_time;
 
-dist_time* new_dist_time(const unsigned int time, const double dist);
+dist_time* new_dist_time(const double dist, const unsigned int time);
 
 /**
  * Implements functionalities for trajectory manipulation (e.g. creation, map-matching etc.)

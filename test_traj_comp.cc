@@ -30,11 +30,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 const bool test_traj_comp_freq_subt()
 {
-	RoadNet* net = new RoadNet("road_net_sf.csv");
+	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
 	TrajCompAlgo* traj_comp = new  FreqSubt(2, 5, net);
 	
 	traj_comp->train("map_matched_cab_stream_sfo.txt");
-	
 	traj_comp->test("map_matched_cab_stream_sfo.txt");
 
 	delete traj_comp;
@@ -222,10 +221,13 @@ const bool test_least_squares()
 {
 	//RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
 	RoadNet* net = new RoadNet("../data/road_net.csv");
-	TrajCompAlgo* traj_comp = new LeastSquares(net, 0, 0.001);
+	TrajCompAlgo* traj_comp = new LeastSquares(net, 0.1, 0.001);
+	//TrajCompAlgo* traj_comp = new TSND(net, 0);
 	//traj_comp->train("../data/map_matched_cab_stream_sfo.txt");
 	traj_comp->train("../data/map_matched_cab_stream.txt");
 	traj_comp->test("../data/map_matched_cab_stream.txt");
+
+	std::cout << "num updates = " << traj_comp->num_updates_comp() << std::endl;
 
 	delete traj_comp;
 	delete net;
@@ -320,7 +322,7 @@ const bool test_TSND()
 	dt->time = 7;
 	dist_times.push_back(dt);
 	
-	TSND* tsnd = new TSND(NULL, 1.01);
+	TSND* tsnd = new TSND(NULL, 0);
 
 	tsnd->compress(dist_times, comp_dist_times);
 

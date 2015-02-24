@@ -177,15 +177,15 @@ const bool RoadNet::read(const std::string& input_file_name)
 		{
 			seg = new segment;
 			
-			seg->latit_begin = atof(line_vec[1].c_str());
-			seg->latit_end = atof(line_vec[2].c_str());
-			seg->longit_begin = atof(line_vec[3].c_str());
-			seg->longit_end = atof(line_vec[4].c_str());
+			seg->latit_begin = string_to_double(line_vec[1].c_str());
+			seg->latit_end = string_to_double(line_vec[2].c_str());
+			seg->longit_begin = string_to_double(line_vec[3].c_str());
+			seg->longit_end = string_to_double(line_vec[4].c_str());
 			
-			seg->proj_latit_begin = atof(line_vec[5].c_str());
-			seg->proj_latit_end = atof(line_vec[6].c_str());
-			seg->proj_longit_begin = atof(line_vec[7].c_str());
-			seg->proj_longit_end = atof(line_vec[8].c_str());
+			seg->proj_latit_begin = string_to_double(line_vec[5].c_str());
+			seg->proj_latit_end = string_to_double(line_vec[6].c_str());
+			seg->proj_longit_begin = string_to_double(line_vec[7].c_str());
+			seg->proj_longit_end = string_to_double(line_vec[8].c_str());
 			
 			//default
 			seg->p_begin = 0;
@@ -202,7 +202,7 @@ const bool RoadNet::read(const std::string& input_file_name)
 				seg->double_way = true;
 			}
 
-			seg->length = atof(line_vec[10].c_str());
+			seg->length = string_to_double(line_vec[10].c_str());
 	
 			if(seg->length > length_longest_segment)
 			{
@@ -415,8 +415,8 @@ const bool RoadNet::build(const std::string& input_file_name)
 		else
 		{
 			id = line_vec[0];
-			latit = atof(line_vec[1].c_str());
-			longit = atof(line_vec[2].c_str());
+			latit = string_to_double(line_vec[1].c_str());
+			longit = string_to_double(line_vec[2].c_str());
 
 			points[id] = new_point(latit, longit);
 			point_ids[id] = p;

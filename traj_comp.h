@@ -520,8 +520,8 @@ class LeastSquares: public TrajCompAlgo
 				std::list < dist_time* >& comp_traj, 
 				const std::list < dist_time* >& dist_times,
 				Trajectory* traj
-			) 
-				const;
+			); 
+		
 		void get_pred_dist_times_least_squares
 			(
 				std::list < dist_time* >& pred_dist_times,

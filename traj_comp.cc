@@ -1013,9 +1013,11 @@ void TSND::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
+
 		traj->get_dist_times_uniform(dist_times, net);
 
 		compress(dist_times, comp_dist_times);
+
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
 		delete traj;
@@ -1037,9 +1039,7 @@ void TSND::compress
 	dist_time* p_index;
 	angle R;
 
-	p_i = new dist_time;
-	p_i->dist = dist_times.front()->dist;
-	p_i->time = dist_times.front()->time;
+	p_i = new_dist_time(dist_times.front()->dist, dist_times.front()->time);
 	p_index = dist_times.front();
 
 	comp_dist_times.push_back(p_i);
@@ -1053,17 +1053,14 @@ void TSND::compress
 	while(it != dist_times.end())
 	{
 		p_i = *it;
-		
+
 		if(fall_inside(R, *p_index, *p_i))
 		{
 			constrain(R, *p_index, *p_i, max_error);
 		}
 		else
 		{
-			p_index = new dist_time;
-			p_index->dist = p_i_minus_one->dist;
-			p_index->time = p_i_minus_one->time;
-
+			p_index = new_dist_time(p_i_minus_one->dist, p_i_minus_one->time);
 			comp_dist_times.push_back(p_index);
 
 			R.from = (double) -PI / 2;
@@ -1074,15 +1071,18 @@ void TSND::compress
 		++it;
 	}
 			
-	p_index = new dist_time;
-	p_index->dist = dist_times.back()->dist;
-	p_index->time = dist_times.back()->time;
+	p_index = new_dist_time(dist_times.back()->dist, dist_times.back()->time);
 	comp_dist_times.push_back(p_index);
 	
 	comp_t->stop();
 	_num_updates_orig += dist_times.size();
 	_num_updates_comp += comp_dist_times.size();
 	_num_traj_comp++;
+}
+
+double equal_double(const double d1, const double d2)
+{
+	return (fabs(d1 - d2) <= 1.0e-12);
 }
 
 bool TSND::fall_inside
@@ -1099,74 +1099,45 @@ bool TSND::fall_inside
 
 	tan_from = tan(R.from);
 	tan_to = tan(R.to);
-
-	if(p_index.time == 0)
+	
+	if(equal_double(fabs(R.from), (double) PI / 2.))
 	{
-		if(abs(R.from - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
-		{
-			b_from = std::numeric_limits<double>::max();
-			tan_from = 0;
-		}
-		else
-		{
-			b_from = p_index.dist;
-		}
-			
-		if(abs(R.to - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
-		{
-			b_to = std::numeric_limits<double>::max();
-			tan_to = 0;
-		}
-		else
-		{
-			b_to = p_index.dist;
-		}
+		b_from = -std::numeric_limits<double>::max();
+		tan_from = 0;
 	}
 	else
 	{
-		if(abs(R.from - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
+		if(equal_double(tan_from, 0.0))
 		{
-			b_from = std::numeric_limits<double>::max();
-			tan_from = 0;
+			b_from = p_index.dist;
 		}
 		else
 		{
-			if(abs(tan_from)
-				<= std::numeric_limits<double>::epsilon())
-			{
-				b_from = p_index.dist;
-			}
-			else
-			{
-				b_from = (float) p_index.dist / (tan_from * p_index.time);
-			}
+			b_from = (double) p_index.dist - ((double) tan_from * p_index.time);
 		}
+	}
 			
-		if(abs(R.to - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
+	if(equal_double(fabs(R.to), (double) PI / 2.))
+	{
+		b_to = std::numeric_limits<double>::max();
+		tan_to = 0;
+	}
+	else
+	{
+		if(equal_double(tan_to, 0.0))
 		{
-			b_to = std::numeric_limits<double>::max();
-			tan_to = 0;
+			b_to = p_index.dist;
 		}
 		else
 		{
-			if(abs(tan_to)
-				<= std::numeric_limits<double>::epsilon())
-			{
-				b_to = p_index.dist;
-			}
-			else
-			{
-				b_to = (float) p_index.dist / (tan_to * p_index.time);
-			}
+			b_to = (double) p_index.dist - ((double) tan_to * p_index.time);
 		}
 	}
 
-	if(p_i.dist <= (double) tan_to * p_i.time + b_to
-		&& p_i.dist >= (double) tan_from * p_i.time + b_from)
+	if((p_i.dist < (double) tan_to * p_i.time + b_to
+		&& p_i.dist > (double) tan_from * p_i.time + b_from)
+		|| (equal_double(p_i.dist, (double) tan_to * p_i.time + b_to)
+		&& equal_double(p_i.dist, (double) tan_from * p_i.time + b_from)))
 	{
 		return true;
 	}
@@ -1192,75 +1163,43 @@ void TSND::constrain
 	tan_from = tan(R.from);
 	tan_to = tan(R.to);
 
-	if(p_index.time == 0)
+	if(equal_double(fabs(R.from), (double) PI / 2.))
 	{
-		if(abs(R.from - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
-		{
-			b_from = std::numeric_limits<double>::max();
-			tan_from = 0;
-		}
-		else
-		{
-			b_from = p_index.dist;
-		}
-			
-		if(abs(R.to - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
-		{
-			b_to = std::numeric_limits<double>::max();
-			tan_to = 0;
-		}
-		else
-		{
-			b_to = p_index.dist;
-		}
+		b_from = -std::numeric_limits<double>::max();
+		tan_from = 0;
 	}
 	else
 	{
-		if(abs(R.from - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
+		if(equal_double(tan_from, 0.0))
 		{
-			b_from = std::numeric_limits<double>::max();
-			tan_from = 0;
+			b_from = p_index.dist;
 		}
 		else
 		{
-			if(abs(tan_from)
-				<= std::numeric_limits<double>::epsilon())
-			{
-				b_from = p_index.dist;
-			}
-			else
-			{
-				b_from = (float) p_index.dist / (tan_from * p_index.time);
-			}
+			b_from = (double) p_index.dist - ((double) tan_from * p_index.time);
 		}
+	}
 			
-		if(abs(R.to - (double) PI / 2.) 
-			<= std::numeric_limits<double>::epsilon())
+	if(equal_double(R.to, (double) PI / 2.))
+	{
+		b_to = std::numeric_limits<double>::max();
+		tan_to = 0;
+	}
+	else
+	{
+		if(equal_double(tan_to, 0))
 		{
-			b_to = std::numeric_limits<double>::max();
-			tan_to = 0;
+			b_to = p_index.dist;
 		}
 		else
 		{
-			if(abs(tan_to)
-				<= std::numeric_limits<double>::epsilon())
-			{
-				b_to = p_index.dist;
-			}
-			else
-			{
-				b_to = (float) p_index.dist / (tan_to * p_index.time);
-			}
+			b_to = (double) p_index.dist - ((double) tan_to * p_index.time);
 		}
 	}
 
 	if(p_i.dist + error < tan_to * p_i.time + b_to)
 	{
-		if(abs(p_i.time - p_index.time) 
-			<= std::numeric_limits<double>::epsilon())
+		if(equal_double(p_i.time, p_index.time)) 
 		{
 			R.to = (double) PI / 2;
 		}
@@ -1273,8 +1212,7 @@ void TSND::constrain
 
 	if(p_i.dist - error > tan_from * p_i.time + b_from)
 	{
-		if(abs(p_i.time - p_index.time) 
-			<= std::numeric_limits<double>::epsilon())
+		if(equal_double(p_i.time, p_index.time)) 
 		{
 			R.from = (double) PI / 2;
 		}
@@ -1311,6 +1249,8 @@ void LeastSquares::train(const std::string training_traj_file_name)
 	laplacian_affinity_matrix();
 	least_squares_regression();
 
+//	std::cout << f << std::endl;
+
 	train_t->stop();
 	_training_time = train_t->get_seconds();
 }
@@ -1338,7 +1278,8 @@ void LeastSquares::test(const std::string test_traj_file_name)
 				net
 			);
 
-		compress(dist_times, comp_dist_times, traj);
+		compress(comp_dist_times, dist_times, traj);
+
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
 		delete traj;
@@ -1369,6 +1310,7 @@ void LeastSquares::get_pred_dist_times_least_squares
 
 	while(idt != dist_times.end())
 	{
+		dist_time* dt = *idt;
 		t = dt->time - pred_dist_times.back()->time;
 
 		while(t >= tr && itraj != traj->end())
@@ -1404,8 +1346,8 @@ void LeastSquares::compress
 		const std::list < dist_time* >& dist_times,
 		Trajectory* traj
 	) 
-		const
 {
+	comp_t->start();
 	std::list < dist_time* > pred_dist_times;
 	dist_time* dt;
 	dist_time* dt_pred;
@@ -1422,24 +1364,33 @@ void LeastSquares::compress
 	++it;
 	++it_pred;
 	comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
-	int fix = 0;
-	unsigned int time_pred;
+	double fix = 0;
+	double dist_pred;
 
 	while(it != dist_times.end())
 	{
 		dt = *it;
 		dt_pred = *it_pred;
-		time_pred = dt_pred->time + fix; 
+		dist_pred = dt_pred->dist + fix; 
 		
-		if(abs(dt->dist - time_pred) > max_error)
-		{
-			comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
-			fix = dt->dist - time_pred;
-		}
-
 		++it;
 		++it_pred;
+		
+		if(fabs(dt->dist - dist_pred) > max_error 
+			|| it == dist_times.end())
+		{
+			comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
+			fix = dt->dist - dist_pred;
+		}
+
 	}
+
+	Trajectory::delete_dist_times(pred_dist_times);
+	
+	comp_t->stop();
+	_num_updates_orig += dist_times.size();
+	_num_updates_comp += comp_dist_times.size();
+	_num_traj_comp++;
 }
 
 void LeastSquares::least_squares_regression()
@@ -1458,6 +1409,14 @@ void LeastSquares::least_squares_regression()
 	cg.compute(A);
 	f.resize(net->size());
 	f = cg.solve(b);
+
+	for(unsigned int i = 0; i < f.size(); i++)
+	{
+		if(f[i] < 0)
+		{
+			f[i] = 0;
+		}
+	}
 }
 
 void LeastSquares::laplacian_affinity_matrix()

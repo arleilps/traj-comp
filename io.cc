@@ -182,3 +182,11 @@ const std::string to_string_prec(const double t)
 	return stm.str() ;
 }
 
+const double string_to_double(const std::string& s)
+{
+	double d;
+	std::stringstream ss(s);
+	ss >> d;
+
+	return d;
+}

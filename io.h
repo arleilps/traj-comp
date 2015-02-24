@@ -64,6 +64,8 @@ template < typename T > std::string to_string( const T& t)
 
 const std::string to_string_prec(const double t);
 
+const double string_to_double(const std::string& s);
+
 void print_statistics(TrajCompAlgo* algo);
 
 /**

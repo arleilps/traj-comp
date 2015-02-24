@@ -156,7 +156,7 @@ p_thread_param_exp* new_p_thread_param_exp
 	return param;
 }
 
-dist_time* new_dist_time(const unsigned int time, const double dist)
+dist_time* new_dist_time(const double dist, const unsigned int time)
 {
 	dist_time* dt = new dist_time;
 
@@ -215,7 +215,7 @@ void Trajectory::get_dist_times_uniform
 	double speed;
 
 	sti = (*iti);
-	dist_times.push_back(new_dist_time(sti->dist, sti->time));
+	dist_times.push_back(new_dist_time(sti->dist, 0));
 	total_dist = sti->dist;
 
 	while(iti != seg_time_lst.end())
@@ -229,40 +229,47 @@ void Trajectory::get_dist_times_uniform
 			itj = iti;
 			++itj;
 
-			while(itj != seg_time_lst.end() 
-				&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+			if(itj != seg_time_lst.end())
 			{
+				while(itj != seg_time_lst.end() 
+					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+				{
+					stj = (*itj);
+					dist += net->segment_length(stj->segment);
+					++itj;
+				}
+
 				stj = (*itj);
-				dist += net->segment_length(stj->segment);
+				dist += stj->dist;
+
+				s_time = sti->time;
+				e_time = stj->time;
+				speed = (double) dist / (e_time-s_time);
+
+				itj = iti;
 				++itj;
-			}
-
-			stj = (*itj);
-			dist += stj->dist;
-
-			s_time = sti->time;
-			e_time = stj->time;
-			speed = (double) dist / (e_time-s_time);
-
-			itj = iti;
-			++itj;
 			
-			dist = net->segment_length(sti->segment) - sti->dist;
-			e_time = s_time + dist / speed;
-			dist_times.push_back(new_dist_time(total_dist + dist, e_time));
-
-			while(itj != seg_time_lst.end() 
-				&& (*itj)->up == NULL)
-			{
-				dist += net->segment_length(stj->segment);
+				dist = net->segment_length(sti->segment) - sti->dist;
 				e_time = s_time + dist / speed;
-				dist_times.push_back(new_dist_time(total_dist + dist, e_time));
-			}
 	
-			dist += stj->dist;
-			dist_times.push_back(new_dist_time(total_dist + dist, stj->time));
-			total_dist += dist;
-
+				while(itj != seg_time_lst.end() 
+					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+				{
+					stj = (*itj);
+					dist += net->segment_length(stj->segment);
+					e_time = s_time + dist / speed;
+					dist_times.push_back(new_dist_time(total_dist + dist, 
+						e_time - seg_time_lst.front()->time));
+					++itj;
+				}
+		
+				stj = (*itj);
+				dist += stj->dist;
+				dist_times.push_back(new_dist_time(total_dist + dist, 
+					stj->time - seg_time_lst.front()->time));
+				total_dist += dist;
+			}
+			
 			iti = itj;
 		}
 		else
@@ -280,7 +287,6 @@ void Trajectory::get_dist_times_least_squares
 	) 
 		const
 {
-	print();
 	std::list< seg_time* >::const_iterator iti = seg_time_lst.begin();
 	std::list< seg_time* >::const_iterator itj;
 	seg_time* sti;
@@ -293,69 +299,68 @@ void Trajectory::get_dist_times_least_squares
 	double pred_time;
 
 	sti = (*iti);
-	dist_times.push_back(new_dist_time(sti->dist, sti->time));
+	dist_times.push_back(new_dist_time(sti->dist, 0));
 	total_dist = sti->dist;
 
 	while(iti != seg_time_lst.end())
 	{
 		sti = (*iti);
 		
-		std::cout << "**segment = " << sti->segment << std::endl;
-		
 		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
 		{
 			dist = net->segment_length(sti->segment) - sti->dist;
-			pred_time = f[sti->segment] 
-				* (double) dist / (net->segment_length(sti->segment));
-
-			itj = iti;
-			++itj;
-
-			while(itj != seg_time_lst.end() 
-				&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
-			{
-				stj = (*itj);
-				std::cout << "*segment = " << stj->segment << std::endl;
-				dist += net->segment_length(stj->segment);
-				pred_time += f[stj->segment];
-				++itj;
-			}
-
-			stj = (*itj);
-			dist += stj->dist;
-			std::cout << "time = " << stj->time << std::endl;
-			std::cout << "dist = " << stj->dist << std::endl;
-			std::cout << "segment = " << stj->segment << std::endl;
-			pred_time += f[stj->segment] 
-				* (double) stj->dist / (net->segment_length(stj->segment));
-
-			s_time = sti->time;
-			e_time = stj->time;
-			conv_ratio = (double) (e_time-s_time) / pred_time;
-
-			itj = iti;
-			++itj;
 			
-			dist = net->segment_length(sti->segment) - sti->dist;
-			pred_time = f[sti->segment] 
-				* (double) dist / (net->segment_length(sti->segment));
+			pred_time = (double) (f[sti->segment] 
+				* dist) / (net->segment_length(sti->segment));
+			
+			itj = iti;
+			++itj;
 
-			e_time = s_time + static_cast<int>(pred_time * conv_ratio);
-			dist_times.push_back(new_dist_time(total_dist + dist, e_time));
-
-			while(itj != seg_time_lst.end() 
-				&& (*itj)->up == NULL)
+			if(itj != seg_time_lst.end())
 			{
-				dist += net->segment_length(stj->segment);
-				pred_time += f[stj->segment];
-				e_time = s_time + static_cast<int>(pred_time * conv_ratio);
-				dist_times.push_back(new_dist_time(total_dist + dist, e_time));
-			}
-	
-			dist += stj->dist;
-			dist_times.push_back(new_dist_time(total_dist + dist, stj->time));
-			total_dist += dist;
+				while(itj != seg_time_lst.end() 
+					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+				{
+					stj = (*itj);
+					pred_time += f[stj->segment];
+					++itj;
+				}
 
+				stj = (*itj);
+				pred_time += f[stj->segment] 
+					* (double) stj->dist / (net->segment_length(stj->segment));
+
+			
+				s_time = sti->time;
+				e_time = stj->time;
+				conv_ratio = (double) (e_time-s_time) / pred_time;
+				itj = iti;
+				++itj;
+			
+				dist = net->segment_length(sti->segment) - sti->dist;
+				pred_time = (double) (f[sti->segment] 
+					* dist) / (net->segment_length(sti->segment));
+				e_time = s_time + pred_time * conv_ratio;
+
+				while(itj != seg_time_lst.end() 
+					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+				{
+					stj = (*itj);
+					dist += net->segment_length(stj->segment);
+					pred_time += f[stj->segment];
+					e_time = s_time + pred_time * conv_ratio;
+					dist_times.push_back(new_dist_time(total_dist + dist, 
+						e_time - seg_time_lst.front()->time));
+					++itj;
+				}
+			
+				stj = (*itj);
+				dist += stj->dist;
+				dist_times.push_back(new_dist_time(total_dist + dist, 
+					stj->time - seg_time_lst.front()->time));
+				total_dist += dist;
+			}
+			
 			iti = itj;
 		}
 		else
