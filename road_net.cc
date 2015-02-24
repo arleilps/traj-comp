@@ -35,18 +35,87 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 /*CONSTANTS*/
 
 //Database
-const std::string PostGisIndex::database_name = "test";
+std::string PostGisIndex::database_name = "";
 const std::string PostGisIndex::table_name = "seg_index";
-const std::string PostGisIndex::host = "127.0.0.1";
-const std::string PostGisIndex::port = "5432";
-const std::string PostGisIndex::user = "traj_comp";
-const std::string PostGisIndex::password="traj_comp";
+std::string PostGisIndex::host = "";
+std::string PostGisIndex::port = "";
+std::string PostGisIndex::user = "";
+std::string PostGisIndex::password="";
 const unsigned int PostGisIndex::num_connections = 16;
 unsigned int PostGisIndex::sleep_time_conn = 1;
+bool PostGisIndex::const_set = false;
 
 //Projection
-const std::string PostGisIndex::srid = "26943";
-const std::string PostGisIndex::spatial_ref = "4326";
+std::string PostGisIndex::srid = "";
+std::string PostGisIndex::spatial_ref = "";
+
+void PostGisIndex::set_config(const std::string& input_file_name)
+{
+	std::ifstream conf_file(input_file_name.c_str(), std::ios::in);
+       	std::string line_str;
+       	std::vector< std:: string > line_vec;
+
+        if(! conf_file.is_open())
+       	{
+        	std::cerr << "Error: Could not open configuration file " 
+			<< input_file_name << std::endl << std::endl;
+	}
+	else
+	{
+		std::getline(conf_file, line_str);
+
+		while(! conf_file.eof())
+		{
+			line_vec = split(line_str);
+			
+			if(line_vec.size() != 2)
+			{
+        			std::cerr << "Error: Invalid PostGIS config file format, check the README file -- " 
+					<< input_file_name << std::endl << std::endl;
+				return;
+			}
+			
+			if(line_vec[0] == "database")
+			{
+				database_name = line_vec[1];
+			}
+
+			if(line_vec[0] == "host")
+			{
+				host = line_vec[1];
+			}
+
+			if(line_vec[0] == "port")
+			{
+				port = line_vec[1];
+			}
+			
+			if(line_vec[0] == "user")
+			{
+				user = line_vec[1];
+			}
+			
+			if(line_vec[0] == "password")
+			{
+				password = line_vec[1];
+			}
+			
+			if(line_vec[0] == "srid")
+			{
+				srid = line_vec[1];
+			}
+			
+			if(line_vec[0] == "spatialref")
+			{
+				spatial_ref = line_vec[1];
+			}
+
+			std::getline(conf_file, line_str);
+		}
+	}
+
+	const_set = true;
+}
 
 point* new_point(const double latit, const double longit)
 {
@@ -750,7 +819,6 @@ const bool PostGisIndex::create_table()
 	
 	try
 	{
-		//FIXME: CREATE INDEX sg_idx_"+ table_name +" ON " + table_name +
 		sql = "CREATE TABLE " + table_name + 
 			"(id integer PRIMARY KEY, segment geometry(LINESTRING," +
 			spatial_ref+"));\
@@ -1070,15 +1138,22 @@ const bool PostGisIndex::closest_point_segment
 	return true;
 }
 
-PostGisIndex::PostGisIndex()
+PostGisIndex::PostGisIndex() 
 {
-	connect();
+	if(const_set)
+	{
+		connect();
+	}
+	else
+	{
+		throw std::invalid_argument( "PostGis not set, check README file" );
+	}
 }
 
 const bool PostGisIndex::create()
 {
 	drop_table();
-	
+
 	return create_table();
 }
 

@@ -34,6 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdexcept>
 
 using namespace boost;
 
@@ -360,6 +361,8 @@ class PostGisIndex: public SegIndex
 				const double latit, 
 				const double longit
 			);
+
+		static void set_config(const std::string& input_file_name);
 	private:
 		//Database connection pool
 		pqxx::connection** conns;
@@ -368,15 +371,16 @@ class PostGisIndex: public SegIndex
 
 		//PostGis database name, table name, 
 		//host, port, user and password. 
-		static const std::string database_name;
+		static std::string database_name;
 		static const std::string table_name;
-		static const std::string host;
-		static const std::string port;
-		static const std::string user;
-		static const std::string password;
+		static std::string host;
+		static std::string port;
+		static std::string user;
+		static std::string password;
 
 		static const unsigned int num_connections;
 		static unsigned int sleep_time_conn;
+		static bool const_set;
 		
 		//Spatial reference and srid
 		//spatial reference is for the 
@@ -387,8 +391,8 @@ class PostGisIndex: public SegIndex
 		//srid is applied for projecting points into a planar
 		//representation and we are applying EPSG 26943
 		//for SF area. http://spatialreference.org/ref/epsg/26943/
-		static const std::string spatial_ref;
-		static const std::string srid;
+		static std::string spatial_ref;
+		static std::string srid;
 
 		const bool connect();
 		void disconnect();

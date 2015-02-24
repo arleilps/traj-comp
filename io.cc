@@ -25,6 +25,7 @@ std::string Parameters::test_traj_file_name;
 std::string Parameters::output_file_name;
 std::string Parameters::compression_algorithm;
 std::string Parameters::gps_file_name;
+std::string Parameters::conf_file_name;
 unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
 unsigned int Parameters::min_sup;
@@ -47,6 +48,20 @@ const std::vector<std::string> split(const std::string &s, char delim)
         std::vector<std::string> elems;
       
         while(std::getline(ss, item, delim))
+        {
+                elems.push_back(item);
+        }
+           
+        return elems;
+}
+
+const std::vector<std::string> split(const std::string &s)
+{
+        std::stringstream ss(s);
+        std::string item;
+        std::vector<std::string> elems;
+      
+        while(std::getline(ss, item, ' '))
         {
                 elems.push_back(item);
         }
@@ -123,6 +138,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('o', "output", output_file_name, "")
 		>> GetOpt::Option('c', "compression", compression_algorithm, "")
 		>> GetOpt::Option('d', "gps-updates", gps_file_name, "")
+		>> GetOpt::Option('f', "postgis-conf", conf_file_name, "sfo_postgis.conf")
 		>> GetOpt::Option('u', "length-subt", max_length_subt)
 		>> GetOpt::Option('r', "order", order)
 		>> GetOpt::Option('s', "min-sup", min_sup)
@@ -158,6 +174,7 @@ void Parameters::print()
 	std::cout << "min_support = " << min_sup << std::endl;
 	std::cout << "shortest_paths = " << max_shortest_path << std::endl;
 	std::cout << "gps_updates_file = " << gps_file_name << std::endl;
+	std::cout << "conf_file = " << conf_file_name << std::endl;
 	std::cout << "number_of_threads = " << num_threads << std::endl;
 }
 

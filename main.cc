@@ -40,6 +40,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int main(int argc, char** argv)
 {
+//	PostGisIndex::set_config(sfo_postgis.conf);
 //	test_road_net();
 //	test_database();
 //	test_moving_obj();
@@ -74,6 +75,7 @@ int main(int argc, char** argv)
 	if(Parameters::read(argc,argv))
 	{
 		Trajectory::set_num_threads(Parameters::num_threads);
+		PostGisIndex::set_config(Parameters::conf_file_name);
 		RoadNet* net;
 
 		if(Parameters::compression_algorithm == "IND")

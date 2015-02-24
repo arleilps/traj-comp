@@ -54,6 +54,8 @@ class InvalidParameterSettingException: public std::exception
 **/
 const std::vector<std::string> split(const std::string &s, char delim);
 
+const std::vector<std::string> split(const std::string &s);
+
 template < typename T > std::string to_string( const T& t)
 {
 	std::ostringstream stm;
@@ -81,6 +83,7 @@ class Parameters
 		static std::string output_file_name;
 		static std::string compression_algorithm;
 		static std::string gps_file_name;
+		static std::string conf_file_name;
 		static unsigned int max_length_subt;
 		static unsigned int order;
 		static unsigned int min_sup;
