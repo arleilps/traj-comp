@@ -28,7 +28,7 @@ do
 	train_time_train_train=$(extract "SP/training_rate/train_train_$t" "training_time")
 	train_time_train_test=$(extract "SP/training_rate/train_test_$t" "training_time")
 
-	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 
 results_file_name='SP_short_path.dat'
@@ -45,6 +45,6 @@ do
 	train_time_train_train=$(extract "SP/short_path/train_train_$p" "training_time")
 	train_time_train_test=$(extract "SP/short_path/train_test_$p" "training_time")
 
-	echo "$p	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$p	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 

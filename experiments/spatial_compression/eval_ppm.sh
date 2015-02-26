@@ -28,7 +28,7 @@ do
 	train_time_train_train=$(extract "PPM/training_rate/train_train_$t" "training_time")
 	train_time_train_test=$(extract "PPM/training_rate/train_test_$t" "training_time")
 
-	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 
 results_file_name='PPM_order.dat'
@@ -45,6 +45,6 @@ do
 	train_time_train_train=$(extract "PPM/order/train_train_$d" "training_time")
 	train_time_train_test=$(extract "PPM/order/train_test_$d" "training_time")
 
-	echo "$d	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$d	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 

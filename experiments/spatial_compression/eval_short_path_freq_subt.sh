@@ -28,6 +28,6 @@ do
 	train_time_train_train=$(extract "SPFS/training_rate/train_train_$t" "training_time")
 	train_time_train_test=$(extract "SPFS/training_rate/train_test_$t" "training_time")
 
-	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 

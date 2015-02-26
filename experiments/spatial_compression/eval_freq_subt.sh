@@ -28,7 +28,7 @@ do
 	train_time_train_train=$(extract "FS/training_rate/train_train_$t" "training_time")
 	train_time_train_test=$(extract "FS/training_rate/train_test_$t" "training_time")
 
-	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 
 results_file_name='FS_min_sup.dat'
@@ -45,7 +45,7 @@ do
 	train_time_train_train=$(extract "FS/min_sup/train_train_$m" "training_time")
 	train_time_train_test=$(extract "FS/min_sup/train_test_$m" "training_time")
 
-	echo "$m	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$m	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test $train_time_train_train	$train_time_train_test" >> $results_file_name
 done
 
 results_file_name='FS_length_subt.dat'
@@ -62,5 +62,5 @@ do
 	train_time_train_train=$(extract "FS/length_subt/train_train_$u" "training_time")
 	train_time_train_test=$(extract "FS/length_subt/train_test_$u" "training_time")
 
-	echo "$u	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$train_time_train_train	$train_time_train_test" >> $results_file_name
+	echo "$u	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train $comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
 done
