@@ -3,14 +3,17 @@ output_file_name=$2
 num_folds=10
 
 num_lines=`wc -l $input_file_name | awk '{print $1}'`
-line="1"
+start="1"
+fold_size=`echo "scale=10; $num_lines/$num_folds" | bc`
+fold_size=`echo "$fold_size" | python -c "print int(round(float(raw_input())))"`
+end=$fold_size
 for ((s=1; s<=$num_folds;s++))
 do
-  fold_size=`echo "scale=10; $num_lines/$num_folds" | bc`
-  fold_size=`echo "$fold_size" | python -c "print int(round(float(raw_input())))"`
-  sed -n $line,$fold_size\p $input_file_name > fold_$s
-  line=`echo "scale=10; $line+$fold_size" | bc`
-  line=`echo "$line" | python -c "print int(round(float(raw_input())))"`
+  sed -n $start,$end\p $input_file_name > fold_$s
+  start=`echo "scale=1; $end+1" | bc`
+  start=`echo "$start" | python -c "print int(round(float(raw_input())))"`
+  end=`echo "scale=1; $end+$fold_size" | bc`
+  end=`echo "$end" | python -c "print int(round(float(raw_input())))"`
 done
 
 for ((s=1; s<=$num_folds;s++))
