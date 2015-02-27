@@ -106,12 +106,8 @@ void FreqSubt::test(const std::string test_traj_file_name)
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	CompTrajectory* comp_traj_up;
-	std::list<node_subt*> compressed;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	std::list<Trajectory*> decomp;
-	std::list<Trajectory*>::iterator t;
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -120,17 +116,8 @@ void FreqSubt::test(const std::string test_traj_file_name)
 	{
 		traj = *it;
 		
-		traj->decompose_online(decomp);
-		comp_traj = new CompTrajectory;
+		comp_traj = compress(traj);
 
-		for(t = decomp.begin(); t != decomp.end(); ++t)
-		{
-			comp_traj_up = compress(*t);
-			comp_traj->append(comp_traj_up);
-			delete comp_traj_up;
-		}
-		
-		decomp.clear();
 		delete comp_traj;
 		delete traj;
 	}
@@ -622,7 +609,6 @@ void PredPartMatch::test(const std::string test_traj_file_name)
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	std::list<node_subt*> compressed;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
 
@@ -791,11 +777,8 @@ void ShortestPath::test(const std::string test_traj_file_name)
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	std::list<Trajectory*> decomp;
-	std::list<Trajectory*>::iterator t;
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -804,17 +787,8 @@ void ShortestPath::test(const std::string test_traj_file_name)
 	{
 		traj = *it;
 
-		traj->decompose_online(decomp);
-		comp_traj = new CompTrajectory;
+		comp_traj = compress(traj);
 		
-		for(t = decomp.begin(); t != decomp.end(); ++t)
-		{
-			comp_traj_up = compress(*t);
-			comp_traj->append(comp_traj_up);
-			delete comp_traj_up;
-		}
-		
-		decomp.clear();
 		delete comp_traj;
 		delete traj;
 		_num_traj_comp++;
@@ -947,11 +921,8 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
 	CompTrajectory* comp_traj;
-	CompTrajectory* comp_traj_up;
 
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
-	std::list<Trajectory*> decomp;
-	std::list<Trajectory*>::iterator t;
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -960,17 +931,8 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 	{
 		traj = *it;
 		
-		traj->decompose_online(decomp);
-		comp_traj = new CompTrajectory;
+		comp_traj = compress(traj);
 		
-		for(t = decomp.begin(); t != decomp.end(); ++t)
-		{
-			comp_traj_up = compress(*t);
-			comp_traj->append(comp_traj_up);
-			delete comp_traj_up;
-		}
-		
-		decomp.clear();
 		delete comp_traj;
 		delete traj;
 	}

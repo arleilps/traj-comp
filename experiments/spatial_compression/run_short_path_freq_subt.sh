@@ -5,14 +5,16 @@
 source settings.sh
 
 mkdir SPFS/
-mkdir SPFS/training_rate/
 
-for t in ${training_rate_vec[@]}
+for u in ${length_subt_vec[@]}
 do
-	echo "$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$t -e $map_matched_traj\_train_$t -p $short_path -s $min_sup -u $length_subt -n $n_threads > SPFS/training_rate/train_train_$t"
-	$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$t -e $map_matched_traj\_train_$t -p $short_path -s $min_sup -u $length_subt -n $n_threads > SPFS/training_rate/train_train_$t
+	for ((f=1; f<=$num_folds;f++))
+	do
+		echo "$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_train_$f -p $short_path -s $min_sup -u $u -n $n_threads > SPFS/train_train_$f\_$u"
+		$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_train_$f -p $short_path -s $min_sup -u $u -n $n_threads > SPFS/train_train_$f\_$u
 	
-	echo "$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$t -e $map_matched_traj\_test_$t -p $short_path -s $min_sup -u $length_subt -n $n_threads > SPFS/training_rate/train_test_$t"
-	$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$t -e $map_matched_traj\_test_$t -p $short_path -s $min_sup -u $length_subt -n $n_threads > SPFS/training_rate/train_test_$t
+		echo "$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_test_$f -p $short_path -s $min_sup -u $u -n $n_threads > SPFS/train_test_$f\_$u"
+		$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_test_$f -p $short_path -s $min_sup -u $u -n $n_threads > SPFS/train_test_$f\_$u
+	done
 done
 
