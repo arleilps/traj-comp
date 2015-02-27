@@ -1,6 +1,6 @@
 input_file_name=$1
 output_file_name=$2
-num_folds=3
+num_folds=10
 
 cut -f1,1 -d, $input_file_name | sort -k1,1 -t, -u > traj.tmp
 num_traj=`wc -l traj.tmp | awk '{print $1}'`

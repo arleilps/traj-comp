@@ -3,7 +3,7 @@
 #       @Arlei Silva
 
 
-training_rate_vec=(5 10 20 40)
+num_folds=10
 length_subt_vec=(2 4 6 8 10)
 min_sup_vec=(1 10 100 1000)
 short_path_vec=(200 400 800 1600)
