@@ -27,6 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <queue>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <stdlib.h>
+#include <pthread.h>
 
 /*my includes*/
 #include "road_net.h"
@@ -1229,7 +1230,66 @@ const double RoadNet::distance_point_segment
 		);
 }
 
-void RoadNet::precompute_shortest_paths(const double max_length)
+pthread_param_short_path* new_pthread_param_short_path
+	(
+		std::vector<segment*>* segments,
+		unsigned int* pointer,
+		pthread_mutex_t* mutex_pool,
+		RoadNet* net,
+		const unsigned int max_length
+	)
+{
+	pthread_param_short_path* param = new pthread_param_short_path;
+	
+	param->segments = segments;
+	param->pointer = pointer;
+	param->mutex_pool = mutex_pool;
+	param->net = net;
+	param->max_length = max_length;
+
+	return param;
+}
+
+void run_thread_short_path
+	(
+		std::vector<segment*>* segments,
+		unsigned int* pointer,
+		pthread_mutex_t* mutex_pool,
+		RoadNet* net,
+		const unsigned int max_length
+	)
+{
+	unsigned int s;
+	while(true)
+	{
+		pthread_mutex_lock(mutex_pool);
+		 
+		if(*pointer == segments->size())
+		{
+			pthread_mutex_unlock(mutex_pool);
+			break;
+		}
+		else
+		{
+			s = *pointer;
+			*pointer = *pointer + 1;
+			pthread_mutex_unlock(mutex_pool);
+		}
+
+		net->shortest_path(s, max_length);
+	}
+}
+
+void* start_thread_short_path(void* v_param)
+{
+	pthread_param_short_path* param = (pthread_param_short_path*) v_param;
+	run_thread_short_path(param->segments, param->pointer, param->mutex_pool,
+	param->net, param->max_length);
+	pthread_exit(NULL);
+}
+
+void RoadNet::precompute_shortest_paths(const double max_length, 
+	const unsigned int num_threads)
 {
 	distances.reserve(segments.size());
 
@@ -1240,11 +1300,40 @@ void RoadNet::precompute_shortest_paths(const double max_length)
 				new std::map<unsigned int, double>
 			);
 
+		/*
 		if(max_length > 0)
 		{
 			shortest_path(s, max_length);
 		}
+		*/
 	}
+	
+	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
+	pthread_param_short_path* param;
+	pthread_mutex_t* mutex_pool = new pthread_mutex_t;
+	pthread_mutex_init(mutex_pool, NULL);
+	std::vector<pthread_param_short_path*> params;
+	unsigned int pointer = 0;
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		param = new_pthread_param_short_path(&segments, &pointer, mutex_pool, this, max_length);
+		params.push_back(param);
+		pthread_create(&threads[t], NULL, start_thread_short_path, param);
+	}
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		pthread_join(threads[t], NULL);
+	}
+	 
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		delete params[t];
+	}
+	 
+	free(threads);
+	delete mutex_pool;
 }
 
 void RoadNet::build_boost_graph()

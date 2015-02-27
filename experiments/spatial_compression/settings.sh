@@ -4,7 +4,7 @@
 
 
 num_folds=10
-length_subt_vec=(2 4 6 8 10)
+length_subt_vec=(1 2 4 6 8 10)
 order_vec=(1 2 3 4 5 6)
 
 training_rate=10

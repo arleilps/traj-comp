@@ -40,7 +40,7 @@ const double Trajectory::BETACONST = 1;
 const double Trajectory::RADIUS = 30;
 const double Trajectory::MAXSPEED = 32;	//in m/s
 const unsigned int Trajectory::MAXCANDMATCHES = 5;
-const double Trajectory::MAXLENGTHSHORTESTPATH = 1000;
+const double Trajectory::MAXLENGTHSHORTESTPATH = 2000;
 
 double Trajectory::time_div = TIMEDIV;
 double Trajectory::sigma = SIGMA;
@@ -1078,7 +1078,7 @@ const bool Trajectory::write_map_matched_trajectories
 	}
 	
 	//Precomputing shortest paths
-	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH);
+	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH, num_threads);
 
 	for(unsigned int u = 0; u < updates.size(); u++)
 	{
@@ -1211,7 +1211,7 @@ const bool Trajectory::write_map_matched_trajectories_multithreads
 		return false;
 	}
 
-	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH);
+	net->precompute_shortest_paths(MAXLENGTHSHORTESTPATH, num_threads);
 
 	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
 	p_thread_param_map* param;

@@ -35,6 +35,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <pthread.h>
 #include <unistd.h>
 #include <stdexcept>
+#include <pthread.h>
 
 using namespace boost;
 
@@ -42,6 +43,7 @@ typedef adjacency_list < listS, vecS, directedS,
 	no_property, property < edge_weight_t, double > > graph_t;
 typedef graph_traits < graph_t >::vertex_descriptor vertex_descriptor;
 typedef graph_traits < graph_t >::edge_descriptor edge_descriptor;
+
 
 /*This is for implementing single-source single-destination
  * Dijkstra algorithm using boost*/
@@ -91,6 +93,7 @@ typedef struct t_segment
 	double length;
 	std::string name;
 } segment;
+
 
 /**
  * Point
@@ -525,7 +528,8 @@ class RoadNet
 	
 		void clear_distances();
 		
-		void precompute_shortest_paths(const double max_length);
+		void precompute_shortest_paths(const double max_length, 
+			const unsigned int num_threads=1);
 
 		void fill_short_path_struct
 			(
@@ -541,6 +545,8 @@ class RoadNet
 				const unsigned int max_dist
 			) 
 				const;
+		
+		void shortest_path(const unsigned int s1, const double max_length);
 		/*INLINES*/
 
 		/**
@@ -715,7 +721,6 @@ class RoadNet
 		const unsigned int flip_segment(const unsigned int seg) const;
 		void compute_segment_lengths();
 		void project_segments();
-		void shortest_path(const unsigned int s1, const double max_length);
 
 		const bool create
 			(
@@ -735,5 +740,14 @@ class RoadNet
 
 		void build_boost_graph();
 };
+
+typedef struct t_pthread_param_short_path
+{
+	std::vector<segment*>* segments;
+	unsigned int* pointer;
+	pthread_mutex_t* mutex_pool;
+	RoadNet* net;
+	unsigned int max_length;
+}pthread_param_short_path;
 
 #endif
