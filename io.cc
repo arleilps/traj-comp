@@ -100,6 +100,7 @@ void Parameters::print_usage()
 	std::cout << " -r, --order		order" << std::endl;
 	std::cout << " -s, --min-sup		minimum support subtrajectory [integer]" << std::endl;
 	std::cout << " -p, --short-path		max length shortest path [in meters]" << std::endl;
+	std::cout << " -f, --potgis-conf	postgis configuration file" << std::endl;
 	std::cout << " -d, --gps-updates	gps updates file to be map-matched" << std::endl;
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
