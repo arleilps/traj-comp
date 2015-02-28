@@ -1331,6 +1331,84 @@ void TSND::constrain
 	}
 }
 
+void NSTD::constrain
+	(
+		angle& R, 
+		const dist_time& p_index,
+		const dist_time& p_i,
+		const double error
+	)
+{
+	double tan_from;
+	double tan_to;
+	double b_from;
+	double b_to;
+
+	tan_from = tan(R.from);
+	tan_to = tan(R.to);
+
+	if(equal_double(fabs(R.from), (double) PI / 2.))
+	{
+		b_from = -std::numeric_limits<double>::max();
+		tan_from = 0;
+	}
+	else
+	{
+		if(equal_double(tan_from, 0.0))
+		{
+			b_from = p_index.dist;
+		}
+		else
+		{
+			b_from = (double) p_index.dist - ((double) tan_from * p_index.time);
+		}
+	}
+			
+	if(equal_double(fabs(R.to), (double) PI / 2.))
+	{
+		b_to = std::numeric_limits<double>::max();
+		tan_to = 1;
+	}
+	else
+	{
+		if(equal_double(tan_to, 0))
+		{
+			b_to = p_index.dist;
+		}
+		else
+		{
+			b_to = (double) p_index.dist - ((double) tan_to * p_index.time);
+		}
+	}
+
+	if(p_i.time - error > (double) (p_i.dist - b_to) / tan_to)
+	{
+		if(equal_double(p_i.time, p_index.time)) 
+		{
+			R.to = (double) PI / 2;
+		}
+		else
+		{
+			R.to = atan2((p_i.dist + error - p_index.dist), (p_i.time - p_index.time));
+		}
+		
+	}
+
+	if(p_i.dist - error > tan_from * p_i.time + b_from)
+	{
+		if(equal_double(p_i.time, p_index.time)) 
+		{
+			R.from = (double) PI / 2;
+		}
+		else
+		{
+			tan_from = 
+				(double) (p_i.dist - error - p_index.dist) / (p_i.time - p_index.time);
+			R.from = atan2((p_i.dist - error - p_index.dist), (p_i.time - p_index.time));
+		}
+	}
+}
+
 void LeastSquares::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
