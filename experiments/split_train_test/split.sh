@@ -12,9 +12,9 @@ end=$fold_size
 for ((s=1; s<=$num_folds;s++))
 do
   sed -n $start,$end\p traj.tmp > fold_$s
-  start=`echo "scale=1; $end+1" | bc`
+  start=`echo "scale=10; $end+1" | bc`
   start=`echo "$start" | python -c "print int(round(float(raw_input())))"`
-  end=`echo "scale=1; $end+$fold_size" | bc`
+  end=`echo "scale=10; $end+$fold_size" | bc`
   end=`echo "$end" | python -c "print int(round(float(raw_input())))"`
 done
 

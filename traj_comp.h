@@ -474,6 +474,43 @@ class TSND: public TrajCompAlgo
 		double max_error;
 };
 
+class NSTD: public TrajCompAlgo
+{
+	public:
+		TSND(RoadNet* net, const double _max_error)
+			:TrajCompAlgo(net)
+		{
+			max_error = _max_error;
+		}
+
+		virtual ~TSND(){};
+		
+		void test(const std::string test_traj_file_name);
+		
+		void compress
+			(
+				std::list < dist_time* >& dist_times,
+				std::list < dist_time* >& comp_dist_times
+			);
+		
+		static bool fall_inside
+			(
+				const angle& R,
+				const dist_time& p_index,
+				const dist_time& p_i
+			);
+
+		static void constrain
+			(
+				angle& R,
+				const dist_time& p_index,
+				const dist_time& p_i,
+				const double error
+			);
+	private:
+		double max_error;
+};
+
 class LeastSquares: public TrajCompAlgo
 {
 	public:	

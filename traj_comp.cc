@@ -988,7 +988,89 @@ void TSND::test(const std::string test_traj_file_name)
 	_compression_time = comp_t->get_seconds();
 }
 
+void NSTD::test(const std::string test_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory* traj;
+	std::list < dist_time* > dist_times;
+	std::list < dist_time* > comp_dist_times;
+	
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+
+		traj->get_dist_times_uniform(dist_times, net);
+
+		compress(dist_times, comp_dist_times);
+
+		Trajectory::delete_dist_times(dist_times);
+		Trajectory::delete_dist_times(comp_dist_times);
+		delete traj;
+	}
+	
+	_compression_time = comp_t->get_seconds();
+}
+
 void TSND::compress
+	(
+		std::list < dist_time* >& dist_times,
+		std::list < dist_time* >& comp_dist_times
+	)
+{
+	comp_dist_times.clear();
+	comp_t->start();
+	dist_time* p_i;
+	dist_time* p_i_minus_one;
+	dist_time* p_index;
+	angle R;
+
+	p_i = new_dist_time(dist_times.front()->dist, dist_times.front()->time);
+	p_index = dist_times.front();
+
+	comp_dist_times.push_back(p_i);
+
+	std::list < dist_time* >::iterator it = dist_times.begin();
+	p_i_minus_one = *it;
+	++it;
+	R.from = (double) -PI / 2;
+	R.to = (double) PI / 2;
+
+	while(it != dist_times.end())
+	{
+		p_i = *it;
+
+		if(fall_inside(R, *p_index, *p_i))
+		{
+			constrain(R, *p_index, *p_i, max_error);
+		}
+		else
+		{
+			p_index = new_dist_time(p_i_minus_one->dist, p_i_minus_one->time);
+			comp_dist_times.push_back(p_index);
+
+			R.from = (double) -PI / 2;
+			R.to = (double) PI / 2;
+		}
+		
+		p_i_minus_one = p_i;
+		++it;
+	}
+			
+	p_index = new_dist_time(dist_times.back()->dist, dist_times.back()->time);
+	comp_dist_times.push_back(p_index);
+	
+	comp_t->stop();
+	_num_updates_orig += dist_times.size();
+	_num_updates_comp += comp_dist_times.size();
+	_num_traj_comp++;
+}
+
+void NSTD::compress
 	(
 		std::list < dist_time* >& dist_times,
 		std::list < dist_time* >& comp_dist_times
@@ -1097,6 +1179,68 @@ bool TSND::fall_inside
 	}
 
 	if((p_i.dist < (double) tan_to * p_i.time + b_to
+		&& p_i.dist > (double) tan_from * p_i.time + b_from)
+		|| (equal_double(p_i.dist, (double) tan_to * p_i.time + b_to)
+		&& equal_double(p_i.dist, (double) tan_from * p_i.time + b_from)))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool NSTD::fall_inside
+	(
+		const angle& R, 
+		const dist_time& p_index,
+		const dist_time& p_i	
+	)
+{
+	double tan_from;
+	double tan_to;
+	double b_from;
+	double b_to;
+
+	tan_from = tan(R.from);
+	tan_to = tan(R.to);
+	
+	if(equal_double(fabs(R.from), (double) PI / 2.))
+	{
+		b_from = -std::numeric_limits<double>::max();
+		tan_from = 0;
+	}
+	else
+	{
+		if(equal_double(tan_from, 0.0))
+		{
+			b_from = p_index.dist;
+		}
+		else
+		{
+			b_from = (double) p_index.dist - ((double) tan_from * p_index.time);
+		}
+	}
+			
+	if(equal_double(fabs(R.to), (double) PI / 2.))
+	{
+		b_to = std::numeric_limits<double>::max();
+		tan_to = 0;
+	}
+	else
+	{
+		if(equal_double(tan_to, 0.0))
+		{
+			b_to = p_index.dist;
+		}
+		else
+		{
+			b_to = (double) p_index.dist - ((double) tan_to * p_index.time);
+		}
+	}
+
+	if((p_i.time < (double) tan_to * p_i.time + b_to
 		&& p_i.dist > (double) tan_from * p_i.time + b_from)
 		|| (equal_double(p_i.dist, (double) tan_to * p_i.time + b_to)
 		&& equal_double(p_i.dist, (double) tan_from * p_i.time + b_from)))
