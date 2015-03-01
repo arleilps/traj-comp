@@ -29,9 +29,9 @@ do
 	do
 		if [ $s -eq $i ] 
 		then
-			grep -f ^fold_$i, $input_file_name > $output_file_name\_test_$s
+			grep -f fold_$i $input_file_name > $output_file_name\_test_$s
 		else
-			grep -f ^fold_$i, $input_file_name >> $output_file_name\_train_$s
+			grep -f fold_$i $input_file_name >> $output_file_name\_train_$s
 		fi
 	done
 done

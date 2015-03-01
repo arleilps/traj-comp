@@ -477,13 +477,13 @@ class TSND: public TrajCompAlgo
 class NSTD: public TrajCompAlgo
 {
 	public:
-		TSND(RoadNet* net, const double _max_error)
+		NSTD(RoadNet* net, const double _max_error)
 			:TrajCompAlgo(net)
 		{
 			max_error = _max_error;
 		}
 
-		virtual ~TSND(){};
+		virtual ~NSTD(){};
 		
 		void test(const std::string test_traj_file_name);
 		

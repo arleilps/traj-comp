@@ -1343,68 +1343,68 @@ void NSTD::constrain
 	double tan_to;
 	double b_from;
 	double b_to;
+	double x_from;
+	double x_to;
 
 	tan_from = tan(R.from);
 	tan_to = tan(R.to);
 
-	if(equal_double(fabs(R.from), (double) PI / 2.))
+	if(equal_double(R.from, (double) -PI / 2.))
 	{
-		b_from = -std::numeric_limits<double>::max();
-		tan_from = 0;
+		x_from = std::numeric_limits<double>::max();
 	}
 	else
 	{
 		if(equal_double(tan_from, 0.0))
 		{
-			b_from = p_index.dist;
+			x_from = std::numeric_limits<double>::max();
 		}
 		else
 		{
 			b_from = (double) p_index.dist - ((double) tan_from * p_index.time);
+			x_from = (double) (p_i.dist - b_from) / tan_from;
 		}
 	}
 			
 	if(equal_double(fabs(R.to), (double) PI / 2.))
 	{
-		b_to = std::numeric_limits<double>::max();
-		tan_to = 1;
+		x_to = p_index.time;
 	}
 	else
 	{
 		if(equal_double(tan_to, 0))
 		{
-			b_to = p_index.dist;
+			x_to = -std::numeric_limits<double>::max();
 		}
 		else
 		{
 			b_to = (double) p_index.dist - ((double) tan_to * p_index.time);
+			x_to = (double) (p_i.dist - b_to) / tan_to;
 		}
 	}
 
-	if(p_i.time - error > (double) (p_i.dist - b_to) / tan_to)
+	if(p_i.time - error > x_to)
 	{
-		if(equal_double(p_i.time, p_index.time)) 
+		if(equal_double(p_i.time - error - p_index.time, 0)) 
 		{
 			R.to = (double) PI / 2;
 		}
 		else
 		{
-			R.to = atan2((p_i.dist + error - p_index.dist), (p_i.time - p_index.time));
+			R.to = atan2((p_i.dist - p_index.dist), (p_i.time - error - p_index.time));
 		}
 		
 	}
 
-	if(p_i.dist - error > tan_from * p_i.time + b_from)
+	if(p_i.time + error < x_from)
 	{
-		if(equal_double(p_i.time, p_index.time)) 
+		if(equal_double(p_i.time + error - p_index.time, 0)) 
 		{
 			R.from = (double) PI / 2;
 		}
 		else
 		{
-			tan_from = 
-				(double) (p_i.dist - error - p_index.dist) / (p_i.time - p_index.time);
-			R.from = atan2((p_i.dist - error - p_index.dist), (p_i.time - p_index.time));
+			R.from = atan2((p_i.dist - p_index.dist), (p_i.time + error - p_index.time));
 		}
 	}
 }
