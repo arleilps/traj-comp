@@ -221,8 +221,8 @@ const bool test_least_squares()
 {
 	//RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
 	RoadNet* net = new RoadNet("../data/road_net.csv");
-	TrajCompAlgo* traj_comp = new LeastSquares(net, 0.1, 0.001);
-	//TrajCompAlgo* traj_comp = new TSND(net, 0);
+	TrajCompAlgo* traj_comp = new LeastSquares(10, 0.1, net);
+	//TrajCompAlgo* traj_comp = new NSTD(net, 0);
 	//traj_comp->train("../data/map_matched_cab_stream_sfo.txt");
 	traj_comp->train("../data/map_matched_cab_stream.txt");
 	traj_comp->test("../data/map_matched_cab_stream.txt");

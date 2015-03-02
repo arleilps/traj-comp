@@ -252,6 +252,14 @@ class Trajectory
 			) 
 				const;
 		
+		void get_pred_dist_times_least_squares
+			(
+				std::list < dist_time* >& pred_dist_times,
+				const Eigen::VectorXd& f,
+				RoadNet* net
+			) 
+				const;
+		
 		void get_sparse_rep
 			(
 				std::vector < Eigen::Triplet<double> >&	Q, 

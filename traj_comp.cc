@@ -1043,7 +1043,7 @@ void TSND::compress
 	while(it != dist_times.end())
 	{
 		p_i = *it;
-
+		
 		if(fall_inside(R, *p_index, *p_i))
 		{
 			constrain(R, *p_index, *p_i, max_error);
@@ -1240,7 +1240,7 @@ bool NSTD::fall_inside
 		}
 	}
 
-	if((p_i.time < (double) tan_to * p_i.time + b_to
+	if((p_i.dist < (double) tan_to * p_i.time + b_to
 		&& p_i.dist > (double) tan_from * p_i.time + b_from)
 		|| (equal_double(p_i.dist, (double) tan_to * p_i.time + b_to)
 		&& equal_double(p_i.dist, (double) tan_from * p_i.time + b_from)))
@@ -1383,28 +1383,30 @@ void NSTD::constrain
 		}
 	}
 
-	if(p_i.time - error > x_to)
+	if(! equal_double(p_i.dist, p_index.dist))
 	{
-		if(equal_double(p_i.time - error - p_index.time, 0)) 
+		if(p_i.time - error > x_to)
 		{
-			R.to = (double) PI / 2;
+			if(equal_double(p_i.time - error - p_index.time, 0)) 
+			{
+				R.to = (double) PI / 2;
+			}
+			else
+			{
+				R.to = atan2((p_i.dist - p_index.dist), (p_i.time - error - p_index.time));
+			}
 		}
-		else
-		{
-			R.to = atan2((p_i.dist - p_index.dist), (p_i.time - error - p_index.time));
-		}
-		
-	}
 
-	if(p_i.time + error < x_from)
-	{
-		if(equal_double(p_i.time + error - p_index.time, 0)) 
+		if(p_i.time + error < x_from)
 		{
-			R.from = (double) PI / 2;
-		}
-		else
-		{
-			R.from = atan2((p_i.dist - p_index.dist), (p_i.time + error - p_index.time));
+			if(equal_double(p_i.time + error - p_index.time, 0)) 
+			{
+				R.from = (double) PI / 2;
+			}
+			else
+			{
+				R.from = atan2((p_i.dist - p_index.dist), (p_i.time + error - p_index.time));
+			}
 		}
 	}
 }
@@ -1439,6 +1441,41 @@ void LeastSquares::train(const std::string training_traj_file_name)
 	_training_time = train_t->get_seconds();
 }
 
+void Hybrid::train(const std::string training_traj_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	Trajectory* traj;
+	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	train_t->start();
+	
+	y.reserve(1000 * trajectories.size());
+	Q.reserve(1000 * trajectories.size());
+	
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		_num_traj_train++;
+		_num_updates_train += traj->size();
+		
+		traj->get_sparse_rep(Q, y, sz, net);
+		delete traj;
+	}
+	
+	laplacian_affinity_matrix();
+	least_squares_regression();
+	compute_lsq_sigmas();
+
+//	std::cout << f << std::endl;
+
+	train_t->stop();
+	_training_time = train_t->get_seconds();
+}
+	
+void Hybrid::compute_lsq_sigmas()
+{
+
+}
 
 void LeastSquares::test(const std::string test_traj_file_name)
 {
@@ -1461,7 +1498,7 @@ void LeastSquares::test(const std::string test_traj_file_name)
 				f,
 				net
 			);
-
+		
 		compress(comp_dist_times, dist_times, traj);
 
 		Trajectory::delete_dist_times(dist_times);
@@ -1472,56 +1509,29 @@ void LeastSquares::test(const std::string test_traj_file_name)
 	_compression_time = comp_t->get_seconds();
 }
 
-void LeastSquares::get_pred_dist_times_least_squares
-	(
-		std::list < dist_time* >& pred_dist_times, 
-		const std::list < dist_time*>& dist_times, 
-		Trajectory* traj 
-	) 
-		const
+void Hybrid::test(const std::string test_traj_file_name)
 {
-	Trajectory::const_iterator itraj = traj->begin();
-	std::list<dist_time*>::const_iterator idt = dist_times.begin();
-	dist_time* dt = *idt;
-	seg_time* st = *itraj;
-	double dist = 0;
-	double t;
-	pred_dist_times.push_back(new_dist_time(dt->dist, dt->time));
-	++idt;
-	double tr = f[st->segment] * (double) (net->segment_length(st->segment) - st->dist) 
-		/ net->segment_length(st->segment);
-	double dr = net->segment_length(st->segment) - st->dist;
+	std::list<Trajectory*> trajectories;
+	Trajectory* traj;
+	std::list < dist_time* > comp_dist_times;
+	
+	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
 
-	while(idt != dist_times.end())
+	//Compresses each trajectory in the file and computes the total
+	//number of updates
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
 	{
-		dist_time* dt = *idt;
-		t = dt->time - pred_dist_times.back()->time;
+		traj = *it;
+		
 
-		while(t >= tr && itraj != traj->end())
-		{
-			t = t - tr;
-			dist += dr;
-			++itraj;
+		compress(comp_dist_times, traj);
 
-			if(itraj != traj->end())
-			{
-				st = *itraj;
-				tr = f[st->segment];
-				dr = net->segment_length(st->segment);
-			}
-		}
-
-		if(itraj != traj->end())
-		{
-			dist += (double) (net->segment_length(st->segment) * t) / (tr);
-			dr = net->segment_length(st->segment) - 
-				(double) (net->segment_length(st->segment) * t) / (tr);
-			tr = tr - t;
-		}
-
-		pred_dist_times.push_back(new_dist_time(dist, dt->time));
-		++idt;
+		Trajectory::delete_dist_times(comp_dist_times);
+		delete traj;
 	}
+	
+	_compression_time = comp_t->get_seconds();
 }
 
 void LeastSquares::compress
@@ -1536,10 +1546,10 @@ void LeastSquares::compress
 	dist_time* dt;
 	dist_time* dt_pred;
 	
-	get_pred_dist_times_least_squares
+	traj->get_pred_dist_times_least_squares
 		(
 			pred_dist_times, 
-			dist_times, traj 
+			f, net
 		);
 
 	std::list<dist_time*>::const_iterator it = dist_times.begin();
@@ -1549,25 +1559,27 @@ void LeastSquares::compress
 	++it_pred;
 	comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
 	double fix = 0;
-	double dist_pred;
+	double time_pred;
 
 	while(it != dist_times.end())
 	{
 		dt = *it;
 		dt_pred = *it_pred;
-		dist_pred = dt_pred->dist + fix; 
+		time_pred = dt_pred->time + fix; 
 		
 		++it;
 		++it_pred;
 		
-		if(fabs(dt->dist - dist_pred) > max_error 
+		if(fabs(dt->time - time_pred) > max_error 
 			|| it == dist_times.end())
 		{
 			comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
-			fix = dt->dist - dist_pred;
+			fix = dt->time - time_pred;
 		}
 
 	}
+	
+	std::cout << std::endl;
 
 	Trajectory::delete_dist_times(pred_dist_times);
 	
@@ -1575,6 +1587,14 @@ void LeastSquares::compress
 	_num_updates_orig += dist_times.size();
 	_num_updates_comp += comp_dist_times.size();
 	_num_traj_comp++;
+}
+
+void Hybrid::compress
+	(
+		std::list < dist_time* >& comp_dist_times, 
+		Trajectory* traj
+	)
+{
 }
 
 void LeastSquares::least_squares_regression()

@@ -477,7 +477,7 @@ class TSND: public TrajCompAlgo
 class NSTD: public TrajCompAlgo
 {
 	public:
-		NSTD(RoadNet* net, const double _max_error)
+		NSTD(const double _max_error, RoadNet* net)
 			:TrajCompAlgo(net)
 		{
 			max_error = _max_error;
@@ -516,13 +516,14 @@ class LeastSquares: public TrajCompAlgo
 	public:	
 		LeastSquares
 			(
-				RoadNet* net, 
 				const double _max_error,
-				const double _lambda
+				const double _lambda,
+				RoadNet* net 
 			)
 				:TrajCompAlgo(net)
 		{
 			max_error = _max_error;
+
 			if(_lambda > 0)
 			{
 				lambda = _lambda;
@@ -536,10 +537,10 @@ class LeastSquares: public TrajCompAlgo
 
 		virtual ~LeastSquares(){};
 		
-		void train(const std::string training_traj_file_name);
+		virtual void train(const std::string training_traj_file_name);
 		
-		void test(const std::string test_traj_file_name);
-	private:
+		virtual void test(const std::string test_traj_file_name);
+	protected:
 		double max_error;
 		double lambda;
 		unsigned int sz;
@@ -565,6 +566,39 @@ class LeastSquares: public TrajCompAlgo
 				const std::list < dist_time*>& dist_times,
 				Trajectory* traj
 			) const;
+};
+
+class Hybrid: public LeastSquares
+{
+	public:
+		Hybrid
+			(
+				const double _max_error,
+				const double _lambda,
+				const double _init_sigma,
+				RoadNet* net
+			)
+				:LeastSquares(_max_error, _lambda, net)
+		{
+			init_sigma = _init_sigma;
+		}
+
+		virtual ~Hybrid(){};
+		
+		void train(const std::string training_traj_file_name);
+		
+		void test(const std::string test_traj_file_name);
+	private:
+		double init_sigma;
+		std::vector<double> lsq_sigmas;
+		
+		void compress
+			(
+				std::list < dist_time* >& comp_traj, 
+				Trajectory* traj
+			); 
+		
+		void compute_lsq_sigmas();
 };
 
 /**

@@ -40,7 +40,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int main(int argc, char** argv)
 {
-//	PostGisIndex::set_config(../data/sfo_postgis.conf);
+	PostGisIndex::set_config("../data/sfo_postgis.conf");
 //	test_road_net();
 //	test_database();
 //	test_moving_obj();
@@ -66,6 +66,8 @@ int main(int argc, char** argv)
 	compression_algorithms.push_back("SPFS");	// Shortest path 
 							//+ frequent subtrajectories
 	compression_algorithms.push_back("PPM");	//Prediction by partial matching
+	compression_algorithms.push_back("NSTD");	//Network synchronized time distance
+	compression_algorithms.push_back("LS");		//Least-squares
 	
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
@@ -117,6 +119,17 @@ int main(int argc, char** argv)
 				if(Parameters::compression_algorithm == "PPM")
 				{
 					alg = new PredPartMatch(Parameters::order, net);
+				}
+
+				if(Parameters::compression_algorithm == "NSTD")
+				{
+					alg = new NSTD(Parameters::error, net);
+				}
+
+				if(Parameters::compression_algorithm == "LS")
+				{
+					alg = new LeastSquares(Parameters::error, 
+						Parameters::lambda, net);
 				}
 
 				alg->train(Parameters::training_traj_file_name);

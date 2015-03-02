@@ -89,6 +89,8 @@ class Parameters
 		static unsigned int min_sup;
 		static unsigned int max_shortest_path;
 		static unsigned int num_threads;
+		static double error;
+		static double lambda;
 		
 		/*List of valid compression algorithms for checking*/
 		static std::vector < std::string > compression_algorithms;
