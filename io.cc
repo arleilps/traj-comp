@@ -124,7 +124,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 	order = 0;
 	min_sup = 1;
 	max_shortest_path = 0;
-	num_threads = 0;
+	num_threads = 1;
 	lambda = 0;
 	error = 0;
 

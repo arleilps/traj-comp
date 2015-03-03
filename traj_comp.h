@@ -300,7 +300,7 @@ class ShortestPath: public TrajCompAlgo
 			)
 			:TrajCompAlgo(net)
 		{
-			num_threads = num_threads;
+			num_threads = _num_threads;
 			max_length = _max_length;
 			compute_shortest_paths();
 		}
