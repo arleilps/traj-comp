@@ -1110,7 +1110,7 @@ const bool PostGisIndex::closest_point_segment
 			spatial_ref + "), "+ srid +"))),"  
 			" ST_y(ST_ClosestPoint(segment, ST_Transform(ST_GeomFromText('POINT(" +
 			to_string_prec(longit_p) + " " + to_string_prec(latit_p) + ")', " +
-			spatial_ref + "),"+ srid +")) FROM " + table_name + 
+			spatial_ref + "),"+ srid +"))) FROM " + table_name + 
 			" WHERE id = " + to_string(seg) + ";";  
 		
 		pqxx::nontransaction work(*conn);
