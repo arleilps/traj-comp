@@ -822,7 +822,7 @@ const bool PostGisIndex::create_table()
 	{
 		sql = "CREATE TABLE " + table_name + 
 			"(id integer PRIMARY KEY, segment geometry(LINESTRING," +
-			spatial_ref+"));\
+			srid+"));\
 			CREATE INDEX sg_idx ON " + table_name +
 			 " USING GIST(segment);";
 		pqxx::work work (*conn);
@@ -891,12 +891,12 @@ const bool PostGisIndex::insert
 	{
 		sql = "INSERT INTO " + table_name + 
 			"(id, segment) VALUES (" + to_string(id) +
-			", ST_GeomFromText('LINESTRING(" +
+			", ST_Transform(ST_GeomFromText('LINESTRING(" +
 			to_string_prec(seg->longit_begin) + " " + 
 			to_string_prec(seg->latit_begin) + "," +
 			to_string_prec(seg->longit_end) + " " + 
 			to_string_prec(seg->latit_end) + ")', " + 
-			spatial_ref+"));";
+			spatial_ref+"), "+ srid +"));";
 	
 		pqxx::work work (*conn);
 		work.exec(sql.c_str());
@@ -931,8 +931,7 @@ const unsigned int PostGisIndex::within_distance
 	try
 	{
 		sql = "SELECT id FROM " + table_name + 
-			" WHERE ST_DWithin(ST_Transform(segment," + srid + 
-			"),ST_Transform(ST_GeomFromText('POINT(" + 
+			" WHERE ST_DWithin(segment,ST_Transform(ST_GeomFromText('POINT(" + 
 			to_string_prec(longit) + " " + to_string_prec(latit) + ")', " 
 			+ spatial_ref + ")," + srid + ")," + 
 			to_string_prec(distance) + ")";
@@ -1023,8 +1022,7 @@ const double PostGisIndex::distance_point_segment
 		sql = "SELECT ST_Distance(ST_GeomFromText('POINT(" + 
 			to_string_prec(longit) + 
 			" " + to_string_prec(latit) + ")', " + 
-			srid + "), ST_Transform(segment," + srid + 
-			")) FROM "+ table_name +" WHERE id = " + to_string(seg) + ";";
+			srid + "), segment) FROM "+ table_name +" WHERE id = " + to_string(seg) + ";";
 		
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
@@ -1107,12 +1105,12 @@ const bool PostGisIndex::closest_point_segment
 
 	try
 	{
-		sql = "SELECT ST_x(ST_ClosestPoint(segment, ST_GeomFromText('POINT(" +
+		sql = "SELECT ST_x(ST_ClosestPoint(segment, ST_Transform(ST_GeomFromText('POINT(" +
 			to_string_prec(longit_p) + " " + to_string_prec(latit_p) + ")', " +
-			spatial_ref + "))),"  
-			" ST_y(ST_ClosestPoint(segment, ST_GeomFromText('POINT(" +
+			spatial_ref + "), "+ srid +"))),"  
+			" ST_y(ST_ClosestPoint(segment, ST_Transform(ST_GeomFromText('POINT(" +
 			to_string_prec(longit_p) + " " + to_string_prec(latit_p) + ")', " +
-			spatial_ref + "))) FROM " + table_name + 
+			spatial_ref + "),"+ srid +")) FROM " + table_name + 
 			" WHERE id = " + to_string(seg) + ";";  
 		
 		pqxx::nontransaction work(*conn);
