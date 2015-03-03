@@ -14,37 +14,50 @@ extract (){
 	echo $value
 }
 
-results_file_name='PPM_training_rate.dat'
-rm $results_file_name
-
-for t in ${training_rate_vec[@]}
-do
-	comp_ratio_train_train=$(extract "PPM/training_rate/train_train_$t" "compression_ratio")
-	comp_ratio_train_test=$(extract "PPM/training_rate/train_test_$t" "compression_ratio")
-	
-	comp_time_train_train=$(extract "PPM/training_rate/train_train_$t" "compression_time")
-	comp_time_train_test=$(extract "PPM/training_rate/train_test_$t" "compression_time")
-	
-	train_time_train_train=$(extract "PPM/training_rate/train_train_$t" "training_time")
-	train_time_train_test=$(extract "PPM/training_rate/train_test_$t" "training_time")
-
-	echo "$t	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
-done
-
 results_file_name='PPM_order.dat'
 rm $results_file_name
 
+avg_comp_ratio_train_train=0
+avg_comp_ratio_train_test=0
+
+avg_comp_time_train_train=0
+avg_comp_time_train_test=0
+
+avg_train_time_train_train=0
+avg_train_time_train_test=0
+
 for d in ${order_vec[@]}
 do
-	comp_ratio_train_train=$(extract "PPM/order/train_train_$d" "compression_ratio")
-	comp_ratio_train_test=$(extract "PPM/order/train_test_$d" "compression_ratio")
-	
-	comp_time_train_train=$(extract "PPM/order/train_train_$d" "compression_time")
-	comp_time_train_test=$(extract "PPM/order/train_test_$d" "compression_time")
-	
-	train_time_train_train=$(extract "PPM/order/train_train_$d" "training_time")
-	train_time_train_test=$(extract "PPM/order/train_test_$d" "training_time")
+	for ((f=1; f<=$num_folds;f++))
+	do
+		comp_ratio_train_train=$(extract "PPM/train_train_$f\_$d" "compression_ratio")
+		avg_comp_ratio_train_train=`echo "scale=10; $avg_comp_ratio_train_train+$comp_ratio_train_train" | bc`
+		
+		comp_ratio_train_test=$(extract "PPM/train_test_$f\_$d" "compression_ratio")
+		avg_comp_ratio_train_test=`echo "scale=10; $avg_comp_ratio_train_test+$comp_ratio_train_test" | bc`
+		
+		comp_time_train_train=$(extract "PPM/train_train_$f\_$d" "compression_time")
+		avg_comp_time_train_train=`echo "scale=10; $avg_comp_time_train_train+$comp_time_train_train" | bc`
+		
+		comp_time_train_test=$(extract "PPM/train_test_$f\_$d" "compression_time")
+		avg_comp_time_train_test=`echo "scale=10; $avg_comp_time_train_test+$comp_time_train_test" | bc`
 
-	echo "$d	$comp_ratio_train_train	$comp_ratio_train_test	$comp_time_train_train	$comp_time_train_test	$train_time_train_train	$train_time_train_test" >> $results_file_name
+		train_time_train_train=$(extract "PPM/train_train_$f\_$d" "training_time")
+		avg_train_time_train_train=`echo "scale=10; $avg_comp_time_train_train+$train_time_train_train" | bc`
+		
+		train_time_train_test=$(extract "PPM/train_test_$f\_$d" "training_time")
+		avg_train_time_train_test=`echo "scale=10; $avg_train_time_train_test+$train_time_train_test" | bc`
+	done
+	
+	avg_comp_ratio_train_train=`echo "scale=10; $avg_comp_ratio_train_train/$num_folds" | bc`
+	avg_comp_ratio_train_test=`echo "scale=10; $avg_comp_ratio_train_test/$num_folds" | bc`
+	
+	avg_comp_time_train_train=`echo "scale=10; $avg_comp_time_train_train/$num_folds" | bc`
+	avg_comp_time_train_test=`echo "scale=10; $avg_comp_time_train_test/$num_folds" | bc`
+	
+	avg_train_time_train_train=`echo "scale=10; $avg_train_time_train_train/$num_folds" | bc`
+	avg_train_time_train_test=`echo "scale=10; $avg_train_time_train_test/$num_folds" | bc`
+
+	echo "$d	$avg_comp_ratio_train_train	$avg_comp_ratio_train_test	$avg_comp_time_train_train	$avg_comp_time_train_test	$avg_train_time_train_train	$avg_train_time_train_test" >> $results_file_name
 done
 

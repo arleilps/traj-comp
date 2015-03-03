@@ -538,6 +538,13 @@ class RoadNet
 				std::map < unsigned int , unsigned int >* s_paths
 			);
 
+		void fill_short_path_struct
+	                (
+		                const double max_length, 
+		                std::vector < std::map < unsigned int , unsigned int > * >& short_paths,
+				const unsigned int num_threads
+		         );
+
 		void get_num_hops_from
 			(
 				std::map<unsigned int, unsigned int>& distances,
@@ -748,6 +755,7 @@ typedef struct t_pthread_param_short_path
 	pthread_mutex_t* mutex_pool;
 	RoadNet* net;
 	unsigned int max_length;
+	 std::vector < std::map < unsigned int , unsigned int > * >* short_paths;
 }pthread_param_short_path;
 
 #endif

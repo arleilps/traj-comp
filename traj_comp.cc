@@ -863,17 +863,7 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 
 void ShortestPath::compute_shortest_paths()
 {
-	short_paths.reserve(net->size());
-	
-	for(unsigned int s = 0; s < net->size(); s++)
-	{
-		short_paths.push_back(new std::map<unsigned int, unsigned int>);
-	}
-
-	for(unsigned int s = 0; s < net->size(); s++)
-	{
-		net->fill_short_path_struct(s, max_length, short_paths.at(s));
-	}
+	net->fill_short_path_struct(max_length, short_paths, num_threads);
 }
 
 void ShortestPath::delete_shortest_paths()

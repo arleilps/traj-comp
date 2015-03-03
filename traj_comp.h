@@ -295,10 +295,12 @@ class ShortestPath: public TrajCompAlgo
 		ShortestPath
 			(
 				const double _max_length,
-				RoadNet* net
+				RoadNet* net,
+				const unsigned int _num_threads=1
 			)
 			:TrajCompAlgo(net)
 		{
+			num_threads = num_threads;
 			max_length = _max_length;
 			compute_shortest_paths();
 		}
@@ -319,6 +321,7 @@ class ShortestPath: public TrajCompAlgo
 	private:
 		double max_length;
 		std::vector < std::map < unsigned int , unsigned int > * > short_paths;
+		unsigned int num_threads;
 		
 		void compute_shortest_paths();
 		void delete_shortest_paths();
@@ -338,12 +341,13 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 				const double max_length_paths,
 				const unsigned int min_sup,
 				const unsigned int max_length_subt,
-				RoadNet* net
+				RoadNet* net,
+				const unsigned int _num_threads=1
 			)
 				:TrajCompAlgo(net)
 		{
 			freq_subt_comp = new FreqSubt(min_sup, max_length_subt, net);
-			shortest_path_comp = new ShortestPath(max_length_paths, net);
+			shortest_path_comp = new ShortestPath(max_length_paths, net, num_threads);
 		}
 		
 		void train(const std::string training_traj_file_name);
@@ -362,6 +366,7 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 	private:
 		FreqSubt* freq_subt_comp;
 		ShortestPath* shortest_path_comp;
+		unsigned int num_threads;
 };
 
 typedef struct t_node_ppm
