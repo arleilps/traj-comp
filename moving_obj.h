@@ -323,7 +323,12 @@ class Trajectory
 
 		void decompose_online(std::list<Trajectory*>& decomp) const;
 
-		void decompose_delay(std::list<Trajectory*>& decomp, const unsigned int delay) const;
+		void decompose_delay
+			(
+				std::list<Trajectory*>& decomp, 
+				const unsigned int delay,
+				RoadNet* net
+			) const;
 		
 		void append(Trajectory* traj);
 		

@@ -188,6 +188,7 @@ void Parameters::print()
 	std::cout << "shortest_paths = " << max_shortest_path << std::endl;
 	std::cout << "gps_updates_file = " << gps_file_name << std::endl;
 	std::cout << "conf_file = " << conf_file_name << std::endl;
+	std::cout << "delay = " << delay << std::endl;
 	std::cout << "number_of_threads = " << num_threads << std::endl;
 }
 

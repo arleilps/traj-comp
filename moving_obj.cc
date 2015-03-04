@@ -1552,23 +1552,38 @@ void Trajectory::decompose_online(std::list<Trajectory*>& decomp) const
 	decomp.pop_back();
 }
 
-void Trajectory::decompose_delay(std::list<Trajectory*>& decomp, const unsigned int delay) const
+void Trajectory::decompose_delay
+	(
+		std::list<Trajectory*>& decomp, 
+		const unsigned int delay,
+		RoadNet* net
+	) const
 {
 	seg_time* st;
+	dist_time* dt;
 	decomp.push_back(new Trajectory);
-	unsigned int start_time = seg_time_lst.front()->time;
+	std::list < dist_time* > dist_times;
+	get_dist_times_uniform(dist_times, net);
 
-	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
-		it != seg_time_lst.end(); ++it)
+	std::list< seg_time* >::const_iterator itraj = seg_time_lst.begin();
+	std::list< dist_time* >::const_iterator idt = dist_times.begin();
+	unsigned int start_time = dist_times.front()->time;
+
+	while(itraj != seg_time_lst.end())
 	{
-		st = *it;
+		st = *itraj;
+		dt = *idt;
 
-		if(st->time - start_time > delay)
+		if(dt->time - start_time > delay)
 		{
+			start_time = dt->time;
 			decomp.push_back(new Trajectory);
 		}	
 		
 		decomp.back()->add_update(st->segment, st->time, st->dist);
+		
+		++itraj;
+		++idt;
 	}
 }
 

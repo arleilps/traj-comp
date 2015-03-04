@@ -116,10 +116,10 @@ void FreqSubt::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->decompose_delay(decomp, delay);
+		traj->decompose_delay(decomp, delay, net);
 
-		for(std::list<Trajectory*>::iterator jt = trajectories.begin();
-			jt != trajectories.end(); ++jt)
+		for(std::list<Trajectory*>::iterator jt = decomp.begin();
+			jt != decomp.end(); ++jt)
 		{
 			comp_traj = compress(*jt);
 			delete comp_traj;
@@ -795,10 +795,10 @@ void ShortestPath::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->decompose_delay(decomp, delay);
+		traj->decompose_delay(decomp, delay, net);
 
-		for(std::list<Trajectory*>::iterator jt = trajectories.begin();
-			jt != trajectories.end(); ++jt)
+		for(std::list<Trajectory*>::iterator jt = decomp.begin();
+			jt != decomp.end(); ++jt)
 		{
 			comp_traj = compress(*jt);
 			delete comp_traj;
@@ -937,10 +937,10 @@ void ShortestPathFreqSubt::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->decompose_delay(decomp, delay);
+		traj->decompose_delay(decomp, delay, net);
 
-		for(std::list<Trajectory*>::iterator jt = trajectories.begin();
-			jt != trajectories.end(); ++jt)
+		for(std::list<Trajectory*>::iterator jt = decomp.begin();
+			jt != decomp.end(); ++jt)
 		{
 			comp_traj = compress(*jt);
 			delete comp_traj;
