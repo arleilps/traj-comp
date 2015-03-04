@@ -6,7 +6,7 @@
 num_folds=10
 length_subt_vec=(1 2 4 6 8 10)
 order_vec=(1 2 3 4 5 6)
-delay_vec=(30 60 120 240 480 960)
+delay_vec=(30 60 120 240 480 960 1920)
 
 min_sup=0
 short_path=1600

@@ -12,8 +12,8 @@ do
 	do
 		for ((f=1; f<=$num_folds;f++))
 		do
-			echo "$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_test_$f -p $short_path -s $min_sup -u $u -f $conf_file -a $a > SPFS/train_test_$f\_$u\_$a"
-			$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_test_$f -p $short_path -s $min_sup -u $u -f $conf_file -a $a > SPFS/train_test_$f\_$u\_$a
+			echo "$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_test_$f -p $short_path -s $min_sup -u $u -f $conf_file -a $a -n $num_threads > SPFS/train_test_$f\_$u\_$a"
+			$traj_comp -c SPFS -g $road_net -t $map_matched_traj\_train_$f -e $map_matched_traj\_test_$f -p $short_path -s $min_sup -u $u -f $conf_file -a $a -n $num_threads > SPFS/train_test_$f\_$u\_$a
 		done
 	done
 done
