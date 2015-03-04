@@ -40,7 +40,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int main(int argc, char** argv)
 {
-//	PostGisIndex::set_config("../data/sfo_postgis.conf");
+	PostGisIndex::set_config("../data/sfo_postgis.conf");
 //	test_road_net();
 //	test_database();
 //	test_moving_obj();

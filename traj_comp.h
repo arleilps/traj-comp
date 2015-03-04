@@ -354,6 +354,7 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 				:TrajCompAlgo(net)
 		{
 			delay = _delay;
+			num_threads = _num_threads;
 			freq_subt_comp = new FreqSubt(min_sup, max_length_subt, net);
 			shortest_path_comp = new ShortestPath(max_length_paths, net, num_threads);
 		}
