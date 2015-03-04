@@ -187,7 +187,7 @@ const bool test_traj_comp_short_path_freq_subt()
 
 	//TrajCompAlgo* traj_comp = new FreqSubt(2, 100, net);
 	//TrajCompAlgo* traj_comp = new ShortestPath(net, std::numeric_limits<double>::max());
-	TrajCompAlgo* traj_comp = new ShortestPathFreqSubt(2, 100, std::numeric_limits<double>::max(), net);
+	TrajCompAlgo* traj_comp = new ShortestPathFreqSubt(2, 100, std::numeric_limits<double>::max(), net, 1);
 	
 	traj_comp->train("map_matched_cab_stream.txt");
 

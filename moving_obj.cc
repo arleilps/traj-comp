@@ -1552,6 +1552,26 @@ void Trajectory::decompose_online(std::list<Trajectory*>& decomp) const
 	decomp.pop_back();
 }
 
+void Trajectory::decompose_delay(std::list<Trajectory*>& decomp, const unsigned int delay) const
+{
+	seg_time* st;
+	decomp.push_back(new Trajectory);
+	unsigned int start_time = seg_time_lst.front()->time;
+
+	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
+		it != seg_time_lst.end(); ++it)
+	{
+		st = *it;
+
+		if(st->time - start_time > delay)
+		{
+			decomp.push_back(new Trajectory);
+		}	
+		
+		decomp.back()->add_update(st->segment, st->time, st->dist);
+	}
+}
+
 void Trajectory::append(Trajectory* traj)
 {
 	seg_time* st;

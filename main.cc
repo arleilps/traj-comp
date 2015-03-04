@@ -102,20 +102,21 @@ int main(int argc, char** argv)
 				if(Parameters::compression_algorithm == "FS")
 				{
 					alg = new FreqSubt(Parameters::min_sup, 
-						Parameters::max_length_subt, net);
+						Parameters::max_length_subt, net, 
+						Parameters::delay);
 				}
 
 				if(Parameters::compression_algorithm == "SP")
 				{
 					alg = new ShortestPath(Parameters::max_shortest_path, net,
-						Parameters::num_threads);
+						Parameters::num_threads, Parameters::delay);
 				}
 
 				if(Parameters::compression_algorithm == "SPFS")
 				{
 					alg = new ShortestPathFreqSubt(Parameters::max_shortest_path, 
 						Parameters::min_sup, Parameters::max_length_subt, net,
-						Parameters::num_threads);
+						Parameters::num_threads, Parameters::delay);
 				}
 
 				if(Parameters::compression_algorithm == "PPM")

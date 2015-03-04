@@ -183,10 +183,12 @@ class FreqSubt: public TrajCompAlgo
 			(
 				const double _min_sup, 
 				const unsigned int _max_length, 
-				RoadNet* net
+				RoadNet* net,
+				const unsigned int _delay=std::numeric_limits<unsigned int>::max()
 			)
 			:TrajCompAlgo(net)
 		{
+			delay = _delay;
 			min_sup = _min_sup;
 			max_length = _max_length;
 			tree = new_node();
@@ -259,6 +261,7 @@ class FreqSubt: public TrajCompAlgo
 		unsigned int size_tree;
 		unsigned int id;
 		std::vector< std::list<unsigned int>* > seg_to_freq_subt_index;
+		unsigned int delay;
 		
 		/* OBJECT METHODS */
 		void print_tree(node_subt* node);
@@ -296,10 +299,12 @@ class ShortestPath: public TrajCompAlgo
 			(
 				const double _max_length,
 				RoadNet* net,
-				const unsigned int _num_threads=1
+				const unsigned int _num_threads,
+				const unsigned int _delay=std::numeric_limits<unsigned int>::max()
 			)
 			:TrajCompAlgo(net)
 		{
+			delay = _delay;
 			num_threads = _num_threads;
 			max_length = _max_length;
 			compute_shortest_paths();
@@ -322,6 +327,7 @@ class ShortestPath: public TrajCompAlgo
 		double max_length;
 		std::vector < std::map < unsigned int , unsigned int > * > short_paths;
 		unsigned int num_threads;
+		unsigned int delay;
 		
 		void compute_shortest_paths();
 		void delete_shortest_paths();
@@ -342,7 +348,8 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 				const unsigned int min_sup,
 				const unsigned int max_length_subt,
 				RoadNet* net,
-				const unsigned int _num_threads=1
+				const unsigned int _num_threads,
+				const unsigned int _delay=std::numeric_limits<unsigned int>::max()
 			)
 				:TrajCompAlgo(net)
 		{
@@ -367,6 +374,7 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 		FreqSubt* freq_subt_comp;
 		ShortestPath* shortest_path_comp;
 		unsigned int num_threads;
+		unsigned int delay;
 };
 
 typedef struct t_node_ppm

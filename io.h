@@ -89,6 +89,7 @@ class Parameters
 		static unsigned int min_sup;
 		static unsigned int max_shortest_path;
 		static unsigned int num_threads;
+		static unsigned int delay;
 		static double error;
 		static double lambda;
 		

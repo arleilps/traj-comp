@@ -30,6 +30,7 @@ unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
 unsigned int Parameters::min_sup;
 unsigned int Parameters::max_shortest_path;
+unsigned int Parameters::delay;
 unsigned int Parameters::num_threads;
 double Parameters::error;
 double Parameters::lambda;
@@ -106,6 +107,7 @@ void Parameters::print_usage()
 	std::cout << " -d, --gps-updates	gps updates file to be map-matched" << std::endl;
 	std::cout << " -m, --error		temporal compression error" << std::endl;
 	std::cout << " -l, --lambda		lambda for least-squares" << std::endl;
+	std::cout << " -a, --delay		delay for late update compression" << std::endl;
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
 }
@@ -127,6 +129,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 	num_threads = 1;
 	lambda = 0;
 	error = 0;
+	delay =  std::numeric_limits<unsigned int>::max();
 
 	try
 	{
@@ -152,6 +155,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('p', "short-path", max_shortest_path)
 		>> GetOpt::Option('m', "error", error)
 		>> GetOpt::Option('l', "lambda", lambda)
+		>> GetOpt::Option('a', "delay", delay)
 		>> GetOpt::Option('n', "num-threads", num_threads)
 		;
 	}
