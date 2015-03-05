@@ -485,6 +485,105 @@ void Trajectory::get_pred_dist_times_least_squares
 	}
 }
 
+void Trajectory::get_lsq_sigmas
+	(
+		std::vector<double>& lsq_sigmas,
+		std::vector<unsigned int>& counts,
+		const Eigen::VectorXd& f,
+		RoadNet* net
+	) 
+		const
+{
+	std::list< seg_time* >::const_iterator iti = seg_time_lst.begin();
+	std::list< seg_time* >::const_iterator itj;
+	seg_time* sti;
+	seg_time* stj;
+	double dist;
+	double diff;
+	unsigned int s_time;
+	unsigned int e_time;
+	double conv_ratio;
+	double pred_time;
+
+	sti = (*iti);
+
+	while(iti != seg_time_lst.end())
+	{
+		sti = (*iti);
+
+		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
+		{
+			itj = iti;
+			++itj;
+
+			if(itj != seg_time_lst.end())
+			{
+				dist = net->segment_length(sti->segment) - sti->dist;
+				pred_time = (double) (f[sti->segment] 
+					* dist) / (net->segment_length(sti->segment));
+				
+				while(itj != seg_time_lst.end() 
+					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+				{
+					stj = (*itj);
+					pred_time += f[stj->segment];
+					++itj;
+				}
+
+				stj = (*itj);
+				
+				if(sti->segment != stj->segment)
+				{
+					pred_time += f[stj->segment] 
+						* (double) stj->dist / (net->segment_length(stj->segment));
+				}
+				else
+				{
+					dist = stj->dist - sti->dist;
+					pred_time = (double) (f[sti->segment] 
+					* dist) / (net->segment_length(sti->segment));
+				}
+			
+				s_time = sti->time;
+				e_time = stj->time;
+				conv_ratio = (double) (e_time-s_time) / pred_time;
+				itj = iti;
+				++itj;
+			
+				diff = (conv_ratio - 1) * f[sti->segment];
+				counts[sti->segment]++;
+				lsq_sigmas[sti->segment] += pow(diff, 2);
+
+				while(itj != seg_time_lst.end() 
+					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
+				{
+					stj = (*itj);
+					diff = (conv_ratio - 1) * f[stj->segment];
+					counts[stj->segment]++;
+					lsq_sigmas[stj->segment] += pow(diff, 2);
+					
+					++itj;
+				}
+			
+				stj = (*itj);
+				
+				if(stj->segment != sti->segment)
+				{
+					diff = (conv_ratio - 1) * f[stj->segment];
+					counts[stj->segment]++;
+					lsq_sigmas[stj->segment] += pow(diff, 2);
+				}
+			}
+			
+			iti = itj;
+		}
+		else
+		{
+			++iti;
+		}
+	}
+}
+
 void Trajectory::get_sparse_rep
 	(
 		std::vector < Eigen::Triplet<double> >& Q,

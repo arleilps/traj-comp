@@ -251,7 +251,16 @@ class Trajectory
 				RoadNet* net
 			) 
 				const;
-		
+	
+		void get_lsq_sigmas
+			(
+				std::vector<double>& lsq_sigmas,
+				std::vector<unsigned int>& counts,
+				const Eigen::VectorXd& f,
+				RoadNet* net
+			)
+				const;
+
 		void get_pred_dist_times_least_squares
 			(
 				std::list < dist_time* >& pred_dist_times,

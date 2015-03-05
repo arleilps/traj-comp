@@ -1013,6 +1013,7 @@ void NSTD::test(const std::string test_traj_file_name)
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
+	unsigned int i = 0;
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
@@ -1025,6 +1026,8 @@ void NSTD::test(const std::string test_traj_file_name)
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
 		delete traj;
+		i++;
+		std::cout << i << std::endl;
 	}
 	
 	_compression_time = comp_t->get_seconds();
@@ -1473,21 +1476,46 @@ void Hybrid::train(const std::string training_traj_file_name)
 		_num_updates_train += traj->size();
 		
 		traj->get_sparse_rep(Q, y, sz, net);
-		delete traj;
 	}
 	
 	laplacian_affinity_matrix();
 	least_squares_regression();
-	compute_lsq_sigmas();
-
-//	std::cout << f << std::endl;
+	compute_lsq_sigmas(trajectories);
 
 	train_t->stop();
 	_training_time = train_t->get_seconds();
 }
 	
-void Hybrid::compute_lsq_sigmas()
+void Hybrid::compute_lsq_sigmas(const std::list<Trajectory*>& trajectories)
 {
+	Trajectory* traj;
+	std::vector<unsigned int> counts;
+	lsq_sigmas.reserve(net->size());
+	counts.reserve(net->size());
+
+	for(unsigned int s = 0; s < f.size(); s++)
+	{
+		lsq_sigmas.push_back(0);
+		counts.push_back(0);
+	}
+
+	for(std::list<Trajectory*>::const_iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+		traj->get_lsq_sigmas
+			(
+				lsq_sigmas,
+				counts,
+				f,
+				net
+			);
+	}
+
+	for(unsigned int s = 0; s < f.size(); s++)
+	{
+		lsq_sigmas[s] = sqrt((double) lsq_sigmas[s] / (counts[s] - 1));
+	}
 
 }
 
@@ -1495,8 +1523,8 @@ void LeastSquares::test(const std::string test_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
-	std::list < dist_time* > comp_dist_times;
 	std::list < dist_time* > dist_times;
+	std::list < dist_time* > comp_dist_times;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
 
@@ -1506,13 +1534,6 @@ void LeastSquares::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		traj->get_dist_times_least_squares
-			(
-				dist_times,
-				f,
-				net
-			);
-		
 		compress(comp_dist_times, dist_times, traj);
 
 		Trajectory::delete_dist_times(dist_times);
@@ -1537,7 +1558,6 @@ void Hybrid::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-		
 
 		compress(comp_dist_times, traj);
 

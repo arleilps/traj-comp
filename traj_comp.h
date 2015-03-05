@@ -613,7 +613,7 @@ class Hybrid: public LeastSquares
 				Trajectory* traj
 			); 
 		
-		void compute_lsq_sigmas();
+		void compute_lsq_sigmas(const std::list<Trajectory*>& trajectories);
 };
 
 /**
