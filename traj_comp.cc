@@ -1530,7 +1530,7 @@ void LeastSquares::test(const std::string test_traj_file_name)
 	{
 		traj = *it;
 
-		traj->get_dist_times_least_squares(dist_times, net);
+		traj->get_dist_times_least_squares(dist_times, f, net);
 		compress(comp_dist_times, dist_times, traj);
 
 		Trajectory::delete_dist_times(dist_times);
