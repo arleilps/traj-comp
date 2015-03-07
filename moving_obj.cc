@@ -632,7 +632,6 @@ void Trajectory::get_sparse_rep
 				/ net->segment_length(st->segment);
 			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
 			start = st->time;
-			++it_st;
 		}
 	}
 }

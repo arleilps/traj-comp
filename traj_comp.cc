@@ -1630,7 +1630,7 @@ void Hybrid::compress
 
 void LeastSquares::least_squares_regression()
 {
-	Eigen::SparseMatrix<double> QS(net->size(), sz+1);
+	Eigen::SparseMatrix<double> QS(net->size(), sz);
 	QS.setFromTriplets(Q.begin(), Q.end());
 	Q.clear();
 	Eigen::SparseMatrix<double> QST(QS.transpose());
