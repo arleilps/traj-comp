@@ -1013,7 +1013,6 @@ void NSTD::test(const std::string test_traj_file_name)
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
-	unsigned int i = 0;
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
@@ -1026,8 +1025,6 @@ void NSTD::test(const std::string test_traj_file_name)
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
 		delete traj;
-		i++;
-		std::cout << i << std::endl;
 	}
 	
 	_compression_time = comp_t->get_seconds();
@@ -1452,8 +1449,6 @@ void LeastSquares::train(const std::string training_traj_file_name)
 	laplacian_affinity_matrix();
 	least_squares_regression();
 
-//	std::cout << f << std::endl;
-
 	train_t->stop();
 	_training_time = train_t->get_seconds();
 }
@@ -1534,6 +1529,8 @@ void LeastSquares::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
+
+		traj->get_dist_times_least_squares(dist_times, net);
 		compress(comp_dist_times, dist_times, traj);
 
 		Trajectory::delete_dist_times(dist_times);
@@ -1633,7 +1630,7 @@ void Hybrid::compress
 
 void LeastSquares::least_squares_regression()
 {
-	Eigen::SparseMatrix<double> QS(net->size(), sz);
+	Eigen::SparseMatrix<double> QS(net->size(), sz+1);
 	QS.setFromTriplets(Q.begin(), Q.end());
 	Q.clear();
 	Eigen::SparseMatrix<double> QST(QS.transpose());
