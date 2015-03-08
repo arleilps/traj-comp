@@ -593,45 +593,51 @@ void Trajectory::get_sparse_rep
 	) 
 		const
 {
+	//Assuming no repeated segments.
 	seg_time* st;
-	double frac;
+	double dist = 0;
 	unsigned int time;
 	unsigned int start;
+	unsigned int num = 1;
 	
 	std::list < seg_time* >::const_iterator it_st = seg_time_lst.begin();
 	st = *it_st;
-	frac = (double) (net->segment_length(st->segment) - st->dist) / net->segment_length(st->segment);
-	Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+	
+	dist = net->segment_length(st->segment) - st->dist;
+
+	Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
 	start = st->time;
 	++it_st;
-
+	
 	while(it_st != seg_time_lst.end())
 	{
 		st = *it_st;
 
-		if(st->time == 0 && st->dist == 0)	//shortest path completion
+		if(st->time == 0 && st->dist == 0)
 		{
-			frac = 1;
-			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+			dist += net->segment_length(st->segment) - st->dist;
+			num++;
+			Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
 		}
 		else
 		{
-			frac = (double) st->dist / net->segment_length(st->segment);
-			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+			dist += st->dist;
+			num++;
+			Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
 			time = st->time - start;
-			y.push_back(time);
+			y.push_back((float) (num * dist) / time);
 			sz++;
 		}
-		
+
 		++it_st;
 
 		if((st->time != 0 || st->dist != 0) &&
 			it_st != seg_time_lst.end())
 		{
-			frac = (double) (net->segment_length(st->segment) - st->dist) 
-				/ net->segment_length(st->segment);
-			Q.push_back(Eigen::Triplet<double>(st->segment, sz, frac));
+			dist = net->segment_length(st->segment) - st->dist;
+			Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
 			start = st->time;
+			num = 1;
 		}
 	}
 }

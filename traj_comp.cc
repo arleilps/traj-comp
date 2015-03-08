@@ -1577,7 +1577,7 @@ void LeastSquares::compress
 	dist_time* dt;
 	dist_time* dt_pred;
 		
-	traj->print();
+	//traj->print();
 	
 	traj->get_pred_dist_times_least_squares
 		(
@@ -1611,7 +1611,16 @@ void LeastSquares::compress
 		}
 
 	}
+	
+	/*
+	for(std::list<dist_time*>::iterator jt = pred_dist_times.begin(); 
+		jt != pred_dist_times.end(); ++jt)
+	{
+		std::cout << (*jt)->dist << " , " << (*jt)->time << std::endl;
+	}
 		
+	std::cout << std::endl;
+	
 	for(std::list<dist_time*>::const_iterator jt = dist_times.begin(); 
 		jt != dist_times.end(); ++jt)
 	{
@@ -1625,7 +1634,7 @@ void LeastSquares::compress
 	{
 		std::cout << (*jt)->dist << " , " << (*jt)->time << std::endl;
 	}
-
+	*/
 	Trajectory::delete_dist_times(pred_dist_times);
 	
 	comp_t->stop();
@@ -1659,15 +1668,17 @@ void LeastSquares::least_squares_regression()
 	f.resize(net->size());
 	f = cg.solve(b);
 
-	std::cout << f << std::endl;
-
+//	std::cout << f << std::endl;
+	
 	for(unsigned int i = 0; i < f.size(); i++)
 	{
-		if(f[i] < 0)
+		if(f[i] != 0)
 		{
-			f[i] = 0;
+			f[i] = (double) net->segment_length(i) / f[i];
 		}
 	}
+
+	std::cout << f << std::endl;
 }
 
 void LeastSquares::laplacian_affinity_matrix()
