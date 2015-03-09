@@ -1577,7 +1577,7 @@ void LeastSquares::compress
 	dist_time* dt;
 	dist_time* dt_pred;
 		
-	//traj->print();
+	traj->print();
 	
 	traj->get_pred_dist_times_least_squares
 		(
@@ -1612,7 +1612,6 @@ void LeastSquares::compress
 
 	}
 	
-	/*
 	for(std::list<dist_time*>::iterator jt = pred_dist_times.begin(); 
 		jt != pred_dist_times.end(); ++jt)
 	{
@@ -1634,7 +1633,7 @@ void LeastSquares::compress
 	{
 		std::cout << (*jt)->dist << " , " << (*jt)->time << std::endl;
 	}
-	*/
+	
 	Trajectory::delete_dist_times(pred_dist_times);
 	
 	comp_t->stop();
