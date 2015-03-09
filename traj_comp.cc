@@ -1608,6 +1608,7 @@ void LeastSquares::compress
 		{
 			comp_dist_times.push_back(new_dist_time(dt->dist, dt->time));
 			fix = dt->time - time_pred;
+			std::cout << "fix = " << fix << std::endl;
 		}
 
 	}
