@@ -1,5 +1,5 @@
 #!/bin/bash
-#       Evaluates PPM compression
+#       Evaluates SPFS compression
 #       @Arlei Silva
 
 source settings.sh
@@ -27,13 +27,13 @@ do
 	do
 		for ((f=1; f<=$num_folds;f++))
 		do
-			comp_ratio_train_test=$(extract "PPM/train_test_$f\_$u" "compression_ratio")
+			comp_ratio_train_test=$(extract "SPFS/train_test_$f\_$u\_$a" "compression_ratio")
 			avg_comp_ratio_train_test=`echo "scale=10; $avg_comp_ratio_train_test+$comp_ratio_train_test" | bc`
 		
-			comp_time_train_test=$(extract "PPM/train_test_$f\_$u" "compression_time")
+			comp_time_train_test=$(extract "SPFS/train_test_$f\_$u\_$a" "compression_time")
 			avg_comp_time_train_test=`echo "scale=10; $avg_comp_time_train_test+$comp_time_train_test" | bc`
 
-			train_time_train_test=$(extract "PPM/train_test_$f\_$u" "training_time")
+			train_time_train_test=$(extract "SPFS/train_test_$f\_$u\_$a" "training_time")
 			avg_train_time_train_test=`echo "scale=10; $avg_train_time_train_test+$train_time_train_test" | bc`
 		done
 	
