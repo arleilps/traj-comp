@@ -1663,12 +1663,11 @@ void LeastSquares::least_squares_regression()
 	Eigen::SparseMatrix<double> A(QS * QST + lambda * LS);
 	Eigen::Map<Eigen::VectorXd> y_vec(y.data(), y.size());
 	Eigen::VectorXd b(QS * y_vec);
+	
 	Eigen::ConjugateGradient<Eigen::SparseMatrix<double> > cg;
 	cg.compute(A);
 	f.resize(net->size());
 	f = cg.solve(b);
-
-//	std::cout << f << std::endl;
 	
 	for(unsigned int i = 0; i < f.size(); i++)
 	{
