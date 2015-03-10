@@ -1653,6 +1653,7 @@ void Hybrid::compress
 
 void LeastSquares::least_squares_regression()
 {
+	/*
 	Eigen::SparseMatrix<double> QS(net->size(), sz);
 	QS.setFromTriplets(Q.begin(), Q.end());
 	Q.clear();
@@ -1678,6 +1679,7 @@ void LeastSquares::least_squares_regression()
 	}
 
 	std::cout << f << std::endl;
+	*/
 }
 
 void LeastSquares::laplacian_affinity_matrix()
