@@ -32,5 +32,5 @@ const bool test_traj_comp_short_path_freq_subt();
 
 const bool test_TSND();
 
-const bool test_least_squares();
+const bool test_emkf();
 #endif

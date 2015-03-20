@@ -26,8 +26,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <map>
 #include <algorithm>
 #include <iostream>
-#include <Eigen/Core>
-#include <Eigen/SparseCore>
 
 /*my includes*/
 #include "road_net.h"
@@ -46,6 +44,8 @@ typedef struct t_node_subt
 	std::map<unsigned int, t_node_subt*>* children;
 	t_node_subt* suffix;
 }node_subt;
+
+typedef std::map< unsigned int, std::map < unsigned int, double > * > t_phi;
 
 /**
  * Implements functionalities for a compressed trajectory manipulation
@@ -526,163 +526,108 @@ class NSTD: public TrajCompAlgo
 		double max_error;
 };
 
-class LeastSquares: public TrajCompAlgo
+class EMKalman: public TrajCompAlgo
 {
-	public:	
-		LeastSquares
-			(
-				const double _max_error,
-				const double _lambda,
-				RoadNet* net 
-			)
-				:TrajCompAlgo(net)
+	public:
+		EMKalman(
+			const double _max_error,
+			RoadNet* net,
+			const unsigned int _num_iterations,
+			const double _avg_speed,
+			const double _sigma_speed,
+			const double _sigma_trans,
+			const double _sigma_gps
+		)
+			:TrajCompAlgo(net)
 		{
 			max_error = _max_error;
-
-			if(_lambda > 0)
-			{
-				lambda = _lambda;
-			}
-			else
-			{
-				lambda = std::numeric_limits<double>::epsilon();
-			}
-			sz = 0;
+			num_iterations = _num_iterations;
+			avg_speed = _avg_speed;
+			sigma_speed = _sigma_speed;
+			sigma_trans = _sigma_trans;
+			sigma_gps = _sigma_gps;
 		}
 
-		virtual ~LeastSquares(){};
+		virtual ~EMKalman();
 		
-		virtual void train(const std::string training_traj_file_name);
-		
-		virtual void test(const std::string test_traj_file_name);
-	protected:
-		double max_error;
-		double lambda;
-		unsigned int sz;
-		static const unsigned int d0;
-		static const double w;
-		std::vector < Eigen::Triplet<double> > Q;
-		std::vector <double> y;
-		std::vector < Eigen::Triplet<double> > L;
-		Eigen::VectorXd f;
+		void train(const std::string training_traj_file_name);
 
-		void least_squares_regression();
-		void laplacian_affinity_matrix();
+		void test(const std::string test_traj_file_name);
+	private:
+		double max_error;
+		unsigned int num_iterations;
+		double avg_speed;
+		double sigma_speed;
+		double sigma_trans;
+		double sigma_gps;
+		t_phi* phi;
+		t_phi* phi_sigma;
+		std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * > updates_emkf;
+		
+		std::pair<t_phi*, t_phi*>*
+			EM() const;
+		
+		std::pair< std::vector< double >*, std::vector<double>* >*
+			kalman_filter(
+				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+				const std::vector< double >& prev_speeds,
+				const std::vector< double >& prev_sigmas,
+				const t_phi& phi_est, const t_phi& sigma_phi_est
+			) const;
+		
+		std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*	
+			expectation(
+				const std::vector< std::vector< double >* >& prev_speeds,
+				const std::vector< std::vector< double >* >& prev_sigmas,
+				const t_phi& phi_est, const t_phi& phi_sigma_est
+			) const;
+		
+		
+		std::pair<t_phi*, t_phi*>* maximization
+			(
+				const std::vector< std::vector< double >* >& speeds_est,
+				const std::vector< std::vector< double >* >& speeds_sigma
+			) const;
+		
 		void compress
 			(
-				std::list < dist_time* >& comp_traj, 
 				const std::list < dist_time* >& dist_times,
-				Trajectory* traj
-			); 
+				std::list < dist_time* >& comp_dist_times
+			);
 		
-		void get_pred_dist_times_least_squares
+		std::pair<t_phi*, t_phi*>* start_phi() const;
+
+		std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*
+			start_speed () const;
+
+		double log_likelihood
 			(
-				std::list < dist_time* >& pred_dist_times,
-				const std::list < dist_time*>& dist_times,
-				Trajectory* traj
+				const std::vector< std::vector< double >* >& speeds,
+				const t_phi& phi_est, const t_phi& phi_sigma_est
 			) const;
 };
 
-class Hybrid: public LeastSquares
-{
-	public:
-		Hybrid
-			(
-				const double _max_error,
-				const double _lambda,
-				const double _init_sigma,
-				RoadNet* net
-			)
-				:LeastSquares(_max_error, _lambda, net)
-		{
-			init_sigma = _init_sigma;
-		}
-
-		virtual ~Hybrid(){};
-		
-		void train(const std::string training_traj_file_name);
-		
-		void test(const std::string test_traj_file_name);
-	private:
-		double init_sigma;
-		std::vector<double> lsq_sigmas;
-		
-		void compress
-			(
-				std::list < dist_time* >& comp_traj, 
-				Trajectory* traj
-			); 
-		
-		void compute_lsq_sigmas(const std::list<Trajectory*>& trajectories);
-};
-
-/**
- * Implements database functionalies for trajectories using frequent subtrajectory compression.
-**/
-//class FreqSubtCompTrajDB:public TrajDB
-//{
-//	public:
-		/**
-		 * Constructor.
-		 * @param train_file training file
-		 * @param min_sup minimum support for frequent subtrajectories
-		 * @param max_length maximum length for frequent subtrajectories
-		 * @param net road network
-		**/
-//		FreqSubtCompTrajDB
-//			(
-//				const std::string& train_file,
-//				const double min_sup,
-//				const double max_length,
-//				RoadNet* net
-//			):TrajDB(net)
-//		{
-//			alg = new FreqSubt(min_sup, max_length, net);
-//			alg->train(train_file);
-//		}
-
-		/*Destructor*/
-//		virtual ~FreqSubtCompTrajDB()
-//		{
-//			delete alg;
-//		}
-		
-		/**
-		 * Gets list of frequent subtrajectories.
-		 * @param fsts list to be updated with frequent subtrajectories
-		**/
-//		inline void freq_sub_traj
-//			(
-//				std::list<std::pair<unsigned int, Trajectory * > * >& fsts
-//			)
-//		{
-//			alg->freq_sub_traj(fsts);
-//		}
-		
-		/*Methods from TrajDB (see moving_obj.h)*/
-
-//		const bool insert(const std::string& input_file_name);
-
-//		const bool insert(const std::string& obj, Trajectory& traj);
-		
-//		const bool insert
-//			(
-//				const std::string& obj,
-//				const seg_time& st
-//			);
-
-//		const bool center_radius_query
-//			(
-//				const double lat,
-//				const double longit,
-//				const double dist,
-//				std::list<std::string>& res,
-//				const unsigned int time_begin=0,
-//				const unsigned int time_end=0
-//			)
-//				const;
-//	private:
-//		FreqSubt* alg;
-//};
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

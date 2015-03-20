@@ -695,6 +695,10 @@ class RoadNet
 			return segments.size();
 		}
 
+		inline const std::list<unsigned int>* neighbors(const unsigned int s)
+		{
+			return adj_list[s];
+		}
 	private:
 		/*VARIABLES*/
 		std::vector<std::list<unsigned int>*> adj_list;

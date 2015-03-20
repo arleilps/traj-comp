@@ -45,6 +45,26 @@ typedef struct t_update
 	unsigned int time;
 } update;
 
+typedef struct t_emkf_update_info
+{
+	double frac_begin;
+	double frac_end;
+	double avg_speed;
+	double dist;
+	unsigned int time;
+	double sigma;
+} emkf_update_info;
+
+emkf_update_info* new_emkf_update_info
+	(
+		const double frac_begin,
+		const double frac_end,
+		const double avg_speed,
+		const double dist,
+		const unsigned int time,
+		double sigma
+	);
+
 /**
  * Creates new GPS update.
 **/
@@ -269,13 +289,13 @@ class Trajectory
 			) 
 				const;
 		
-		void get_sparse_rep
+		void get_emkf_rep
 			(
-				std::vector < Eigen::Triplet<double> >&	Q, 
-				std::vector < double >& y, 
-				unsigned int& sz,
+				std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >
+					& updates_emkf,
+				const double sigma_gps, 
 				RoadNet* net
-			) 
+			)
 				const;
 
 		/**

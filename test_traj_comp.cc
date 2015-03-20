@@ -218,24 +218,6 @@ const bool test_traj_comp_ppm()
 	return true;
 }
 
-const bool test_least_squares()
-{
-	//RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
-	RoadNet* net = new RoadNet("../data/road_net.csv");
-	TrajCompAlgo* traj_comp = new LeastSquares(10, 0.1, net);
-	//TrajCompAlgo* traj_comp = new NSTD(net, 0);
-	//traj_comp->train("../data/map_matched_cab_stream_sfo.txt");
-	traj_comp->train("../data/map_matched_cab_stream.txt");
-	traj_comp->test("../data/map_matched_cab_stream.txt");
-
-	std::cout << "num updates = " << traj_comp->num_updates_comp() << std::endl;
-
-	delete traj_comp;
-	delete net;
-
-	return true;
-}
-
 const bool test_TSND()
 {
 	/*
@@ -341,7 +323,22 @@ const bool test_TSND()
 	return true;
 }
 
+const bool test_emkf()
+{
+	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
+	TrajCompAlgo* traj_comp = new EMKalman(0, net, 20, 20, 10, 1, 20);
+	traj_comp->train("../data/map_matched_cab_stream_sfo_train_1");
+	//traj_comp->train("../data/test");
+	
+	//RoadNet* net = new RoadNet("../data/road_net.csv");
+	//TrajCompAlgo* traj_comp = new EMKalman(0, net, 10, 12.4, 2.2, 1, 10);
+	//traj_comp->train("../data/map_matched_cab_stream.txt");
 
+//	delete traj_comp;
+	delete net;
+	
+	return true;
+}
 
 
 

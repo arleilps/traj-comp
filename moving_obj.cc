@@ -99,6 +99,28 @@ update* new_update
 	return up;
 }
 
+emkf_update_info* new_emkf_update_info
+	(
+		const double frac_begin,
+		const double frac_end,
+		const double avg_speed,
+		const double dist,
+		const unsigned int time,
+		double sigma
+	)
+{
+	emkf_update_info* info = new emkf_update_info;
+
+	info->frac_begin = frac_begin;
+	info->frac_end = frac_end;
+	info->avg_speed = avg_speed;
+	info->dist = dist;
+	info->time = time;
+	info->sigma = sigma;
+
+	return info;
+}
+
 seg_time* new_seg_time
 	(
 		const unsigned int segment, 
@@ -584,23 +606,113 @@ void Trajectory::get_lsq_sigmas
 	}
 }
 
-void Trajectory::get_sparse_rep
+void Trajectory::get_emkf_rep
 	(
-		std::vector < Eigen::Triplet<double> >& Q,
-		std::vector < double >& y, 
-		unsigned int& sz,
+		std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >
+			& updates_emkf,
+		const double sigma_gps, 
 		RoadNet* net
-	) 
+	)
 		const
 {
-	//Assuming no repeated segments.
-	seg_time* st;
+	updates_emkf.push_back(new std::vector < std::pair < unsigned int, emkf_update_info* > * >);
+	std::list < seg_time* >::const_iterator it_st = seg_time_lst.begin();
+	seg_time* st = *it_st;
+	
+	std::vector < std::pair < unsigned int, emkf_update_info* > * > * emkf_traj 
+		= updates_emkf.back();
+	emkf_traj->reserve(size_traj);
+
+	emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> (st->segment, NULL));
+	double frac_begin;
+	double dist;
+
+	if(st->dist < net->segment_length(st->segment) &&
+		net->segment_length(st->segment) > 0)
+	{
+		frac_begin = (double) (net->segment_length(st->segment) - st->dist) 
+			/ net->segment_length(st->segment);
+		dist = net->segment_length(st->segment) - st->dist;
+	}
+	else
+	{
+		frac_begin = 1;
+		dist = 0;
+	}
+	
+	unsigned int start_time = st->time;
+	unsigned int end_time;
+	double frac_end;
+	double speed;
+	double error;
+	emkf_update_info* info;
+	++it_st;
+	
+	while(it_st != seg_time_lst.end())
+	{
+		st = *it_st;
+
+		if(st->dist == 0 && st->time == 0)
+		{
+			emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
+				(st->segment, NULL));
+			dist += net->segment_length(st->segment);
+		}
+		else
+		{
+			end_time = st->time;
+			dist += st->dist;
+			
+			if(st->dist < net->segment_length(st->segment) &&
+				net->segment_length(st->segment > 0))
+			{
+				frac_end = (double) st->dist / net->segment_length(st->segment);
+			}
+			else
+			{
+				frac_end = 1;
+			}
+			
+			if(end_time - start_time > 0)
+			{
+				speed = (double) dist / (end_time - start_time);
+				error = (double) (2*sigma_gps) / (end_time - start_time);
+			}
+			else
+			{
+				speed = 0;
+				error = 0;
+			}
+
+			info = new_emkf_update_info(frac_begin, frac_end, speed, 
+				dist, end_time-start_time, error);
+			
+			emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
+				(st->segment, info));
+
+			start_time = end_time;
+			
+			if(st->dist < net->segment_length(st->segment))
+			{
+				dist = net->segment_length(st->segment) - st->dist;
+			}
+			else
+			{
+				dist = 0;
+			}
+			
+			frac_begin = 1.0 - frac_end;
+		}
+
+		++it_st;
+	}
+
+	/*
 	double dist = 0;
 	unsigned int time;
 	unsigned int start;
 	unsigned int num = 1;
 	
-	std::list < seg_time* >::const_iterator it_st = seg_time_lst.begin();
 	st = *it_st;
 	
 	dist = net->segment_length(st->segment) - st->dist;
@@ -640,6 +752,7 @@ void Trajectory::get_sparse_rep
 			num = 1;
 		}
 	}
+	*/
 }
 
 void Trajectory::delete_dist_times(std::list < dist_time* >& dist_times)
