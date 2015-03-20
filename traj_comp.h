@@ -533,8 +533,6 @@ class EMKalman: public TrajCompAlgo
 			const double _max_error,
 			RoadNet* net,
 			const unsigned int _num_iterations,
-			const double _avg_speed,
-			const double _sigma_speed,
 			const double _sigma_trans,
 			const double _sigma_gps
 		)
@@ -542,8 +540,6 @@ class EMKalman: public TrajCompAlgo
 		{
 			max_error = _max_error;
 			num_iterations = _num_iterations;
-			avg_speed = _avg_speed;
-			sigma_speed = _sigma_speed;
 			sigma_trans = _sigma_trans;
 			sigma_gps = _sigma_gps;
 		}
@@ -605,6 +601,8 @@ class EMKalman: public TrajCompAlgo
 				const std::vector< std::vector< double >* >& speeds,
 				const t_phi& phi_est, const t_phi& phi_sigma_est
 			) const;
+
+		void avg_sigma_speed();
 };
 
 #endif

@@ -1471,6 +1471,49 @@ void print_phi(t_phi* phi, t_phi* phi_sigma, RoadNet* net)
 	}
 }
 
+void EMKalman::avg_sigma_speed()
+{
+	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
+	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
+	avg_speed = 0;
+	sigma_speed = 0;
+	unsigned int num = 0;
+
+	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	{
+		traj = *it;
+
+		for(unsigned int s = 0; s < traj->size(); s++)
+		{
+			if(traj->at(s)->second != NULL)
+			{
+				avg_speed += traj->at(s)->second->avg_speed;
+				num++;
+			}
+		}
+	}
+
+	avg_speed = (double) avg_speed / num;
+
+	
+	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	{
+		traj = *it;
+
+		for(unsigned int s = 0; s < traj->size(); s++)
+		{
+			if(traj->at(s)->second != NULL)
+			{
+				sigma_speed += pow(avg_speed 
+					- traj->at(s)->second->avg_speed, 2);
+			}
+		}
+
+		sigma_speed = sqrt((double) sigma_speed / num);
+	}
+
+}
+
 void EMKalman::train(const std::string training_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
@@ -1488,6 +1531,7 @@ void EMKalman::train(const std::string training_traj_file_name)
 		delete traj;
 	}
 
+	avg_sigma_speed();
 	//print_emkf_info(updates_emkf, net);
 	std::pair<t_phi*, t_phi*>* phi_sigma_pair = EM();
 	phi = phi_sigma_pair->first;
@@ -1739,6 +1783,8 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		prev_sigmas = sigmas;
 	}
 	
+	print_speeds(prev_speeds, prev_sigmas, updates_emkf, net);
+
 	delete_speeds(prev_speeds);
 	delete_speeds(prev_sigmas);
 
