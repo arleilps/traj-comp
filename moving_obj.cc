@@ -29,6 +29,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <pthread.h>
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_io.hpp>
+#include <iomanip>
 
 #include "io.h"
 #include "moving_obj.h"
@@ -989,6 +990,14 @@ Trajectory* Trajectory::map_matching
 				net->seg_longit_begin(seg_probs.at(c)->first)
 			);
 
+		if(dist > net->segment_length(seg_probs.at(c)->first))
+		{
+			std::cout << "proj_latit = " << proj_latit << std::endl;
+			std::cout << "proj_longit = " << proj_longit << std::endl;
+			std::cout << "segment = " << net->seg_name((seg_probs.at(c)->first));
+			exit(1);
+		}
+
 		traj->add_update(seg_probs.at(c)->first, up->time, dist, up);
 		traj->prob = -1 * log(seg_probs.at(c)->second);
 		trajectories->push_back(traj);
@@ -1352,7 +1361,7 @@ const unsigned int Trajectory::read_trajectories
 void Trajectory::write(std::ofstream& output_file, const RoadNet* net) const
 {
 	seg_time* st;
-
+	std::setprecision(PREC);
 	std::list < Trajectory* > decomp;
 	decompose_online(decomp);
 	Trajectory* traj;

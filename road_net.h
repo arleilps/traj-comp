@@ -695,6 +695,11 @@ class RoadNet
 			return segments.size();
 		}
 
+		inline const unsigned int num_edges() const
+		{
+			return _num_edges;
+		}
+
 		inline const std::list<unsigned int>* neighbors(const unsigned int s)
 		{
 			return adj_list[s];
@@ -711,6 +716,7 @@ class RoadNet
 		double length_longest_segment;
 		std::vector < std::map <unsigned int, bool> * > neigh_check;
 		graph_t boost_graph;
+		unsigned int _num_edges;
 		
 		/*METHODS*/
 

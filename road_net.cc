@@ -28,6 +28,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <boost/heap/fibonacci_heap.hpp>
 #include <stdlib.h>
 #include <pthread.h>
+#include <iomanip>
 
 /*my includes*/
 #include "road_net.h"
@@ -291,6 +292,7 @@ const bool RoadNet::read(const std::string& input_file_name)
 	s = 0;
 	std::list<unsigned int>* neighbors;
 	distances.reserve(n_segments);
+	_num_edges = 0;
 
 	while(s < n_segments)
 	{
@@ -303,6 +305,7 @@ const bool RoadNet::read(const std::string& input_file_name)
 		{
 			neighbors->push_back(atoi(line_vec[i].c_str()));
 			neigh_check.at(s)->insert(std::pair<unsigned int, bool>(atoi(line_vec[i].c_str()), true));
+			_num_edges++;
 		}
 
 		adj_list.push_back(neighbors);
@@ -359,6 +362,7 @@ void print_segment
 		std::ofstream& road_net_file
 	)
 {
+	std::setprecision(PREC);
 	road_net_file << id << "," 
 		<< seg->latit_begin << "," 
 		<< seg->latit_end << ","
@@ -578,6 +582,7 @@ void RoadNet::build_adjacency_list()
 {
 	adj_list.reserve(n_segments);
 	neigh_check.reserve(n_segments);
+	_num_edges = 0;
 	
 	for(unsigned int s1 = 0; s1 < segments.size(); s1++)
 	{
@@ -593,6 +598,7 @@ void RoadNet::build_adjacency_list()
 				{
 					adj_list.back()->push_back(s2);	
 					neigh_check.at(s1)->insert(std::pair<unsigned int, bool>(s2, true));
+					_num_edges++;
 				}
 			}	
 		}
@@ -793,8 +799,8 @@ const bool PostGisIndex::project
 
 		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r) 
 		{
-			x = r[0].as<double>();
-			y = r[1].as<double>();
+			x = r[1].as<double>();
+			y = r[0].as<double>();
 		}
 	}
 	catch(const pqxx::sql_error& e)
@@ -1194,20 +1200,12 @@ const bool RoadNet::closest_point_segment
 	) 
 		const
 {
-	seg_index->closest_point_segment
+	return seg_index->closest_point_segment
 		(
 			seg, 
 			latit_p, 
 			longit_p, 
 			latit_s, 
-			longit_s
-		);
-	
-	return seg_index->project
-		(
-			latit_p,
-			longit_p,
-			latit_s,
 			longit_s
 		);
 }

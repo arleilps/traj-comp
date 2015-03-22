@@ -576,7 +576,7 @@ NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
 	
 	node->segment = segment;
 	node->id = size_tree++;
-	node->next = 0;		//FIXME should be at least adjacent to segment
+	node->next = net->neighbors(segment)->front();		
 	node->freq_next = 0;
 
 	return node;
@@ -1733,7 +1733,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 	t_phi* phi_sigma_est = phi_sigma->second;
 	delete phi_sigma;
 
-	//print_phi(phi_est, phi_sigma_est, net);
+	print_phi(phi_est, phi_sigma_est, net);
 	
 	std::vector< std::vector< double >* >* prev_speeds;
 	std::vector< std::vector< double >* >* prev_sigmas;
@@ -1761,7 +1761,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		sigmas = speed_sigma->second;
 		delete speed_sigma;
 
-		//print_speeds(speeds, sigmas, updates_emkf, net);
+		print_speeds(speeds, sigmas, updates_emkf, net);
 
 		delete_phi(phi_est);
 		delete_phi(phi_sigma_est);
@@ -1772,7 +1772,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		phi_sigma_est = phi_sigma->second;
 		delete phi_sigma;
 		
-		//print_phi(phi_est, phi_sigma_est, net);
+		print_phi(phi_est, phi_sigma_est, net);
 
 		std::cout << "log-likelihood = " << log_likelihood(*speeds, *phi_est, *phi_sigma_est) << std::endl;
 		
@@ -1842,8 +1842,8 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 					* phi_est.at(seg_from)->at(seg_to)
 					+ pow(sigma_phi_est.at(seg_from)->at(seg_to), 2);
 				speed_phi = speed_phi * phi_est.at(seg_from)->at(seg_to);
-				//std::cout << "phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << phi_est.at(seg_from)->at(seg_to) << std::endl; 
-				//std::cout << "sigma_phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << sigma_phi_est.at(seg_from)->at(seg_to) << std::endl; 
+				std::cout << "phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << phi_est.at(seg_from)->at(seg_to) << std::endl; 
+				std::cout << "sigma_phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << sigma_phi_est.at(seg_from)->at(seg_to) << std::endl; 
 			}
 			else
 			{
@@ -1858,8 +1858,8 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			var_phi = pow(prev_sigmas[0], 2);
 		}
 
-//		std::cout << "#speed_phi: " << speed_phi << std::endl;
-//		std::cout << "#var_phi: " << var_phi << std::endl;
+		std::cout << "#speed_phi: " << speed_phi << std::endl;
+		std::cout << "#var_phi: " << var_phi << std::endl;
 
 		avg_phi += speed_phi;
 		avg_phi_var += var_phi;
@@ -1894,17 +1894,17 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 				K = 0;
 			}
 			
-		//	std::cout << "*K: " << K << std::endl;
+			std::cout << "*K: " << K << std::endl;
 
 			avg_speed_ = avg_phi + K * (avg_up - avg_phi);
 			var_phi_hid = pow(avg_phi - avg_speed_, 2);
 			var_up_hid = pow(avg_up - avg_speed_, 2);
 
-		//	std::cout << "avg_phi: " << avg_phi << std::endl;
-		//	std::cout << "var_phi: " << var_phi << std::endl;
-		//	std::cout << "avg_up: " << avg_up << std::endl;
-		//	std::cout << "var_up: " << var_up << std::endl;
-		//	std::cout << "avg: " << avg_speed_ << std::endl;
+			std::cout << "avg_phi: " << avg_phi << std::endl;
+			std::cout << "var_phi: " << var_phi << std::endl;
+			std::cout << "avg_up: " << avg_up << std::endl;
+			std::cout << "var_up: " << var_up << std::endl;
+			std::cout << "avg: " << avg_speed_ << std::endl;
 
 			for(unsigned int j = 0; j < speeds_phi.size(); j++)
 			{
@@ -1929,13 +1929,13 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 				{
 					K2 = 0;
 				}
-		/*	
+			
 				std::cout << "K2: " << K2 << std::endl;
 				std::cout << "speed_phi: " << speed_phi << std::endl;
 				std::cout << "var_phi: " << var_phi << std::endl;
 				std::cout << "speed_up: " << avg_up << std::endl;
 				std::cout << "var_up: " << var_up << std::endl;
-		*/		
+				
 				speed = speed_phi + K2 * (avg_up - speed_phi);
 				var_speed = (1.0 - K2) * var_phi;
 				speeds->push_back(speed);
@@ -2113,8 +2113,8 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 			if(phi_est->at(seg_from)->find(seg_to) != 
 				phi_est->at(seg_from)->end())
 			{
-				diff = phi_est->at(seg_from)->at(seg_to) * speeds.at(t)->at(s-1)
-					- (double) speeds.at(t)->at(s); 
+				diff = fabs(phi_est->at(seg_from)->at(seg_to) * speeds.at(t)->at(s-1)
+					- (double) speeds.at(t)->at(s)) + sigmas.at(t)->at(s-1); 
 				
 				phi_sigma_est->at(seg_from)->at(seg_to) += pow(diff, 2);
 			}
