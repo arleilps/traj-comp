@@ -32,7 +32,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "getopt_pp.h"
 #include "traj_comp.h"
 
-#define PREC 10
+#define PREC 20
 
 /**
  * Parameter setting exception

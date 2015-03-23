@@ -39,8 +39,8 @@ const double Trajectory::TIMEDIV = 10;
 const double Trajectory::SIGMA = 4.07;
 const double Trajectory::BETACONST = 1;
 const double Trajectory::RADIUS = 30;
-const double Trajectory::MAXSPEED = 32;	//in m/s
-const unsigned int Trajectory::MAXCANDMATCHES = 5;
+const double Trajectory::MAXSPEED = 40;	//in m/s
+const unsigned int Trajectory::MAXCANDMATCHES = 10;
 const double Trajectory::MAXLENGTHSHORTESTPATH = 2000;
 
 double Trajectory::time_div = TIMEDIV;
@@ -989,14 +989,6 @@ Trajectory* Trajectory::map_matching
 				proj_longit,
 				net->seg_longit_begin(seg_probs.at(c)->first)
 			);
-
-		if(dist > net->segment_length(seg_probs.at(c)->first))
-		{
-			std::cout << "proj_latit = " << proj_latit << std::endl;
-			std::cout << "proj_longit = " << proj_longit << std::endl;
-			std::cout << "segment = " << net->seg_name((seg_probs.at(c)->first));
-			exit(1);
-		}
 
 		traj->add_update(seg_probs.at(c)->first, up->time, dist, up);
 		traj->prob = -1 * log(seg_probs.at(c)->second);
