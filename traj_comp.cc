@@ -2052,6 +2052,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 			phi_est->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
 			phi_sigma_est->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
 			sums->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
+			counts->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
 		}
 	}
 
