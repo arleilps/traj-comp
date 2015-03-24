@@ -25,7 +25,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <fstream>
 #include <pqxx/pqxx>
 #include <queue>
-#include <boost/heap/fibonacci_heap.hpp>
 #include <stdlib.h>
 #include <pthread.h>
 #include <iomanip>

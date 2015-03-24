@@ -2005,6 +2005,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 	)
 		const
 {
+	t_phi* sums = new t_phi;
 	t_phi* counts = new t_phi;
 	t_phi* phi_est = new t_phi;
 	t_phi* phi_sigma_est = new t_phi;
@@ -2029,6 +2030,13 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 				(s1, new std::map < unsigned int, double > )
 			);
 
+		sums->insert
+			(
+				std::pair<unsigned int, 
+					std::map < unsigned int, double > * > 
+				(s1, new std::map < unsigned int, double > )
+			);
+		
 		counts->insert
 			(
 				std::pair<unsigned int, 
@@ -2043,7 +2051,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 
 			phi_est->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
 			phi_sigma_est->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
-			counts->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
+			sums->at(s1)->insert(std::pair<unsigned int, double > (s2, 0));
 		}
 	}
 
@@ -2065,12 +2073,8 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 			if(phi_est->at(seg_from)->find(seg_to) != 
 				phi_est->at(seg_from)->end())
 			{
-				if(speeds.at(t)->at(s-1) > 0)
-				{
-					phi_est->at(seg_from)->at(seg_to) += 
-						(double) speeds.at(t)->at(s) / speeds.at(t)->at(s-1);
-				}
-
+				phi_est->at(seg_from)->at(seg_to) += speeds.at(t)->at(s);
+				sums->at(seg_from)->at(seg_to) += speeds.at(t)->at(s-1);
 				counts->at(seg_from)->at(seg_to) += 1;
 			}
 		}
@@ -2087,10 +2091,10 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 		{
 			s2 = *it;
 			
-			if(counts->at(s1)->at(s2) > 0)
+			if(sums->at(s1)->at(s2) > 0)
 			{
 				phi_est->at(s1)->at(s2) = (double) phi_est->at(s1)->at(s2) 
-					/  counts->at(s1)->at(s2);
+					/  sums->at(s1)->at(s2);
 			}
 			else
 			{
@@ -2144,6 +2148,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 	}
 
 	delete_phi(counts);
+	delete_phi(sums);
 
 	return (new std::pair<t_phi*, t_phi*>(phi_est, phi_sigma_est));
 }
