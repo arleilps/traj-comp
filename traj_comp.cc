@@ -1761,7 +1761,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		sigmas = speed_sigma->second;
 		delete speed_sigma;
 
-		print_speeds(speeds, sigmas, updates_emkf, net);
+		//print_speeds(speeds, sigmas, updates_emkf, net);
 
 		delete_phi(phi_est);
 		delete_phi(phi_sigma_est);
@@ -1772,7 +1772,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		phi_sigma_est = phi_sigma->second;
 		delete phi_sigma;
 		
-		print_phi(phi_est, phi_sigma_est, net);
+		//print_phi(phi_est, phi_sigma_est, net);
 
 		std::cout << "log-likelihood = " << log_likelihood(*speeds, 
 			*sigmas, *phi_est, *phi_sigma_est) << std::endl;
