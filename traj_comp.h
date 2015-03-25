@@ -599,6 +599,7 @@ class EMKalman: public TrajCompAlgo
 		double log_likelihood
 			(
 				const std::vector< std::vector< double >* >& speeds,
+				const std::vector< std::vector< double >* >& speed_sigmas,
 				const t_phi& phi_est, const t_phi& phi_sigma_est
 			) const;
 

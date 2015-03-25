@@ -1462,7 +1462,7 @@ void print_phi(t_phi* phi, t_phi* phi_sigma, RoadNet* net)
 		{
 			s2 = *it;
 
-			if(phi_sigma->at(s1)->at(s2) != 20)
+			if(phi->at(s1)->at(s2) != 1)
 			{
 				std::cout << "phi(" << net->seg_name(s1) << "," << net->seg_name(s2) << ") = " << phi->at(s1)->at(s2) << std::endl;
 				std::cout << "sigma_phi(" << net->seg_name(s1) << "," << net->seg_name(s2) << ") = " << phi_sigma->at(s1)->at(s2) << std::endl;
@@ -1733,7 +1733,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 	t_phi* phi_sigma_est = phi_sigma->second;
 	delete phi_sigma;
 
-	print_phi(phi_est, phi_sigma_est, net);
+	//print_phi(phi_est, phi_sigma_est, net);
 	
 	std::vector< std::vector< double >* >* prev_speeds;
 	std::vector< std::vector< double >* >* prev_sigmas;
@@ -1761,7 +1761,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		sigmas = speed_sigma->second;
 		delete speed_sigma;
 
-		print_speeds(speeds, sigmas, updates_emkf, net);
+	//	print_speeds(speeds, sigmas, updates_emkf, net);
 
 		delete_phi(phi_est);
 		delete_phi(phi_sigma_est);
@@ -1772,9 +1772,10 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		phi_sigma_est = phi_sigma->second;
 		delete phi_sigma;
 		
-		print_phi(phi_est, phi_sigma_est, net);
+	//	print_phi(phi_est, phi_sigma_est, net);
 
-		std::cout << "log-likelihood = " << log_likelihood(*speeds, *phi_est, *phi_sigma_est) << std::endl;
+		std::cout << "log-likelihood = " << log_likelihood(*speeds, 
+			*sigmas, *phi_est, *phi_sigma_est) << std::endl;
 		
 		delete_speeds(prev_speeds);
 		delete_speeds(prev_sigmas);
@@ -1817,14 +1818,10 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 	double var_phi;
 	double avg_up;
 	double var_up;
-	double avg_speed_;
 	unsigned int num = 0;
 	double K;
-	double K2;
 	unsigned int seg_from;
 	unsigned int seg_to;
-	double var_phi_hid;
-	double var_up_hid;
 	emkf_update_info* up;
 
 	for(unsigned int s = 0; s < traj.size(); s++)
@@ -1842,8 +1839,8 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 					* phi_est.at(seg_from)->at(seg_to)
 					+ pow(sigma_phi_est.at(seg_from)->at(seg_to), 2);
 				speed_phi = speed_phi * phi_est.at(seg_from)->at(seg_to);
-				std::cout << "phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << phi_est.at(seg_from)->at(seg_to) << std::endl; 
-				std::cout << "sigma_phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << sigma_phi_est.at(seg_from)->at(seg_to) << std::endl; 
+//				std::cout << "phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << phi_est.at(seg_from)->at(seg_to) << std::endl; 
+//				std::cout << "sigma_phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << sigma_phi_est.at(seg_from)->at(seg_to) << std::endl; 
 			}
 			else
 			{
@@ -1858,8 +1855,8 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			var_phi = pow(prev_sigmas[0], 2);
 		}
 
-		std::cout << "#speed_phi: " << speed_phi << std::endl;
-		std::cout << "#var_phi: " << var_phi << std::endl;
+//		std::cout << "#speed_phi: " << speed_phi << std::endl;
+//		std::cout << "#var_phi: " << var_phi << std::endl;
 
 		avg_phi += speed_phi;
 		avg_phi_var += var_phi;
@@ -1885,6 +1882,7 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 
 			var_up = pow(up->sigma, 2);
 
+/*
 			if(avg_phi_var + var_up > 0)
 			{
 				K = (double) avg_phi_var / (avg_phi_var + var_up);
@@ -1893,60 +1891,51 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			{
 				K = 0;
 			}
-			
-			std::cout << "*K: " << K << std::endl;
+*/			
+		//	std::cout << "*K: " << K << std::endl;
 
-			avg_speed_ = avg_phi + K * (avg_up - avg_phi);
-			var_phi_hid = pow(avg_phi - avg_speed_, 2);
-			var_up_hid = pow(avg_up - avg_speed_, 2);
+//			avg_speed_ = avg_phi + K * (avg_up - avg_phi);
 
+			/*
 			std::cout << "avg_phi: " << avg_phi << std::endl;
 			std::cout << "var_phi: " << var_phi << std::endl;
 			std::cout << "avg_up: " << avg_up << std::endl;
 			std::cout << "var_up: " << var_up << std::endl;
 			std::cout << "avg: " << avg_speed_ << std::endl;
+			*/
 
 			for(unsigned int j = 0; j < speeds_phi.size(); j++)
 			{
 				speed_phi = speeds_phi.at(j);
+				var_phi = vars_phi.at(j);
 				
-				var_phi = vars_phi.at(j) * var_phi_hid;
-				
-				if(up->time > 0)
-				{
-					var_up = (double) (up->time-1) * pow(sigma_trans, 2) * var_up_hid;
-				}
-				else
-				{
-					var_up = 0;
-				}
-
 				if(var_up + var_phi > 0)
 				{
-					K2 = (double) var_phi / (var_up + var_phi);
+					K = (double) var_phi / (var_up + var_phi);
 				}
 				else
 				{
-					K2 = 0;
+					K = 0;
 				}
-			
+				
+				/*
 				std::cout << "K2: " << K2 << std::endl;
 				std::cout << "speed_phi: " << speed_phi << std::endl;
 				std::cout << "var_phi: " << var_phi << std::endl;
 				std::cout << "speed_up: " << avg_up << std::endl;
 				std::cout << "var_up: " << var_up << std::endl;
-				
-				speed = speed_phi + K2 * (avg_up - speed_phi);
-				var_speed = (1.0 - K2) * var_phi;
+				*/
+				speed = speed_phi + K * (avg_up - speed_phi);
+				var_speed = (1.0 - K) * var_phi;
 				speeds->push_back(speed);
 				sigmas->push_back(sqrt(var_speed));
+				var_phi = var_speed;
 			}
 			
 			num = 0;
 			avg_phi = 0;
 			avg_phi_var = 0;
 			speed_phi = speed;
-			var_phi = var_speed;
 			speeds_phi.clear();
 			vars_phi.clear();
 		}
@@ -2163,6 +2152,7 @@ EMKalman::~EMKalman()
 double EMKalman::log_likelihood
 	(
 		const std::vector< std::vector< double >* >& speeds,
+		const std::vector< std::vector< double >* >& speed_sigmas,
 		const t_phi& phi_est, const t_phi& phi_sigma_est
 	) const
 {
@@ -2173,11 +2163,16 @@ double EMKalman::log_likelihood
 	unsigned int seg_from;
 	unsigned int seg_to;
 	double tmp;
+	int num;
 
 	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
 	{
 		traj = *it;
 		
+		tmp = log((double) 1 / (speed_sigmas[t]->at(0) * sqrt(2*PI)));
+
+		log_like += tmp;
+
 		for(unsigned int s = 1; s < traj->size(); s++)
 		{
 			seg_from = traj->at(s-1)->first;
@@ -2188,10 +2183,38 @@ double EMKalman::log_likelihood
 			{
 				if(phi_sigma_est.at(seg_from)->at(seg_to) > 0)
 				{
-					tmp = (double) pow(phi_est.at(seg_from)->at(seg_to) * speeds[t]->at(s-1) 
-						- speeds[t]->at(s), 2) / pow(phi_sigma_est.at(seg_from)->at(seg_to), 2);
+					tmp = -(double) pow(phi_est.at(seg_from)->at(seg_to) * speeds[t]->at(s-1) 
+						- speeds[t]->at(s), 2) 
+						/ (2*pow(phi_sigma_est.at(seg_from)->at(seg_to), 2));
+					log_like += tmp;
+
+					tmp = log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2*PI));
+					
 					log_like += tmp;
 				}
+			}
+		}
+		
+		num = 0;
+
+		for(unsigned int s = 0; s < traj->size(); s++)
+		{
+			if(traj->at(s)->second != NULL)
+			{
+				while(num >= 0)
+				{
+					tmp = -(double) pow(speeds[t]->at(s-num) - 
+					traj->at(s)->second->avg_speed, 2) 
+					/ (2 * pow(traj->at(s)->second->sigma, 2));
+					log_like += tmp;
+					num--;
+				}
+
+				num = 0;
+			}
+			else
+			{
+				num++;
 			}
 		}
 
