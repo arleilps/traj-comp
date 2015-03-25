@@ -1839,14 +1839,11 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 					* phi_est.at(seg_from)->at(seg_to)
 					+ pow(sigma_phi_est.at(seg_from)->at(seg_to), 2);
 				speed_phi = speed_phi * phi_est.at(seg_from)->at(seg_to);
-//				std::cout << "phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << phi_est.at(seg_from)->at(seg_to) << std::endl; 
-//				std::cout << "sigma_phi[" << net->seg_name(seg_from) << "][" << net->seg_name(seg_to) << "] = " << sigma_phi_est.at(seg_from)->at(seg_to) << std::endl; 
 			}
 			else
 			{
 				var_phi = var_phi + pow(prev_sigmas[s], 2);
 				speed_phi = prev_speeds[s];
-		//		std::cout << "BROKE!" << std::endl;
 			}
 		}
 		else
@@ -1854,9 +1851,6 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			speed_phi = prev_speeds[0];
 			var_phi = pow(prev_sigmas[0], 2);
 		}
-
-//		std::cout << "#speed_phi: " << speed_phi << std::endl;
-//		std::cout << "#var_phi: " << var_phi << std::endl;
 
 		avg_phi += speed_phi;
 		avg_phi_var += var_phi;
@@ -1877,12 +1871,11 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			else
 			{
 				avg_phi = 0;
-				avg_phi_var = 0;
+				avg_phi_var = std::numeric_limits<double>::max();
 			}
 
 			var_up = pow(up->sigma, 2);
 
-/*
 			if(avg_phi_var + var_up > 0)
 			{
 				K = (double) avg_phi_var / (avg_phi_var + var_up);
@@ -1891,40 +1884,12 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			{
 				K = 0;
 			}
-*/			
-		//	std::cout << "*K: " << K << std::endl;
-
-//			avg_speed_ = avg_phi + K * (avg_up - avg_phi);
-
-			/*
-			std::cout << "avg_phi: " << avg_phi << std::endl;
-			std::cout << "var_phi: " << var_phi << std::endl;
-			std::cout << "avg_up: " << avg_up << std::endl;
-			std::cout << "var_up: " << var_up << std::endl;
-			std::cout << "avg: " << avg_speed_ << std::endl;
-			*/
 
 			for(unsigned int j = 0; j < speeds_phi.size(); j++)
 			{
 				speed_phi = speeds_phi.at(j);
 				var_phi = vars_phi.at(j);
 				
-				if(var_up + var_phi > 0)
-				{
-					K = (double) var_phi / (var_up + var_phi);
-				}
-				else
-				{
-					K = 0;
-				}
-				
-				/*
-				std::cout << "K2: " << K2 << std::endl;
-				std::cout << "speed_phi: " << speed_phi << std::endl;
-				std::cout << "var_phi: " << var_phi << std::endl;
-				std::cout << "speed_up: " << avg_up << std::endl;
-				std::cout << "var_up: " << var_up << std::endl;
-				*/
 				speed = speed_phi + K * (avg_up - speed_phi);
 				var_speed = (1.0 - K) * var_phi;
 				speeds->push_back(speed);
@@ -2110,7 +2075,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 				diff = phi_est->at(seg_from)->at(seg_to) * speeds.at(t)->at(s-1)
 					- speeds.at(t)->at(s); 
 				
-				if(! equal_double(0, diff))
+				if(! equal_double(diff, 0))
 				{
 					phi_sigma_est->at(seg_from)->at(seg_to) += pow(diff, 2.0);
 				}
@@ -2172,7 +2137,7 @@ double EMKalman::log_likelihood
 	{
 		traj = *it;
 		
-		if(! equal_double(speed_sigmas[t]->at(0),0))
+		if( speed_sigmas[t]->at(0) > 0)
 		{
 			tmp = log((double) 1.0 / (speed_sigmas[t]->at(0) * sqrt(2.0*PI)));
 			log_like += tmp;
@@ -2186,7 +2151,7 @@ double EMKalman::log_likelihood
 			if(phi_est.at(seg_from)->find(seg_to) != 
 				phi_est.at(seg_from)->end())
 			{
-				if(! equal_double(phi_sigma_est.at(seg_from)->at(seg_to), 0))
+				if(phi_sigma_est.at(seg_from)->at(seg_to) > 0)
 				{
 					tmp = -(double) pow(phi_est.at(seg_from)->at(seg_to) * speeds[t]->at(s-1) 
 						- speeds[t]->at(s), 2) 
