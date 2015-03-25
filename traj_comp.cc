@@ -1761,7 +1761,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		sigmas = speed_sigma->second;
 		delete speed_sigma;
 
-	//	print_speeds(speeds, sigmas, updates_emkf, net);
+		print_speeds(speeds, sigmas, updates_emkf, net);
 
 		delete_phi(phi_est);
 		delete_phi(phi_sigma_est);
@@ -1772,7 +1772,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		phi_sigma_est = phi_sigma->second;
 		delete phi_sigma;
 		
-	//	print_phi(phi_est, phi_sigma_est, net);
+		print_phi(phi_est, phi_sigma_est, net);
 
 		std::cout << "log-likelihood = " << log_likelihood(*speeds, 
 			*sigmas, *phi_est, *phi_sigma_est) << std::endl;
@@ -2169,7 +2169,7 @@ double EMKalman::log_likelihood
 	{
 		traj = *it;
 		
-		tmp = log((double) 1 / (speed_sigmas[t]->at(0) * sqrt(2*PI)));
+		tmp = log((double) 1.0 / (speed_sigmas[t]->at(0) * sqrt(2.0*PI)));
 
 		log_like += tmp;
 
@@ -2185,13 +2185,12 @@ double EMKalman::log_likelihood
 				{
 					tmp = -(double) pow(phi_est.at(seg_from)->at(seg_to) * speeds[t]->at(s-1) 
 						- speeds[t]->at(s), 2) 
-						/ (2*pow(phi_sigma_est.at(seg_from)->at(seg_to), 2));
-					log_like += tmp;
-
-					tmp = -log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2*PI));
-					
+						/ (2.0 * pow(phi_sigma_est.at(seg_from)->at(seg_to), 2));
 					log_like += tmp;
 				}
+				
+				tmp = -log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2.0 * PI));
+				log_like += tmp;
 			}
 		}
 		
@@ -2205,10 +2204,10 @@ double EMKalman::log_likelihood
 				{
 					tmp = -(double) pow(speeds[t]->at(s-num) - 
 					traj->at(s)->second->avg_speed, 2) 
-					/ (2 * pow(traj->at(s)->second->sigma, 2));
+					/ (2.0 * pow(traj->at(s)->second->sigma, 2));
 					log_like += tmp;
 					
-					tmp = -log(traj->at(s)->second->sigma * sqrt(2*PI));
+					tmp = -log(traj->at(s)->second->sigma * sqrt(2.0*PI));
 					log_like += tmp;
 					
 					num--;
