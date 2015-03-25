@@ -2188,7 +2188,7 @@ double EMKalman::log_likelihood
 						/ (2*pow(phi_sigma_est.at(seg_from)->at(seg_to), 2));
 					log_like += tmp;
 
-					tmp = log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2*PI));
+					tmp = -log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2*PI));
 					
 					log_like += tmp;
 				}
@@ -2207,6 +2207,10 @@ double EMKalman::log_likelihood
 					traj->at(s)->second->avg_speed, 2) 
 					/ (2 * pow(traj->at(s)->second->sigma, 2));
 					log_like += tmp;
+					
+					tmp = -log(traj->at(s)->second->sigma * sqrt(2*PI));
+					log_like += tmp;
+					
 					num--;
 				}
 
