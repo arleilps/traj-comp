@@ -2075,10 +2075,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 				diff = phi_est->at(seg_from)->at(seg_to) * speeds.at(t)->at(s-1)
 					- speeds.at(t)->at(s); 
 				
-				if(! equal_double(diff, 0))
-				{
-					phi_sigma_est->at(seg_from)->at(seg_to) += pow(diff, 2.0);
-				}
+				phi_sigma_est->at(seg_from)->at(seg_to) += pow(diff, 2.0);
 			}
 		}
 
@@ -2096,7 +2093,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 			if(counts->at(s1)->at(s2) > 0)
 			{
 				phi_sigma_est->at(s1)->at(s2) = sqrt((double) phi_sigma_est->at(s1)->at(s2) 
-					/  counts->at(s1)->at(s2));
+					/  counts->at(s1)->at(s2)) + sqrt(std::numeric_limits<double>::min());
 			}
 			else
 			{
@@ -2131,18 +2128,11 @@ double EMKalman::log_likelihood
 	unsigned int seg_from;
 	unsigned int seg_to;
 	double tmp;
-	int num;
 
 	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
 	{
 		traj = *it;
 		
-		if( speed_sigmas[t]->at(0) > 0)
-		{
-			tmp = log((double) 1.0 / (speed_sigmas[t]->at(0) * sqrt(2.0*PI)));
-			log_like += tmp;
-		}
-
 		for(unsigned int s = 1; s < traj->size(); s++)
 		{
 			seg_from = traj->at(s-1)->first;
@@ -2157,43 +2147,10 @@ double EMKalman::log_likelihood
 						- speeds[t]->at(s), 2) 
 						/ (2.0 * pow(phi_sigma_est.at(seg_from)->at(seg_to), 2));
 					log_like += tmp;
-					
-					tmp = -log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2.0 * PI));
-					log_like += tmp;
 				}
 			}
 		}
 		
-		num = 0;
-
-		for(unsigned int s = 0; s < traj->size(); s++)
-		{
-			if(traj->at(s)->second != NULL)
-			{
-				while(num >= 0)
-				{
-					if(traj->at(s)->second->sigma > 0)
-					{
-						tmp = -(double) pow(speeds[t]->at(s-num) - 
-							traj->at(s)->second->avg_speed, 2) 
-							/ (2.0 * pow(traj->at(s)->second->sigma, 2));
-						log_like += tmp;
-					
-						tmp = -log(traj->at(s)->second->sigma * sqrt(2.0*PI));
-						log_like += tmp;
-					}
-					
-					num--;
-				}
-
-				num = 0;
-			}
-			else
-			{
-				num++;
-			}
-		}
-
 		t++;
 	}
 
