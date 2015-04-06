@@ -8,7 +8,7 @@ all: traj_comp
 traj_comp: $(GP_OBJS)
 	@echo ""
 	@echo " --- traj_comp ---"
-	@$(CC) $(GP_OBJS) -o traj_comp -L/usr/local/lib -lpqxx -lpq -I/usr/local/include/pqxx 
+	@$(CC) $(GP_OBJS) -o traj_comp -L/usr/local/lib -lpqxx -lpq -I/usr/local/include/pqxx -lCGAL -I/usr/local/include/
 	@echo ""
 
 %.o: %.cc %.h

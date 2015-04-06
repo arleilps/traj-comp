@@ -325,14 +325,13 @@ const bool test_TSND()
 
 const bool test_emkf()
 {
+//	RoadNet* net = new RoadNet("../data/road_net_test.csv");
 	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
-	TrajCompAlgo* traj_comp = new EMKalman(0, net, 100, 2, 10);
-	//traj_comp->train("../data/map_matched_cab_stream_sfo_test_1");
-	traj_comp->train("../data/test");
+	TrajCompAlgo* traj_comp = new EMKalman(0, net, 100, 10);
+	traj_comp->train("../data/map_matched_cab_stream_sfo_test_1");
+	//traj_comp->train("../data/test.csv");
+//	traj_comp->train("../data/map_matched_test.csv");
 	
-	//RoadNet* net = new RoadNet("../data/road_net.csv");
-	//TrajCompAlgo* traj_comp = new EMKalman(0, net, 10, 12.4, 2.2, 1, 10);
-	//traj_comp->train("../data/map_matched_cab_stream.txt");
 
 //	delete traj_comp;
 	delete net;

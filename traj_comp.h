@@ -33,6 +33,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "perf.h"
 
 #define PI 3.14159265
+#define SMALLDOUBLE 1e-5
 
 /*Node in the frequent subtrajectory tree*/
 typedef struct t_node_subt
@@ -533,14 +534,12 @@ class EMKalman: public TrajCompAlgo
 			const double _max_error,
 			RoadNet* net,
 			const unsigned int _num_iterations,
-			const double _sigma_trans,
 			const double _sigma_gps
 		)
 			:TrajCompAlgo(net)
 		{
 			max_error = _max_error;
 			num_iterations = _num_iterations;
-			sigma_trans = _sigma_trans;
 			sigma_gps = _sigma_gps;
 		}
 
@@ -604,6 +603,21 @@ class EMKalman: public TrajCompAlgo
 			) const;
 
 		void avg_sigma_speed();
+
+		void set_missing_speeds
+			(
+				std::vector<double>& speeds, 
+				const double avg_speed_k,
+				const double start_speed,
+				const double start_sigma,
+				const std::vector<double>& prev_speed,
+				const std::vector<double>& prev_sigmas,
+				const unsigned int num,
+				const unsigned int time,
+				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+				const t_phi& phi_est, const t_phi& sigma_phi_est,
+				const std::vector<double>& vars_phi
+			) const;
 };
 
 #endif

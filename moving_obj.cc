@@ -628,18 +628,7 @@ void Trajectory::get_emkf_rep
 	double frac_begin;
 	double dist;
 
-	if(st->dist < net->segment_length(st->segment) &&
-		net->segment_length(st->segment) > 0)
-	{
-		frac_begin = (double) (net->segment_length(st->segment) - st->dist) 
-			/ net->segment_length(st->segment);
-		dist = net->segment_length(st->segment) - st->dist;
-	}
-	else
-	{
-		frac_begin = 1;
-		dist = 0;
-	}
+	dist = net->segment_length(st->segment);
 	
 	unsigned int start_time = st->time;
 	unsigned int end_time;
@@ -662,17 +651,9 @@ void Trajectory::get_emkf_rep
 		else
 		{
 			end_time = st->time;
-			dist += st->dist;
+			dist += net->segment_length(st->segment);
 			
-			if(st->dist < net->segment_length(st->segment) &&
-				net->segment_length(st->segment > 0))
-			{
-				frac_end = (double) st->dist / net->segment_length(st->segment);
-			}
-			else
-			{
-				frac_end = 1;
-			}
+			frac_end = 1;
 			
 			if(end_time - start_time > 0)
 			{
@@ -693,67 +674,13 @@ void Trajectory::get_emkf_rep
 
 			start_time = end_time;
 			
-			if(st->dist < net->segment_length(st->segment))
-			{
-				dist = net->segment_length(st->segment) - st->dist;
-			}
-			else
-			{
-				dist = 0;
-			}
+			dist = 0;
 			
-			frac_begin = 1.0 - frac_end;
+			frac_begin = 1.0;
 		}
 
 		++it_st;
 	}
-
-	/*
-	double dist = 0;
-	unsigned int time;
-	unsigned int start;
-	unsigned int num = 1;
-	
-	st = *it_st;
-	
-	dist = net->segment_length(st->segment) - st->dist;
-
-	Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
-	start = st->time;
-	++it_st;
-	
-	while(it_st != seg_time_lst.end())
-	{
-		st = *it_st;
-
-		if(st->time == 0 && st->dist == 0)
-		{
-			dist += net->segment_length(st->segment) - st->dist;
-			num++;
-			Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
-		}
-		else
-		{
-			dist += st->dist;
-			num++;
-			Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
-			time = st->time - start;
-			y.push_back((float) (num * dist) / time);
-			sz++;
-		}
-
-		++it_st;
-
-		if((st->time != 0 || st->dist != 0) &&
-			it_st != seg_time_lst.end())
-		{
-			dist = net->segment_length(st->segment) - st->dist;
-			Q.push_back(Eigen::Triplet<double>(st->segment, sz, 1));
-			start = st->time;
-			num = 1;
-		}
-	}
-	*/
 }
 
 void Trajectory::delete_dist_times(std::list < dist_time* >& dist_times)
@@ -1298,6 +1225,8 @@ const unsigned int Trajectory::read_trajectories
 		{
 			 std::cerr << "Error: Invalid trajectory file format, check the README file: "
 			 	<< input_file_name << std::endl << std::endl;
+
+			 std::cerr << line_str << std::endl;
 			 traj_file.close();
 
 			 return 0;
