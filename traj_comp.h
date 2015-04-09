@@ -48,6 +48,20 @@ typedef struct t_node_subt
 
 typedef std::map< unsigned int, std::map < unsigned int, double > * > t_phi;
 
+typedef struct t_pthread_param_emkf
+{
+	std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >* updates_emkf;
+	std::vector< std::vector< double >* >* prev_speeds;
+	std::vector< std::vector< double >* >* prev_sigmas;
+	std::vector< std::vector< double >* >* speeds;
+	std::vector< std::vector< double >* >* sigmas;
+	t_phi* phi_est;
+	t_phi* phi_sigma_est;
+	unsigned int* pointer;
+	pthread_mutex_t* mutex_pool;
+	double sigma_trans;
+}pthread_param_emkf;
+
 /**
  * Implements functionalities for a compressed trajectory manipulation
  * so far, nothing beyond standard trajectories (see moving_obj.h)
@@ -534,13 +548,15 @@ class EMKalman: public TrajCompAlgo
 			const double _max_error,
 			RoadNet* net,
 			const unsigned int _num_iterations,
-			const double _sigma_gps
+			const double _sigma_gps,
+			const unsigned int _num_threads
 		)
 			:TrajCompAlgo(net)
 		{
 			max_error = _max_error;
 			num_iterations = _num_iterations;
 			sigma_gps = _sigma_gps;
+			num_threads = _num_threads;
 		}
 
 		virtual ~EMKalman();
@@ -548,6 +564,15 @@ class EMKalman: public TrajCompAlgo
 		void train(const std::string training_traj_file_name);
 
 		void test(const std::string test_traj_file_name);
+		
+		static std::pair< std::vector< double >*, std::vector<double>* >*
+			kalman_filter(
+				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+				const std::vector< double >& prev_speeds,
+				const std::vector< double >& prev_sigmas,
+				const t_phi& phi_est, const t_phi& sigma_phi_est,
+				const double sigma_trans
+			);
 	private:
 		double max_error;
 		unsigned int num_iterations;
@@ -557,25 +582,18 @@ class EMKalman: public TrajCompAlgo
 		double sigma_gps;
 		t_phi* phi;
 		t_phi* phi_sigma;
-		std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * > updates_emkf;
+		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * > updates_emkf;
+		unsigned int num_threads;
 		
 		std::pair<t_phi*, t_phi*>*
-			EM() const;
-		
-		std::pair< std::vector< double >*, std::vector<double>* >*
-			kalman_filter(
-				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
-				const std::vector< double >& prev_speeds,
-				const std::vector< double >& prev_sigmas,
-				const t_phi& phi_est, const t_phi& sigma_phi_est
-			) const;
+			EM();
 		
 		std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*	
 			expectation(
-				const std::vector< std::vector< double >* >& prev_speeds,
-				const std::vector< std::vector< double >* >& prev_sigmas,
-				const t_phi& phi_est, const t_phi& phi_sigma_est
-			) const;
+				std::vector< std::vector< double >* >& prev_speeds,
+				std::vector< std::vector< double >* >& prev_sigmas,
+				t_phi& phi_est, t_phi& phi_sigma_est
+			);
 		
 		
 		std::pair<t_phi*, t_phi*>* maximization
@@ -604,7 +622,7 @@ class EMKalman: public TrajCompAlgo
 
 		void avg_sigma_speed();
 
-		void set_missing_speeds
+		static void set_missing_speeds
 			(
 				std::vector<double>& speeds, 
 				const double avg_speed_k,
@@ -616,8 +634,9 @@ class EMKalman: public TrajCompAlgo
 				const unsigned int time,
 				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
 				const t_phi& phi_est, const t_phi& sigma_phi_est,
-				const std::vector<double>& vars_phi
-			) const;
+				const std::vector<double>& vars_phi,
+				const double sigma_trans
+			);
 };
 
 #endif

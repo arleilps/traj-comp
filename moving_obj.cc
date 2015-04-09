@@ -609,7 +609,7 @@ void Trajectory::get_lsq_sigmas
 
 void Trajectory::get_emkf_rep
 	(
-		std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >
+		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >
 			& updates_emkf,
 		const double sigma_gps, 
 		RoadNet* net

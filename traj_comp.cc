@@ -1483,7 +1483,6 @@ void print_phi(t_phi* phi, t_phi* phi_sigma, RoadNet* net)
 
 void EMKalman::avg_sigma_speed()
 {
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
 	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
 	avg_speed = 0;
 	sigma_speed = 0;
@@ -1492,9 +1491,9 @@ void EMKalman::avg_sigma_speed()
 	double prev_speed;
 	unsigned int num_sigma = 0;
 
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 		prev_speed = -1;
 
 		for(unsigned int s = 0; s < traj->size(); s++)
@@ -1525,9 +1524,9 @@ void EMKalman::avg_sigma_speed()
 
 	std::cout << "sigma_trans = " << sigma_trans << std::endl;
 	
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 
 		for(unsigned int s = 0; s < traj->size(); s++)
 		{
@@ -1548,6 +1547,7 @@ void EMKalman::train(const std::string training_traj_file_name)
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
+	updates_emkf.reserve(trajectories.size());
 	train_t->start();
 	
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
@@ -1657,26 +1657,22 @@ void print_speeds
 	(
 		std::vector< std::vector< double >* >* speeds, 
 		std::vector< std::vector< double >* >* sigmas, 
-		const std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >& updates_emkf, 
+		const std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >& updates_emkf, 
 		RoadNet* net
 	)
 {
 	std::cout << "PRINT SPEEDS" << std::endl;
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
 	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
-	unsigned int t = 0;
 	
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 		for(unsigned int s = 0; s < traj->size(); s++)
 		{
 			std::cout << "(" << net->seg_name(traj->at(s)->first) << "," << speeds->at(t)->at(s) << "," << sigmas->at(t)->at(s) << ") ";
 		}
 
 		std::cout << std::endl;
-
-		t++;
 	}
 }
 
@@ -1687,18 +1683,16 @@ std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< dou
 		start_speed_est = new std::vector< std::vector< double >* >;
 	std::vector< std::vector< double >* >*
 		start_sigma_est = new std::vector< std::vector< double >* >;
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
 	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
-	unsigned int t = 0;
 	emkf_update_info* up;
 	double avg_up;
 	unsigned int num;
 	start_speed_est->reserve(_num_traj_train);
 	start_sigma_est->reserve(_num_traj_train);
 
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 		start_speed_est->push_back(new std::vector<double>);
 		start_sigma_est->push_back(new std::vector<double>);
 		start_speed_est->at(t)->reserve(traj->size());
@@ -1715,7 +1709,7 @@ std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< dou
 				for(unsigned int i = 0; i < num+1; i++)
 				{
 					start_speed_est->at(t)->push_back(avg_up);
-					start_sigma_est->at(t)->push_back(up->time * sigma_trans);
+					start_sigma_est->at(t)->push_back(up->time * sigma_trans + SMALLDOUBLE);
 				}
 
 				num = 0;
@@ -1725,8 +1719,6 @@ std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< dou
 				num++;
 			}
 		}
-
-		t++;
 	}
 
 	return (new std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >
@@ -1753,28 +1745,7 @@ void delete_speeds(std::vector< std::vector< double >* >* speeds)
 	delete speeds;
 }
 		
-std::pair< std::vector< double >*, std::vector< double>* >* start_speed2
-	(
-		const std::vector< std::vector< double >* >& speeds,
-		const std::vector< std::vector< double >* >& sigmas
-	)
-{
-	std::vector< double >* start_speed_est = new std::vector< double >;
-	std::vector< double >* start_sigma_est = new std::vector< double >;
-	start_speed_est->reserve(speeds.size());
-	start_sigma_est->reserve(speeds.size());
-
-	for(unsigned int t = 0; t < speeds.size(); t++)
-	{
-		start_speed_est->push_back(speeds[t]->at(0));
-		start_sigma_est->push_back(sigmas[t]->at(0));
-	}
-
-	return (new std::pair< std::vector< double >*, std::vector< double>* >
-		(start_speed_est, start_sigma_est));
-}
-
-std::pair<t_phi*, t_phi*>* EMKalman::EM() const
+std::pair<t_phi*, t_phi*>* EMKalman::EM()
 {
 	std::pair<t_phi*,t_phi*>* phi_sigma = start_phi();
 	t_phi* phi_est = phi_sigma->first;
@@ -1794,7 +1765,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 	
 	std::vector< std::vector< double >* >* speeds;
 	std::vector< std::vector< double >* >* sigmas;
-		
+	
 	for(unsigned int i = 0; i < num_iterations; i++)
 	{
 		speed_sigma = expectation
@@ -1809,18 +1780,18 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM() const
 		sigmas = speed_sigma->second;
 		delete speed_sigma;
 
-		//print_speeds(speeds, sigmas, updates_emkf, net);
+//		print_speeds(speeds, sigmas, updates_emkf, net);
 
 		delete_phi(phi_est);
 		delete_phi(phi_sigma_est);
-
+		
 		phi_sigma = maximization(*speeds, *sigmas);
 
 		phi_est = phi_sigma->first;
 		phi_sigma_est = phi_sigma->second;
 		delete phi_sigma;
 		
-		//print_phi(phi_est, phi_sigma_est, net);
+//		print_phi(phi_est, phi_sigma_est, net);
 
 		std::cout << "log-likelihood = " << log_likelihood(*speeds, 
 			*sigmas, *phi_est, *phi_sigma_est) << std::endl;
@@ -1852,8 +1823,9 @@ void EMKalman::set_missing_speeds
 		const unsigned int time,
 		const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
 		const t_phi& phi_est, const t_phi& sigma_phi_est,
-		const std::vector<double>& vars_phi
-	) const
+		const std::vector<double>& vars_phi,
+		const double sigma_trans
+	)
 {
 	unsigned int seg_from;
 	unsigned int seg_to;
@@ -1949,8 +1921,8 @@ void EMKalman::set_missing_speeds
 			qp.set_c(i,-coeff);
 		}
 		
-		coeff = (double) 1 / (2* vars_phi[i])
-			+ (double) 1 / (2*pow(sigma,2));
+		coeff = (double) 1 / (2 * vars_phi[i])
+			+ (double) 1 / (2 * pow(sigma,2));
 
 		if(i < num - 1)
 		{
@@ -1990,9 +1962,9 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
 			const std::vector< double >& prev_speeds,
 			const std::vector< double >& prev_sigmas,
-			const t_phi& phi_est, const t_phi& sigma_phi_est
+			const t_phi& phi_est, const t_phi& sigma_phi_est,
+			const double sigma_trans
 		)
-	const
 {
 	std::vector< double >* speeds = new std::vector<double>;
 	std::vector<double>* sigmas = new std::vector<double>;
@@ -2013,11 +1985,12 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 	emkf_update_info* up;
 	double avg_speed_k;
 	double var_speed_k;
+	double sigma;
 			
 	speed_phi = prev_speeds[0];
 	var_phi = pow(prev_sigmas[0], 2);
 	
-	double start_speed = speed_phi;
+	double start_speed = prev_speeds[0];
 	double start_sigma = prev_sigmas[0];
 
 	for(unsigned int s = 0; s < traj.size(); s++)
@@ -2087,46 +2060,53 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 
 			avg_speed_k = avg_phi + K * (avg_up - avg_phi);
 
-			//std::cout << "avg_speed_k = " << avg_speed_k << std::endl;;
+//			std::cout << "s : " << s << " avg_speed_k = " << avg_speed_k << std::endl;;
+//			std::cout << "avg_up " << avg_up << " avg_phi = " << avg_phi << std::endl;;
+//			std::cout << "var_up " << var_up << " avg_phi_var = " << avg_phi_var << std::endl;;
 			
-			if(num < 15)
+			if(num < 10)
 			{
 				set_missing_speeds(*speeds, avg_speed_k, start_speed, start_sigma, 
 					prev_speeds, prev_sigmas, num, up->time, traj, phi_est, 
-					sigma_phi_est, vars_phi);
+					sigma_phi_est, vars_phi, sigma_trans);
 				
 				var_speed_k = var_phi;
+				sigma = up->time * sigma_trans + SMALLDOUBLE;
 				
 				for(unsigned int i = 0; i < num; i++)
 				{
 					var_phi = vars_phi[i];
 	
-					if(var_phi + sigma_trans > 0)
+					if(var_phi + sigma > 0)
 					{
-						K = (double) var_phi / (var_phi + pow(sigma_trans, 2));
+						K = (double) var_phi / (var_phi + pow(sigma, 2));
 					}
 					else
 					{
 						K = 0;
 					}
 				
-					var_speed_k = vars_phi[i] - K * var_phi + SMALLDOUBLE;
-					sigmas->push_back(var_speed_k);
+					var_speed_k = var_phi - K * var_phi;
+					sigmas->push_back(sqrt(var_speed_k));
 				}
 			}
 			else
 			{
+				var_speed_k = avg_phi_var - K * avg_phi_var;
+				//sigma =  up->time * sigma_trans + SMALLDOUBLE;
+				sigma = sqrt(var_speed_k);
+
 				for(unsigned int i = 0; i < num; i++)
 				{
 					speeds->push_back(
-						prev_speeds.at(speeds->size())
+						avg_speed_k
 					);
 
 					sigmas->push_back(
-						prev_sigmas.at(sigmas->size())
+						sigma
 					);
 
-					var_speed_k = sigmas->back();
+//					var_speed_k = pow(sigmas->back(), 2);
 				}
 			}
 			
@@ -2143,44 +2123,162 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 	return (new std::pair< std::vector< double >*, std::vector<double>* >(speeds, sigmas));
 }
 
+pthread_param_emkf* new_pthread_param_emkf
+	(
+		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >* updates_emkf,
+		std::vector< std::vector< double >* >* prev_speeds,
+		std::vector< std::vector< double >* >* prev_sigmas,
+		std::vector< std::vector< double >* >* speeds,
+		std::vector< std::vector< double >* >* sigmas,
+		t_phi* phi_est,
+		t_phi* phi_sigma_est,
+		unsigned int* pointer,
+		pthread_mutex_t* mutex_pool,
+		const double sigma_trans
+	)
+{
+	pthread_param_emkf* param = new  pthread_param_emkf;
+	param->updates_emkf = updates_emkf;
+	param->prev_speeds = prev_speeds;
+	param->prev_sigmas = prev_sigmas;
+	param->speeds = speeds;
+	param->sigmas = sigmas;
+	param->phi_est = phi_est;
+	param->phi_sigma_est = phi_sigma_est;
+	param->pointer = pointer;
+	param->mutex_pool = mutex_pool;
+	param->sigma_trans = sigma_trans;
+
+	return param;
+}
+
+
+void run_thread_kalman_filter
+	(
+		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >* updates_emkf,
+		std::vector< std::vector< double >* >* prev_speeds,
+		std::vector< std::vector< double >* >* prev_sigmas,
+		std::vector< std::vector< double >* >* speeds,
+		std::vector< std::vector< double >* >* sigmas,
+		t_phi* phi_est,
+		t_phi* phi_sigma_est,
+		unsigned int* pointer,
+		pthread_mutex_t* mutex_pool,
+		const double sigma_trans
+	)
+{
+	unsigned int t;
+	std::pair< std::vector< double >*, std::vector<double>* >* speed_sigma_pair;
+	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
+	
+	while(true)
+	{
+		pthread_mutex_lock(mutex_pool);
+
+		if(*pointer == updates_emkf->size())
+		{
+			 pthread_mutex_unlock(mutex_pool);
+			 break;
+		}
+		else
+		{
+			t = *pointer;
+			*pointer = *pointer + 1;
+			pthread_mutex_unlock(mutex_pool);
+		}
+
+		traj = updates_emkf->at(t);
+
+		speed_sigma_pair = EMKalman::kalman_filter
+			(
+				*traj,
+				*(prev_speeds->at(t)), 
+				*(prev_sigmas->at(t)), 
+				*phi_est, 
+				*phi_sigma_est,
+				sigma_trans
+			);
+
+		speeds->at(t) = speed_sigma_pair->first;
+		sigmas->at(t) = speed_sigma_pair->second;
+
+		delete speed_sigma_pair;
+	}
+}
+
+void* start_thread_kalman_filter(void* v_param)
+{
+	pthread_param_emkf* param = (pthread_param_emkf*) v_param;
+	run_thread_kalman_filter
+		(
+			param->updates_emkf, param->prev_speeds, param->prev_sigmas,
+			param->speeds, param->sigmas, param->phi_est, param->phi_sigma_est,
+			param->pointer, param->mutex_pool, param->sigma_trans
+		);
+
+	pthread_exit(NULL);
+}
+
 std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*
 	EMKalman::expectation
 		(
-			const std::vector< std::vector< double >* >&
+			std::vector< std::vector< double >* >&
 			prev_speeds,
-			const std::vector< std::vector< double >* >&
+			std::vector< std::vector< double >* >&
 			prev_sigmas,
-			const t_phi& phi_est, const t_phi& phi_sigma_est
+			t_phi& phi_est, t_phi& phi_sigma_est
 		)
-	const
 {
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
-	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
-	std::pair< std::vector< double >*, std::vector<double>* >* speed_sigma_pair;
-	unsigned int t = 0;
 	std::vector< std::vector< double >* >* speeds = new std::vector< std::vector< double >* >;
 	std::vector< std::vector< double >* >* sigmas = new std::vector< std::vector< double >* >;
 	speeds->reserve(prev_speeds.size());
 	sigmas->reserve(prev_speeds.size());
 
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
-		std::cout << "traj: " << t << std::endl;
-		speed_sigma_pair = kalman_filter
-			(
-				*traj,
-				*(prev_speeds[t]), 
-				*(prev_sigmas[t]), 
-				phi_est, 
-				phi_sigma_est
-			);
-		speeds->push_back(speed_sigma_pair->first);
-		sigmas->push_back(speed_sigma_pair->second);
-		
-		delete speed_sigma_pair;
-		t++;
+		speeds->push_back(NULL);
+		sigmas->push_back(NULL);
 	}
+		
+	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
+	pthread_mutex_t* mutex_pool = new pthread_mutex_t;
+	pthread_mutex_init(mutex_pool, NULL);
+	unsigned int pointer = 0;
+	pthread_param_emkf* param;
+	std::vector<pthread_param_emkf*> params;
+	
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		param = new_pthread_param_emkf
+			(
+				&updates_emkf,
+				&prev_speeds,
+				&prev_sigmas,
+				speeds,
+				sigmas,
+				&phi_est,
+				&phi_sigma_est,
+				&pointer,
+				mutex_pool,
+				sigma_trans
+			);
+
+		params.push_back(param);
+		pthread_create(&threads[t], NULL, start_thread_kalman_filter, param);
+	}
+	
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		pthread_join(threads[t], NULL);
+	}
+	
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		delete params[t];
+	}
+	
+	free(threads);
+	delete mutex_pool;
 	
 	return (new std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >
 		(speeds, sigmas));
@@ -2244,15 +2342,13 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 		}
 	}
 
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
-	unsigned int t = 0;
 	unsigned int seg_from;
 	unsigned int seg_to;
 	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
 	
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 		
 		for(unsigned int s = 1; s < traj->size(); s++)
 		{
@@ -2267,8 +2363,6 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 				counts->at(seg_from)->at(seg_to) += 1;
 			}
 		}
-
-		t++;
 	}
 	
 	for(unsigned int s1 = 0; s1 < net->size(); s1++)
@@ -2293,10 +2387,9 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 	}
 	
 	double diff;
-	t = 0;
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 		
 		for(unsigned int s = 1; s < traj->size(); s++)
 		{
@@ -2312,8 +2405,6 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 				phi_sigma_est->at(seg_from)->at(seg_to) += pow(diff, 2.0);
 			}
 		}
-
-		t++;
 	}
 	
 	for(unsigned int s1 = 0; s1 < net->size(); s1++)
@@ -2324,6 +2415,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 			it != neigh->end(); ++it)
 		{
 			s2 = *it;
+			
 			if(counts->at(s1)->at(s2) > 0)
 			{
 				phi_sigma_est->at(s1)->at(s2) = sqrt((double) phi_sigma_est->at(s1)->at(s2) 
@@ -2331,7 +2423,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::maximization
 			}
 			else
 			{
-				phi_sigma_est->at(s1)->at(s2) = sigma_speed + SMALLDOUBLE; 
+				phi_sigma_est->at(s1)->at(s2) = 0; 
 			}
 		}
 	}
@@ -2356,34 +2448,46 @@ double EMKalman::log_likelihood
 	) const
 {
 	double log_like = 0;
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
 	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
-	unsigned int t = 0;
 	unsigned int seg_from;
 	unsigned int seg_to;
 	double tmp;
 	emkf_update_info* up;
 	double avg_speed;
 	double sigma;
+	double var;
 
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
-		
+		traj = updates_emkf.at(t);
+
 		for(unsigned int s = 1; s < traj->size(); s++)
 		{
 			seg_from = traj->at(s-1)->first;
 			seg_to = traj->at(s)->first;
+
+			var = speed_sigmas[t]->at(0);
 			
 			if(phi_est.at(seg_from)->find(seg_to) != 
 				phi_est.at(seg_from)->end())
 			{
-				tmp = -(double) pow(phi_est.at(seg_from)->at(seg_to) * speeds[t]->at(s-1) 
-					- speeds[t]->at(s), 2) 
-					/ (2.0 * pow(phi_sigma_est.at(seg_from)->at(seg_to), 2));
-				log_like += tmp;
-				tmp = -log(phi_sigma_est.at(seg_from)->at(seg_to) * sqrt(2 * PI));
-				log_like += tmp;
+				var = phi_est.at(seg_from)->at(seg_to) * var * phi_est.at(seg_from)->at(seg_to)
+					+  pow(phi_sigma_est.at(seg_from)->at(seg_to), 2);
+				
+				if(var > 0)
+				{
+					tmp = -(double) pow(phi_est.at(seg_from)->at(seg_to) * speeds[t]->at(s-1) 
+						- speeds[t]->at(s), 2) 
+						/ (2.0 * var);
+					log_like += tmp;
+					
+//					std::cout << "t = " << t << " s = " << s << " : " << tmp << std::endl;
+
+					tmp = -log(sqrt(var) * sqrt(2 * PI));
+					log_like += tmp;
+					
+//					std::cout << "* t = " << t << " s = " << s << " : " << tmp << std::endl;
+				}
 			}
 		}
 		
@@ -2393,9 +2497,10 @@ double EMKalman::log_likelihood
 			{
 				up = traj->at(s)->second;
 				sigma =  up->time * sigma_trans + SMALLDOUBLE;
+				//sigma = up->sigma;
 				avg_speed = up->avg_speed;
 				
-				for(int r = s; r >=0; r--)
+				for(unsigned int r = s + 1; r > 0; r--)
 				{
 					if(r < s && traj->at(r)->second != NULL)
 					{
@@ -2403,9 +2508,10 @@ double EMKalman::log_likelihood
 					}
 					else
 					{
-						tmp = -(double) pow(avg_speed - speeds[t]->at(r), 2) 
+						tmp = -(double) pow(avg_speed - speeds[t]->at(r-1), 2) 
 							/ (2.0 * pow(sigma, 2));
 						log_like += tmp;
+//						std::cout << "** t = " << t << " s = " << s << " : " << tmp << std::endl;
 
 						tmp = -log(sigma * sqrt(2 * PI));
 						log_like += tmp;
@@ -2413,8 +2519,6 @@ double EMKalman::log_likelihood
 				}
 			}
 		}
-		
-		t++;
 	}
 
 	return log_like;
