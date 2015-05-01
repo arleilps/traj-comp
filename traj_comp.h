@@ -520,7 +520,8 @@ class NSTD: public TrajCompAlgo
 		void compress
 			(
 				std::list < dist_time* >& dist_times,
-				std::list < dist_time* >& comp_dist_times
+				std::list < dist_time* >& comp_dist_times,
+				Trajectory& traj
 			);
 		
 		static bool fall_inside
@@ -541,6 +542,12 @@ class NSTD: public TrajCompAlgo
 		double max_error;
 };
 
+typedef struct t_emkf_up
+{
+	unsigned int seg;
+	unsigned int time;
+}emkf_up;
+
 class EMKalman: public TrajCompAlgo
 {
 	public:
@@ -549,7 +556,8 @@ class EMKalman: public TrajCompAlgo
 			RoadNet* net,
 			const unsigned int _num_iterations,
 			const double _sigma_gps,
-			const unsigned int _num_threads
+			const unsigned int _num_threads,
+			const std::string _output_file_name
 		)
 			:TrajCompAlgo(net)
 		{
@@ -557,6 +565,7 @@ class EMKalman: public TrajCompAlgo
 			num_iterations = _num_iterations;
 			sigma_gps = _sigma_gps;
 			num_threads = _num_threads;
+			output_file_name = _output_file_name;
 		}
 
 		virtual ~EMKalman();
@@ -584,6 +593,7 @@ class EMKalman: public TrajCompAlgo
 		t_phi* phi_sigma;
 		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * > updates_emkf;
 		unsigned int num_threads;
+		std::string output_file_name;
 		
 		std::pair<t_phi*, t_phi*>*
 			EM();
@@ -604,8 +614,9 @@ class EMKalman: public TrajCompAlgo
 		
 		void compress
 			(
-				const std::list < dist_time* >& dist_times,
-				std::list < dist_time* >& comp_dist_times
+				std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+				std::list<emkf_up*>& emkf_comp,
+				Trajectory& trajj
 			);
 		
 		std::pair<t_phi*, t_phi*>* start_phi() const;
@@ -637,6 +648,15 @@ class EMKalman: public TrajCompAlgo
 				const std::vector<double>& vars_phi,
 				const double sigma_trans
 			);
+
+		void kalman_filter_comp
+				(
+					const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+					const std::vector< double >& prev_speeds,
+					const std::vector< double >& prev_sigmas,
+					const t_phi& phi_est, const t_phi& sigma_phi_est,
+					const double sigma_trans, std::list<emkf_up*>& emkf_comp
+				);
 };
 
 #endif

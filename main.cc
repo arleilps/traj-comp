@@ -54,8 +54,8 @@ int main(int argc, char** argv)
 //	test_moving_obj_traj_file();
 //	test_TSND();
 //	test_least_squares();
-	test_emkf();
-	exit(1);
+//	test_emkf();
+//	exit(1);
 
 	/*Setting the compression algorithms*/
 	std::vector<std::string> compression_algorithms;
@@ -67,6 +67,7 @@ int main(int argc, char** argv)
 							//+ frequent subtrajectories
 	compression_algorithms.push_back("PPM");	//Prediction by partial matching
 	compression_algorithms.push_back("NSTD");	//Network synchronized time distance
+	compression_algorithms.push_back("EMKF");	//EM+kalman filter
 	
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
@@ -126,6 +127,13 @@ int main(int argc, char** argv)
 				if(Parameters::compression_algorithm == "NSTD")
 				{
 					alg = new NSTD(Parameters::error, net);
+				}
+
+				if(Parameters::compression_algorithm == "EMKF")
+				{
+					alg = new EMKalman(Parameters::error, net, 
+						Parameters::num_iterations, 4.07,
+						Parameters::num_threads, Parameters::output_file_name);
 				}
 
 				alg->train(Parameters::training_traj_file_name);

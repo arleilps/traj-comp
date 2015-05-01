@@ -27,6 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 /*my includes*/
 #include "test_traj_comp.h"
 #include "traj_comp.h"
+#include "io.h"
 
 const bool test_traj_comp_freq_subt()
 {
@@ -325,15 +326,16 @@ const bool test_TSND()
 
 const bool test_emkf()
 {
-//	RoadNet* net = new RoadNet("../data/road_net_test.csv");
-	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
-	TrajCompAlgo* traj_comp = new EMKalman(0, net, 100, 10, 4);
-	traj_comp->train("../data/map_matched_cab_stream_sfo_test_1");
+	RoadNet* net = new RoadNet("../data/road_net_test.csv");
+//	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
+	TrajCompAlgo* traj_comp = new EMKalman(30, net, 0, 10, 4, "output.txt");
+	//traj_comp->train("../data/map_matched_cab_stream_sfo_test_1");
 	//traj_comp->train("../data/test.csv");
-//	traj_comp->train("../data/map_matched_test.csv");
+	traj_comp->train("../data/map_matched_train.csv");
+	traj_comp->test("../data/map_matched_train.csv");
 	
-
-//	delete traj_comp;
+	print_statistics(traj_comp);
+	delete traj_comp;
 	delete net;
 	
 	return true;

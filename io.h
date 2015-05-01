@@ -92,6 +92,7 @@ class Parameters
 		static unsigned int delay;
 		static double error;
 		static double lambda;
+		static unsigned int num_iterations;
 		
 		/*List of valid compression algorithms for checking*/
 		static std::vector < std::string > compression_algorithms;

@@ -107,6 +107,7 @@ emkf_update_info* new_emkf_update_info
 		const double avg_speed,
 		const double dist,
 		const unsigned int time,
+		const unsigned int total_time,
 		double sigma
 	)
 {
@@ -117,6 +118,7 @@ emkf_update_info* new_emkf_update_info
 	info->avg_speed = avg_speed;
 	info->dist = dist;
 	info->time = time;
+	info->total_time = total_time;
 	info->sigma = sigma;
 
 	return info;
@@ -228,98 +230,21 @@ void Trajectory::get_dist_times_uniform
 		const
 {
 	std::list< seg_time* >::const_iterator iti = seg_time_lst.begin();
-	std::list< seg_time* >::const_iterator itj;
 	seg_time* sti;
-	seg_time* stj;
-	double dist;
-	double total_dist;
-	unsigned int s_time;
-	unsigned int e_time;
-	double speed;
-
-	sti = (*iti);
-	dist_times.push_back(new_dist_time(sti->dist, 0));
-	total_dist = sti->dist;
+	double total_dist = 0;
 
 	while(iti != seg_time_lst.end())
 	{
 		sti = (*iti);
+		total_dist+= net->segment_length(sti->segment);
 		
 		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
 		{
-			dist = net->segment_length(sti->segment) - sti->dist;
-
-			itj = iti;
-			++itj;
-
-			if(itj != seg_time_lst.end())
-			{
-				while(itj != seg_time_lst.end() 
-					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
-				{
-					stj = (*itj);
-					dist += net->segment_length(stj->segment);
-					++itj;
-				}
-
-				stj = (*itj);
-
-				if(stj->segment != sti->segment)
-				{
-					dist += stj->dist;
-				}
-				else
-				{
-					dist = stj->dist - sti->dist;
-				}
-
-				s_time = sti->time;
-				e_time = stj->time;
-				speed = (double) dist / (e_time-s_time);
-
-				itj = iti;
-				++itj;
-				
-				if(sti->segment != stj->segment)
-				{
-					dist = net->segment_length(sti->segment) - sti->dist;
-				}
-
-				e_time = s_time + dist / speed;
-	
-				while(itj != seg_time_lst.end() 
-					&& (*itj)->time == 0 && (*itj)->dist == 0) //shortest-path extension
-				{
-					stj = (*itj);
-					dist += net->segment_length(stj->segment);
-					e_time = s_time + dist / speed;
-					dist_times.push_back(new_dist_time(total_dist + dist, 
-						e_time - seg_time_lst.front()->time));
-					++itj;
-				}
+			dist_times.push_back(new_dist_time(total_dist, 
+				sti->time - seg_time_lst.front()->time));
+		}
 		
-				stj = (*itj);
-				
-				if(sti->segment != stj->segment)
-				{
-					dist += stj->dist;
-				}
-				else
-				{
-					dist = stj->dist - sti->dist;
-				}
-				
-				dist_times.push_back(new_dist_time(total_dist + dist, 
-					stj->time - seg_time_lst.front()->time));
-				total_dist += dist;
-			}
-			
-			iti = itj;
-		}
-		else
-		{
-			++iti;
-		}
+		++iti;
 	}
 }
 
@@ -625,14 +550,11 @@ void Trajectory::get_emkf_rep
 	emkf_traj->reserve(size_traj);
 
 	emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> (st->segment, NULL));
-	double frac_begin;
-	double dist;
-
-	dist = net->segment_length(st->segment);
+	
+	double dist = net->segment_length(st->segment);
 	
 	unsigned int start_time = st->time;
 	unsigned int end_time;
-	double frac_end;
 	double speed;
 	double error;
 	emkf_update_info* info;
@@ -653,12 +575,10 @@ void Trajectory::get_emkf_rep
 			end_time = st->time;
 			dist += net->segment_length(st->segment);
 			
-			frac_end = 1;
-			
 			if(end_time - start_time > 0)
 			{
 				speed = (double) dist / (end_time - start_time);
-				error = (double) (2*sigma_gps) / (end_time - start_time);
+				error = (double) (2 * sigma_gps) / (end_time - start_time);
 			}
 			else
 			{
@@ -666,8 +586,8 @@ void Trajectory::get_emkf_rep
 				error = 0;
 			}
 
-			info = new_emkf_update_info(frac_begin, frac_end, speed, 
-				dist, end_time-start_time, error);
+			info = new_emkf_update_info(1, 1, speed, 
+				dist, end_time-start_time, end_time, error);
 			
 			emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
 				(st->segment, info));
@@ -675,8 +595,6 @@ void Trajectory::get_emkf_rep
 			start_time = end_time;
 			
 			dist = 0;
-			
-			frac_begin = 1.0;
 		}
 
 		++it_st;

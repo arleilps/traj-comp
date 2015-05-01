@@ -53,6 +53,7 @@ typedef struct t_emkf_update_info
 	double dist;
 	unsigned int time;
 	double sigma;
+	unsigned int total_time;
 } emkf_update_info;
 
 emkf_update_info* new_emkf_update_info
@@ -62,6 +63,7 @@ emkf_update_info* new_emkf_update_info
 		const double avg_speed,
 		const double dist,
 		const unsigned int time,
+		unsigned int total_time,
 		double sigma
 	);
 

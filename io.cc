@@ -34,6 +34,7 @@ unsigned int Parameters::delay;
 unsigned int Parameters::num_threads;
 double Parameters::error;
 double Parameters::lambda;
+unsigned int Parameters::num_iterations;
 
 std::vector<std::string> Parameters::compression_algorithms;
 
@@ -109,6 +110,7 @@ void Parameters::print_usage()
 	std::cout << " -l, --lambda		lambda for least-squares" << std::endl;
 	std::cout << " -a, --delay		delay for late update compression" << std::endl;
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
+	std::cout << " -i, --num-iter		number of iterations EM" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
 }
 
@@ -130,6 +132,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 	lambda = 0;
 	error = 0;
 	delay =  std::numeric_limits<unsigned int>::max();
+	num_iterations = 10;
 
 	try
 	{
@@ -157,6 +160,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('l', "lambda", lambda)
 		>> GetOpt::Option('a', "delay", delay)
 		>> GetOpt::Option('n', "num-threads", num_threads)
+		>> GetOpt::Option('i', "num_iter", num_iterations)
 		;
 	}
 	catch(GetOpt::GetOptEx& e)

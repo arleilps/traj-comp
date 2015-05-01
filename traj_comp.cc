@@ -1026,7 +1026,7 @@ void NSTD::test(const std::string test_traj_file_name)
 
 		traj->get_dist_times_uniform(dist_times, net);
 
-		compress(dist_times, comp_dist_times);
+		compress(dist_times, comp_dist_times, *traj);
 
 		Trajectory::delete_dist_times(dist_times);
 		Trajectory::delete_dist_times(comp_dist_times);
@@ -1063,7 +1063,7 @@ void TSND::compress
 	while(it != dist_times.end())
 	{
 		p_i = *it;
-		
+
 		if(fall_inside(R, *p_index, *p_i))
 		{
 			constrain(R, *p_index, *p_i, max_error);
@@ -1093,7 +1093,8 @@ void TSND::compress
 void NSTD::compress
 	(
 		std::list < dist_time* >& dist_times,
-		std::list < dist_time* >& comp_dist_times
+		std::list < dist_time* >& comp_dist_times,
+		Trajectory& traj
 	)
 {
 	comp_dist_times.clear();
@@ -1118,7 +1119,8 @@ void NSTD::compress
 	{
 		p_i = *it;
 
-		if(fall_inside(R, *p_index, *p_i))
+		if(fall_inside(R, *p_index, *p_i) 
+			&& p_i_minus_one->time - comp_dist_times.back()->time < max_error)
 		{
 			constrain(R, *p_index, *p_i, max_error);
 		}
@@ -1129,6 +1131,7 @@ void NSTD::compress
 
 			R.from = (double) -PI / 2;
 			R.to = (double) PI / 2;
+			constrain(R, *p_index, *p_i, max_error);
 		}
 		
 		p_i_minus_one = p_i;
@@ -1139,14 +1142,14 @@ void NSTD::compress
 	comp_dist_times.push_back(p_index);
 	
 	comp_t->stop();
-	_num_updates_orig += dist_times.size();
+	_num_updates_orig += traj.size();
 	_num_updates_comp += comp_dist_times.size();
 	_num_traj_comp++;
 }
 
 double equal_double(const double d1, const double d2)
 {
-	return (fabs(d1 - d2) <= 1.0e-12);
+	return (fabs(d1 - d2) <= 0.001);
 }
 
 bool TSND::fall_inside
@@ -1198,8 +1201,8 @@ bool TSND::fall_inside
 		}
 	}
 
-	if((p_i.dist < (double) tan_to * p_i.time + b_to
-		&& p_i.dist > (double) tan_from * p_i.time + b_from)
+	if((p_i.dist <= (double) tan_to * p_i.time + b_to
+		&& p_i.dist >= (double) tan_from * p_i.time + b_from)
 		|| (equal_double(p_i.dist, (double) tan_to * p_i.time + b_to)
 		&& equal_double(p_i.dist, (double) tan_from * p_i.time + b_from)))
 	{
@@ -1260,10 +1263,8 @@ bool NSTD::fall_inside
 		}
 	}
 
-	if((p_i.dist < (double) tan_to * p_i.time + b_to
-		&& p_i.dist > (double) tan_from * p_i.time + b_from)
-		|| (equal_double(p_i.dist, (double) tan_to * p_i.time + b_to)
-		&& equal_double(p_i.dist, (double) tan_from * p_i.time + b_from)))
+	if(p_i.dist <= (double) tan_to * p_i.time + b_to
+		&& p_i.dist >= (double) tan_from * p_i.time + b_from)
 	{
 		return true;
 	}
@@ -1433,16 +1434,15 @@ void NSTD::constrain
 
 void print_emkf_info
 	(
-		std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >& updates_emkf,
+		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >& updates_emkf,
 		RoadNet* net
 	)
 {
-	std::list < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >::const_iterator it;
 	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
 
-	for(it = updates_emkf.begin(); it != updates_emkf.end(); ++it)
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
-		traj = *it;
+		traj = updates_emkf.at(t);
 
 		for(unsigned int i = 0; i < traj->size(); i++)
 		{
@@ -1452,14 +1452,36 @@ void print_emkf_info
 				std::cout << "avg speed: " << traj->at(i)->second->avg_speed << std::endl;
 				std::cout << "dist: " << traj->at(i)->second->dist << std::endl;
 				std::cout << "time: " << traj->at(i)->second->time << std::endl;
+				std::cout << "total time: " << traj->at(i)->second->total_time << std::endl;
 				std::cout << "sigma: " << traj->at(i)->second->sigma << std::endl;
-				std::cout << "frac_begin: " << traj->at(i)->second->frac_begin << std::endl;
-				std::cout << "frac_end: " << traj->at(i)->second->frac_end << std::endl;
 			}
 		}
 
 		std::cout << std::endl;
 	}
+}
+
+void delete_emkf_info
+	(
+		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >& updates_emkf
+	)
+{
+	std::vector< std::pair< unsigned int, emkf_update_info* > * >* traj;
+
+	for(unsigned int t = 0; t < updates_emkf.size(); t++)
+	{
+		traj = updates_emkf.at(t);
+
+		for(unsigned int i = 0; i < traj->size(); i++)
+		{
+			delete traj->at(i)->second;
+			delete traj->at(i);
+		}
+
+		delete traj;
+	}
+
+	updates_emkf.clear();
 }
 
 void print_phi(t_phi* phi, t_phi* phi_sigma, RoadNet* net)
@@ -1522,8 +1544,6 @@ void EMKalman::avg_sigma_speed()
 	avg_speed = (double) avg_speed / num;
 	sigma_trans = sqrt((double) sigma_trans / num_sigma);
 
-	std::cout << "sigma_trans = " << sigma_trans << std::endl;
-	
 	for(unsigned int t = 0; t < updates_emkf.size(); t++)
 	{
 		traj = updates_emkf.at(t);
@@ -1539,7 +1559,6 @@ void EMKalman::avg_sigma_speed()
 
 		sigma_speed = sqrt((double) sigma_speed / num);
 	}
-
 }
 
 void EMKalman::train(const std::string training_traj_file_name)
@@ -1565,21 +1584,33 @@ void EMKalman::train(const std::string training_traj_file_name)
 	std::pair<t_phi*, t_phi*>* phi_sigma_pair = EM();
 	phi = phi_sigma_pair->first;
 	phi_sigma = phi_sigma_pair->second;
-	print_phi(phi, phi_sigma, net);
+	//print_phi(phi, phi_sigma, net);
 	delete phi_sigma_pair;
+	delete_emkf_info(updates_emkf);
 
 	train_t->stop();
 	_training_time = train_t->get_seconds();
+}
+
+void delete_emkf_comp(std::list<emkf_up*>& emkf_comp)
+{
+	for(std::list<emkf_up*>::iterator it = emkf_comp.begin();
+		it != emkf_comp.end(); ++it)
+	{
+		delete *it;
+	}
+
+	emkf_comp.clear();
 }
 
 void EMKalman::test(const std::string test_traj_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	Trajectory* traj;
-	std::list < dist_time* > dist_times;
-	std::list < dist_time* > comp_dist_times;
+	std::list<emkf_up*> emkf_comp;
 	
 	Trajectory::read_trajectories(trajectories, test_traj_file_name, net);
+	updates_emkf.reserve(trajectories.size());
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
@@ -1587,29 +1618,82 @@ void EMKalman::test(const std::string test_traj_file_name)
 		it != trajectories.end(); ++it)
 	{
 		traj = *it;
-	//	traj->get_dist_times_least_squares(dist_times, f, net);
+		traj->get_emkf_rep(updates_emkf, sigma_gps, net);
+		compress(*(updates_emkf.back()), emkf_comp, *traj);
 		
-		compress(comp_dist_times, dist_times);
-
-		Trajectory::delete_dist_times(dist_times);
-		Trajectory::delete_dist_times(comp_dist_times);
+		delete_emkf_comp(emkf_comp);
 		delete traj;
 	}
+	
+	delete_emkf_info(updates_emkf);
 	
 	_compression_time = comp_t->get_seconds();
 }
 
+void add_update
+	(
+		std::list<emkf_up*>& emkf_comp, const unsigned int seg, 
+		const unsigned int time
+	)
+{
+	emkf_up* e = new emkf_up;
+
+	e->seg = seg;
+	e->time = time;
+
+	emkf_comp.push_back(e);
+}
+
 void EMKalman::compress
 	(
-		const std::list < dist_time* >& dist_times,
-		std::list < dist_time* >& comp_dist_times 
+		std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+		std::list<emkf_up*>& emkf_comp, Trajectory& trajj
 	) 
 {
 	comp_t->start();
+	emkf_update_info* up;
+	std::vector<double> prev_speeds;
+	std::vector<double> prev_sigmas;
+	unsigned int num;
+	double avg_up;
+
+	prev_speeds.reserve(traj.size());
+	prev_sigmas.reserve(traj.size());
 	
+	num = 0;
+	for(unsigned int s = 0; s < traj.size(); s++)
+	{
+		if(traj.at(s)->second != NULL)
+		{
+			up = traj.at(s)->second;
+			avg_up = up->avg_speed;
+
+			for(unsigned int i = 0; i < num+1; i++)
+			{
+				prev_speeds.push_back(avg_up);
+				prev_sigmas.push_back(up->time * sigma_trans + SMALLDOUBLE);
+			}
+
+			num = 0;
+		}
+		else
+		{
+			num++;
+		}
+	}
+	
+
+	add_update(emkf_comp, trajj.front()->segment, trajj.front()->time);
+	
+	EMKalman::kalman_filter_comp
+		(
+			traj, prev_speeds, prev_sigmas, *phi, *phi_sigma,
+			sigma_trans, emkf_comp
+		);
+
 	comp_t->stop();
-	_num_updates_orig += dist_times.size();
-	_num_updates_comp += comp_dist_times.size();
+	_num_updates_orig += traj.size();
+	_num_updates_comp += emkf_comp.size();
 	_num_traj_comp++;
 }
 
@@ -1646,7 +1730,7 @@ std::pair<t_phi*, t_phi*>*
 			s2 = *it;
 
 			phi_est->at(s1)->insert(std::pair<unsigned int, double > (s2, 1));
-			phi_sigma_est->at(s1)->insert(std::pair<unsigned int, double > (s2, sigma_speed + SMALLDOUBLE));
+			phi_sigma_est->at(s1)->insert(std::pair<unsigned int, double > (s2, sqrt(sqrt(std::numeric_limits<double>::max()))));
 		}
 	}
 
@@ -1751,9 +1835,16 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM()
 	t_phi* phi_est = phi_sigma->first;
 	t_phi* phi_sigma_est = phi_sigma->second;
 	delete phi_sigma;
+	std::ofstream output_file(output_file_name.c_str(), std::ios::out);
 
-	//print_phi(phi_est, phi_sigma_est, net);
-	
+	if(! output_file.is_open())
+	{
+		std::cerr << "Error: Could not open road network file: "
+			<< output_file_name << std::endl << std::endl;
+			
+		return (new std::pair<t_phi*,t_phi*>(phi_est, phi_sigma_est));
+	}
+
 	std::vector< std::vector< double >* >* prev_speeds;
 	std::vector< std::vector< double >* >* prev_sigmas;
 	std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*
@@ -1793,8 +1884,8 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM()
 		
 //		print_phi(phi_est, phi_sigma_est, net);
 
-		std::cout << "log-likelihood = " << log_likelihood(*speeds, 
-			*sigmas, *phi_est, *phi_sigma_est) << std::endl;
+		output_file << i << " " << log_likelihood(*speeds, 
+			*sigmas, *phi_est, *phi_sigma_est) << "\n";
 		
 		delete_speeds(prev_speeds);
 		delete_speeds(prev_sigmas);
@@ -1803,10 +1894,11 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM()
 		prev_sigmas = sigmas;
 	}
 	
-	//print_speeds(prev_speeds, prev_sigmas, updates_emkf, net);
+//	print_speeds(prev_speeds, prev_sigmas, updates_emkf, net);
 
 	delete_speeds(prev_speeds);
 	delete_speeds(prev_sigmas);
+	output_file.close();
 
 	return (new std::pair<t_phi*,t_phi*>(phi_est, phi_sigma_est));
 }
@@ -1956,6 +2048,73 @@ void EMKalman::set_missing_speeds
 	}
 }
 
+void EMKalman::kalman_filter_comp
+		(
+			const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+			const std::vector< double >& prev_speeds,
+			const std::vector< double >& prev_sigmas,
+			const t_phi& phi_est, const t_phi& sigma_phi_est,
+			const double sigma_trans, std::list<emkf_up*>& emkf_comp
+		)
+{
+	std::vector< double >* speeds_comp = new std::vector<double>;
+	speeds_comp->reserve(traj.size());
+	double speed_phi;
+	unsigned int num = 0;
+	unsigned int seg_from;
+	unsigned int seg_to;
+	emkf_update_info* up;
+	double time_comp = 0;
+			
+	speed_phi = prev_speeds[0];
+	
+	for(unsigned int s = 0; s < traj.size(); s++)
+	{
+		if(s > 0)
+		{
+			seg_from = traj.at(s-1)->first;
+			seg_to = traj.at(s)->first;
+			
+			if(phi_est.at(seg_from)->find(seg_to) != 
+				phi_est.at(seg_from)->end())
+			{
+				speed_phi = speed_phi * phi_est.at(seg_from)->at(seg_to);
+			}
+			else
+			{
+				speed_phi = prev_speeds[s];
+			}
+		}
+		
+		speeds_comp->push_back(speed_phi);
+		num++;
+
+		if(traj.at(s)->second != NULL)
+		{
+			up = traj.at(s)->second;
+			
+			for(unsigned int i = 0; i < num; i++)
+			{
+				if(speeds_comp->at(s-i) > 0)
+				{
+					time_comp += (double) net->segment_length(traj.at(s-i)->first) / speeds_comp->at(s-i);
+				}
+			}
+
+			if(fabs(up->total_time-time_comp) >= max_error || s == traj.size() - 1)
+			{
+				add_update(emkf_comp, traj.at(s)->first, up->total_time);
+				speed_phi = up->avg_speed;
+				time_comp = up->total_time;
+			}
+
+			num = 0;
+		}
+	}
+	
+	delete speeds_comp;
+}
+
 std::pair< std::vector< double >*, std::vector<double>* >*	
 	EMKalman::kalman_filter
 		(
@@ -1992,7 +2151,7 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 	
 	double start_speed = prev_speeds[0];
 	double start_sigma = prev_sigmas[0];
-
+	
 	for(unsigned int s = 0; s < traj.size(); s++)
 	{
 		if(num == 0)
@@ -2060,10 +2219,6 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 
 			avg_speed_k = avg_phi + K * (avg_up - avg_phi);
 
-//			std::cout << "s : " << s << " avg_speed_k = " << avg_speed_k << std::endl;;
-//			std::cout << "avg_up " << avg_up << " avg_phi = " << avg_phi << std::endl;;
-//			std::cout << "var_up " << var_up << " avg_phi_var = " << avg_phi_var << std::endl;;
-			
 			if(num < 10)
 			{
 				set_missing_speeds(*speeds, avg_speed_k, start_speed, start_sigma, 
@@ -2093,7 +2248,6 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 			else
 			{
 				var_speed_k = avg_phi_var - K * avg_phi_var;
-				//sigma =  up->time * sigma_trans + SMALLDOUBLE;
 				sigma = sqrt(var_speed_k);
 
 				for(unsigned int i = 0; i < num; i++)
@@ -2105,8 +2259,6 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 					sigmas->push_back(
 						sigma
 					);
-
-//					var_speed_k = pow(sigmas->back(), 2);
 				}
 			}
 			
@@ -2122,6 +2274,7 @@ std::pair< std::vector< double >*, std::vector<double>* >*
 	
 	return (new std::pair< std::vector< double >*, std::vector<double>* >(speeds, sigmas));
 }
+
 
 pthread_param_emkf* new_pthread_param_emkf
 	(
@@ -2452,9 +2605,6 @@ double EMKalman::log_likelihood
 	unsigned int seg_from;
 	unsigned int seg_to;
 	double tmp;
-	emkf_update_info* up;
-	double avg_speed;
-	double sigma;
 	double var;
 
 	for(unsigned int t = 0; t < updates_emkf.size(); t++)
@@ -2481,46 +2631,13 @@ double EMKalman::log_likelihood
 						/ (2.0 * var);
 					log_like += tmp;
 					
-//					std::cout << "t = " << t << " s = " << s << " : " << tmp << std::endl;
-
 					tmp = -log(sqrt(var) * sqrt(2 * PI));
 					log_like += tmp;
-					
-//					std::cout << "* t = " << t << " s = " << s << " : " << tmp << std::endl;
-				}
-			}
-		}
-		
-		for(unsigned int s = 0; s < traj->size(); s++)
-		{
-			if(traj->at(s)->second != NULL)
-			{
-				up = traj->at(s)->second;
-				sigma =  up->time * sigma_trans + SMALLDOUBLE;
-				//sigma = up->sigma;
-				avg_speed = up->avg_speed;
-				
-				for(unsigned int r = s + 1; r > 0; r--)
-				{
-					if(r < s && traj->at(r)->second != NULL)
-					{
-						break;
-					}
-					else
-					{
-						tmp = -(double) pow(avg_speed - speeds[t]->at(r-1), 2) 
-							/ (2.0 * pow(sigma, 2));
-						log_like += tmp;
-//						std::cout << "** t = " << t << " s = " << s << " : " << tmp << std::endl;
-
-						tmp = -log(sigma * sqrt(2 * PI));
-						log_like += tmp;
-					}
 				}
 			}
 		}
 	}
-
+	
 	return log_like;
 }
 
