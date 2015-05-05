@@ -17,17 +17,15 @@ extract (){
 results_file_name='PPM_order.dat'
 rm $results_file_name
 
-avg_comp_ratio_train_train=0
-avg_comp_ratio_train_test=0
-
-avg_comp_time_train_train=0
-avg_comp_time_train_test=0
-
-avg_train_time_train_train=0
-avg_train_time_train_test=0
-
 for d in ${order_vec[@]}
 do
+	avg_comp_ratio_train_train=0
+	avg_comp_ratio_train_test=0
+	avg_comp_time_train_train=0
+	avg_comp_time_train_test=0
+	avg_train_time_train_train=0
+	avg_train_time_train_test=0
+
 	for ((f=1; f<=$num_folds;f++))
 	do
 #		comp_ratio_train_train=$(extract "PPM/train_train_$f\_$d" "compression_ratio")

@@ -902,6 +902,7 @@ void ShortestPathFreqSubt::train(const std::string training_traj_file_name)
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
 	
 	train_t->start();
+	shortest_path_comp = new ShortestPath(max_length_paths, net, num_threads);
 
 	CompTrajectory* sp_comp;
 	//Adds each trajectory into the tree

@@ -17,14 +17,14 @@ extract (){
 results_file_name='short_path_freq_subt_length_subt.dat'
 rm $results_file_name
 
-avg_comp_ratio_train_test=0
-avg_comp_time_train_test=0
-avg_train_time_train_test=0
-
 for a in ${delay_vec[@]}
 do
 	for u in ${length_subt_vec[@]}
 	do
+		avg_comp_ratio_train_test=0
+		avg_comp_time_train_test=0
+		avg_train_time_train_test=0
+
 		for ((f=1; f<=$num_folds;f++))
 		do
 			comp_ratio_train_test=$(extract "SPFS/train_test_${f}_${u}_${a}" "compression_ratio")

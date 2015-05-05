@@ -73,7 +73,6 @@ def main(argv=None):
 	        sum_ratios = sum_ratios + float(pr[v]) / od[v]
 
 	h = 1 - sum_ratios
-
 	print "entropy = ", h
 
     except Usage, err:
