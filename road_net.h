@@ -764,7 +764,7 @@ typedef struct t_pthread_param_short_path
 	unsigned int* pointer;
 	pthread_mutex_t* mutex_pool;
 	RoadNet* net;
-	unsigned int max_length;
+	double max_length;
 	 std::vector < std::map < unsigned int , unsigned int > * >* short_paths;
 }pthread_param_short_path;
 

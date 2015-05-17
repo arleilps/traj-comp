@@ -388,7 +388,7 @@ typedef struct t_node_ppm
 	unsigned int id;
 	unsigned int segment;
 	unsigned int next;
-	unsigned int freq_next;
+	double freq_next;
 	std::map<unsigned int, t_node_ppm*> children;
 	std::map<unsigned int, double> freq;
 } NodePPM;

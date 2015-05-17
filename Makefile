@@ -1,4 +1,4 @@
-CFLAGS = -Wall -g -Ofast -pthread #-pg
+CFLAGS = -Wall -g -pthread #-pg
 RM = rm -f
 GP_OBJS = main.o io.o test_traj_comp.o test_moving_obj.o test_road_net.o moving_obj.o road_net.o traj_comp.o perf.o getopt_pp.o
 CC = g++ $(CFLAGS)

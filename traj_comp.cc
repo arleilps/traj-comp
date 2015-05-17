@@ -2301,7 +2301,7 @@ void EMKalman::kalman_filter_comp
 			if(fabs(time_actual-time_comp) >= max_error || s == traj.size() - 1)
 			{
 //				std::cout << "== UPDATE == " << fabs(time_actual-time_comp) << std::endl;
-				add_update(emkf_comp, traj.at(s)->first, time_actual);
+				add_update(emkf_comp, traj.at(s)->first, (unsigned int) time_actual);
 				speed_comp = speeds->back();
 				time_comp = time_actual;
 			}
