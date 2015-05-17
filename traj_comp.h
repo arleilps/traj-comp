@@ -34,6 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define PI 3.14159265
 #define SMALLDOUBLE 1e-5
+#define MAXSIZEOPT 10 
 
 /*Node in the frequent subtrajectory tree*/
 typedef struct t_node_subt
@@ -48,19 +49,6 @@ typedef struct t_node_subt
 
 typedef std::map< unsigned int, std::map < unsigned int, double > * > t_phi;
 
-typedef struct t_pthread_param_emkf
-{
-	std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >* updates_emkf;
-	std::vector< std::vector< double >* >* prev_speeds;
-	std::vector< std::vector< double >* >* prev_sigmas;
-	std::vector< std::vector< double >* >* speeds;
-	std::vector< std::vector< double >* >* sigmas;
-	t_phi* phi_est;
-	t_phi* phi_sigma_est;
-	unsigned int* pointer;
-	pthread_mutex_t* mutex_pool;
-	double sigma_trans;
-}pthread_param_emkf;
 
 /**
  * Implements functionalities for a compressed trajectory manipulation
@@ -575,7 +563,7 @@ class EMKalman: public TrajCompAlgo
 
 		void test(const std::string test_traj_file_name);
 		
-		static std::pair< std::vector< double >*, std::vector<double>* >*
+		std::pair< std::vector< double >*, std::vector<double>* >*
 			kalman_filter(
 				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
 				const std::vector< double >& prev_speeds,
@@ -634,7 +622,24 @@ class EMKalman: public TrajCompAlgo
 
 		void avg_sigma_speed();
 
-		static void set_missing_speeds
+		void run_cgal_opt
+			(
+				std::vector<double>& speeds, 
+				const double avg_speed_k,
+				const double start_speed,
+				const double start_sigma,
+				const std::vector<double>& prev_speed,
+				const std::vector<double>& prev_sigmas,
+				const unsigned int index,
+				const unsigned int num,
+				const unsigned int time,
+				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
+				const t_phi& phi_est, const t_phi& sigma_phi_est,
+				const std::vector<double>& vars_phi,
+				const double sigma_trans
+			);
+		
+		void set_missing_speeds
 			(
 				std::vector<double>& speeds, 
 				const double avg_speed_k,
@@ -660,27 +665,20 @@ class EMKalman: public TrajCompAlgo
 				);
 };
 
+typedef struct t_pthread_param_emkf
+{
+	std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >* updates_emkf;
+	std::vector< std::vector< double >* >* prev_speeds;
+	std::vector< std::vector< double >* >* prev_sigmas;
+	std::vector< std::vector< double >* >* speeds;
+	std::vector< std::vector< double >* >* sigmas;
+	t_phi* phi_est;
+	t_phi* phi_sigma_est;
+	unsigned int* pointer;
+	pthread_mutex_t* mutex_pool;
+	double sigma_trans;
+	EMKalman* emkf;
+}pthread_param_emkf;
+
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -27,8 +27,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <algorithm>
 #include <iostream>
 #include <pthread.h>
-#include <Eigen/Core>
-#include <Eigen/SparseCore>
 
 #include "road_net.h"
 
@@ -262,31 +260,6 @@ class Trajectory
 		void get_dist_times_uniform
 			(
 				std::list < dist_time* >& dist_times,
-				RoadNet* net
-			) 
-				const;
-		
-		void get_dist_times_least_squares
-			(
-				std::list < dist_time* >& dist_times,
-				const Eigen::VectorXd& f,
-				RoadNet* net
-			) 
-				const;
-	
-		void get_lsq_sigmas
-			(
-				std::vector<double>& lsq_sigmas,
-				std::vector<unsigned int>& counts,
-				const Eigen::VectorXd& f,
-				RoadNet* net
-			)
-				const;
-
-		void get_pred_dist_times_least_squares
-			(
-				std::list < dist_time* >& pred_dist_times,
-				const Eigen::VectorXd& f,
 				RoadNet* net
 			) 
 				const;
