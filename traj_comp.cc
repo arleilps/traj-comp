@@ -34,11 +34,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <CGAL/MP_Float.h>
 #include <CGAL/Quotient.h>
 #include <CGAL/Gmpzf.h>
+#include <CGAL/Mpzf.h>
 
-typedef CGAL::MP_Float ET;
-typedef CGAL::Gmpzf GT;
-typedef CGAL::Quadratic_program<double> Program;
-typedef CGAL::Quadratic_program_solution<ET> Solution;
+//typedef CGAL::MP_Float GT;
+//typedef CGAL::Gmpzf GT;
+typedef CGAL::Mpzf GT;
+typedef CGAL::Quadratic_program<GT> Program;
 typedef CGAL::Quadratic_program_solution<GT> gSolution;
 
 /*my includes*/
@@ -1891,6 +1892,7 @@ std::pair<t_phi*, t_phi*>* EMKalman::EM()
 
 		output_file << i << " " << log_likelihood(*speeds, 
 			*sigmas, *phi_est, *phi_sigma_est) << "\n";
+		output_file.flush();
 		
 		delete_speeds(prev_speeds);
 		delete_speeds(prev_sigmas);
@@ -2014,11 +2016,9 @@ void EMKalman::run_cgal_opt
 
 	for(unsigned int i = 0; i < num; i++)
 	{
-//		std::cout << "qp.set_a(" << i << ",0,1);" << std::endl;;
 		qp.set_a(i,0,1);
 	}
 
-//	std::cout << "qp.set_b(0," << num * avg_speed_k << ");" << std::endl;
 	qp.set_b(0, num * avg_speed_k);
 
 	double phi;
@@ -2047,7 +2047,6 @@ void EMKalman::run_cgal_opt
 		coeff += (double) prev_speeds[speeds.size()] / vars_phi[index];
 	}
 
-//	std::cout << "qp.set_c(0," << -coeff << ");" << std::endl;
 	qp.set_c(0,-coeff);
 	
 	coeff = (double) 1 / (2*pow(sigma, 2));
@@ -2068,17 +2067,10 @@ void EMKalman::run_cgal_opt
 		}
 	}
 	
-//	std::cout << "qp.set_d(0,0," << 2*coeff << ");" << std::endl;
 	qp.set_d(0,0, 2*coeff);
 	
 	for(unsigned int i = 1; i < num; i++)
 	{
-//		std::cout << std::endl;
-//		std::cout << "i = " << i << std::endl;
-//		std::cout << "index = " << index << std::endl;
-//		std::cout << "num = " << num << std::endl;
-//		std::cout << "traj.size = " << traj.size() << std::endl;
-//		std::cout << "speeds.size = " << speeds.size() << std::endl;
 		seg_from = traj.at(speeds.size()+i-1)->first;
 		seg_to = traj.at(speeds.size()+i)->first;
 		
@@ -2088,11 +2080,9 @@ void EMKalman::run_cgal_opt
 			phi = phi_est.at(seg_from)->at(seg_to);
 			
 			coeff = (double) phi / vars_phi[i+index];
-//			std::cout << "qp.set_d(" << i << "," << i-1 << "," << -coeff  << ");" << std::endl;
 			qp.set_d(i, i-1,-coeff);
 		
 			coeff = (double) avg_speed_k / pow(sigma, 2);
-//			std::cout << "qp.set_c(" << i << "," << -coeff  << ");" << std::endl;
 			qp.set_c(i,-coeff);
 		}
 		else
@@ -2100,7 +2090,6 @@ void EMKalman::run_cgal_opt
 			coeff = (double) prev_speeds[i+index] / vars_phi[i+index]
 				+ (double) avg_speed_k / pow(sigma, 2);
 			
-//			std::cout << "qp.set_c(" << i << "," << -coeff  << ");" << std::endl;
 			qp.set_c(i,-coeff);
 		}
 		
@@ -2121,7 +2110,6 @@ void EMKalman::run_cgal_opt
 			}
 		}
 
-//		std::cout << "qp.set_d(" << i << "," << i << "," << 2*coeff << ");" << std::endl;
 		qp.set_d(i, i, 2*coeff);
 	}
 
@@ -2138,7 +2126,8 @@ void EMKalman::run_cgal_opt
 	}
 	catch(std::exception& e)
 	{
-		std::cout << "Exception" << std::endl;
+	//	std::cout << "Exception" << std::endl;
+		
 		for(unsigned int i = 0; i < num; i++)
 		{
 			speeds.push_back(avg_speed_k);
@@ -2584,6 +2573,8 @@ void run_thread_kalman_filter
 			*pointer = *pointer + 1;
 			pthread_mutex_unlock(mutex_pool);
 		}
+
+		//std::cout << t << " out of " << updates_emkf->size() << std::endl;
 
 		traj = updates_emkf->at(t);
 

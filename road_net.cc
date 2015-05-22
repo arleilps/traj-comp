@@ -1253,7 +1253,7 @@ void run_thread_short_path
 		unsigned int* pointer,
 		pthread_mutex_t* mutex_pool,
 		RoadNet* net,
-		const unsigned int max_length
+		const double max_length
 	)
 {
 	unsigned int s;
