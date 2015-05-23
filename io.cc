@@ -26,6 +26,7 @@ std::string Parameters::output_file_name;
 std::string Parameters::compression_algorithm;
 std::string Parameters::gps_file_name;
 std::string Parameters::conf_file_name;
+std::string Parameters::shortest_path_file_name;
 unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
 unsigned int Parameters::min_sup;
@@ -107,7 +108,7 @@ void Parameters::print_usage()
 	std::cout << " -f, --potgis-conf	postgis configuration file" << std::endl;
 	std::cout << " -d, --gps-updates	gps updates file to be map-matched" << std::endl;
 	std::cout << " -m, --error		temporal compression error" << std::endl;
-	std::cout << " -l, --lambda		lambda for least-squares" << std::endl;
+	std::cout << " -l, --short-file		short paths file" << std::endl;
 	std::cout << " -a, --delay		delay for late update compression" << std::endl;
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -i, --num-iter		number of iterations EM" << std::endl;
@@ -152,12 +153,12 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('c', "compression", compression_algorithm, "")
 		>> GetOpt::Option('d', "gps-updates", gps_file_name, "")
 		>> GetOpt::Option('f', "postgis-conf", conf_file_name, "../data/sfo_postgis.conf")
+		>> GetOpt::Option('l', "short-file", shortest_path_file_name, "")
 		>> GetOpt::Option('u', "length-subt", max_length_subt)
 		>> GetOpt::Option('r', "order", order)
 		>> GetOpt::Option('s', "min-sup", min_sup)
 		>> GetOpt::Option('p', "short-path", max_shortest_path)
 		>> GetOpt::Option('m', "error", error)
-		>> GetOpt::Option('l', "lambda", lambda)
 		>> GetOpt::Option('a', "delay", delay)
 		>> GetOpt::Option('n', "num-threads", num_threads)
 		>> GetOpt::Option('i', "num_iter", num_iterations)

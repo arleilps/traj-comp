@@ -538,12 +538,18 @@ class RoadNet
 				std::map < unsigned int , unsigned int >* s_paths
 			);
 
-		void fill_short_path_struct
-	                (
-		                const double max_length, 
-		                std::vector < std::map < unsigned int , unsigned int > * >& short_paths,
+		void write_short_path_struct
+	        	(
+		                const std::string& output_file_name,
+				const double max_length, 
 				const unsigned int num_threads
-		         );
+			);
+
+		void read_short_path_struct
+			(
+				const std::string& input_file_name,
+		                std::vector < std::map < unsigned int , unsigned int > * >& short_paths
+			);
 
 		void get_num_hops_from
 			(

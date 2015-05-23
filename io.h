@@ -84,6 +84,7 @@ class Parameters
 		static std::string compression_algorithm;
 		static std::string gps_file_name;
 		static std::string conf_file_name;
+		static std::string shortest_path_file_name;
 		static unsigned int max_length_subt;
 		static unsigned int order;
 		static unsigned int min_sup;

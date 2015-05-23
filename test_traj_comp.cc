@@ -153,33 +153,6 @@ void print_freq_sub_traj(FreqSubtCompTrajDB* db)
 
 const bool test_traj_comp_short_path()
 {
-//	create_road_net();
-//	RoadNet* net = new RoadNet("../data/adj.txt", "road_net.csv");
-//	delete net;
-	
-//	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
-
-//	Trajectory::write_map_matched_trajectories(
-//	 	"../data/cab_stream.txt", "map_matched_cab_stream.txt", net);
-
-//	TrajCompAlgo* traj_comp = new ShortestPath(net, std::numeric_limits<double>::max());
-	
-//	std::cout << traj_comp->test("map_matched_cab_stream.txt") << std::endl;
-	
-//	delete traj_comp;
-	
-//	delete net;
-
-	RoadNet* net = new RoadNet("../data/road_net.csv");
-//	Trajectory::write_map_matched_trajectories(
-//	 	"../data/cab_stream_sfo.txt", "map_matched_cab_stream_sfo.txt", net);
-	TrajCompAlgo* traj_comp = new ShortestPathFreqSubt(100, 0, 1, net, 1, 500);
-	traj_comp->train("../data/map_matched_cab_stream.txt");
-	traj_comp->test("../data/map_matched_cab_stream.txt");
-
-	delete traj_comp;
-	delete net;
-
 	return true;
 }
 

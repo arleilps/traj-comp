@@ -300,17 +300,14 @@ class ShortestPath: public TrajCompAlgo
 	public:
 		ShortestPath
 			(
-				const double _max_length,
 				RoadNet* net,
-				const unsigned int _num_threads,
+				const std::string _shortest_path_file_name,
 				const unsigned int _delay=std::numeric_limits<unsigned int>::max()
 			)
 			:TrajCompAlgo(net)
 		{
 			delay = _delay;
-			num_threads = _num_threads;
-			max_length = _max_length;
-			compute_shortest_paths();
+			net->read_short_path_struct(_shortest_path_file_name, short_paths);
 		}
 
 		virtual ~ShortestPath()
@@ -327,12 +324,9 @@ class ShortestPath: public TrajCompAlgo
 		CompTrajectory* compress(Trajectory* traj);
 	
 	private:
-		double max_length;
 		std::vector < std::map < unsigned int , unsigned int > * > short_paths;
-		unsigned int num_threads;
 		unsigned int delay;
 		
-		void compute_shortest_paths();
 		void delete_shortest_paths();
 		bool check_sp_through
 			(
@@ -347,18 +341,16 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 	public:
 		ShortestPathFreqSubt
 			(
-				const double _max_length_paths,
 				const unsigned int min_sup,
 				const unsigned int max_length_subt,
 				RoadNet* net,
-				const unsigned int _num_threads,
+				const std::string _shortest_path_file_name,
 				const unsigned int _delay=std::numeric_limits<unsigned int>::max()
 			)
 				:TrajCompAlgo(net)
 		{
 			delay = _delay;
-			num_threads = _num_threads;
-			max_length_paths = _max_length_paths;
+			shortest_path_file_name = _shortest_path_file_name;
 			freq_subt_comp = new FreqSubt(min_sup, max_length_subt, net);
 		}
 		
@@ -378,9 +370,8 @@ class ShortestPathFreqSubt: public TrajCompAlgo
 	private:
 		FreqSubt* freq_subt_comp;
 		ShortestPath* shortest_path_comp;
-		unsigned int num_threads;
+		std::string shortest_path_file_name;
 		unsigned int delay;
-		double max_length_paths;
 };
 
 typedef struct t_node_ppm

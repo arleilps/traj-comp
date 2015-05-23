@@ -887,11 +887,6 @@ CompTrajectory* ShortestPath::compress(Trajectory* traj)
 	return comp_traj;
 }
 
-void ShortestPath::compute_shortest_paths()
-{
-	net->fill_short_path_struct(max_length, short_paths, num_threads);
-}
-
 void ShortestPath::delete_shortest_paths()
 {
 	for(unsigned int s = 0; s < net->size(); s++)
@@ -906,7 +901,7 @@ void ShortestPathFreqSubt::train(const std::string training_traj_file_name)
 	Trajectory::read_trajectories(trajectories, training_traj_file_name, net);
 	
 	train_t->start();
-	shortest_path_comp = new ShortestPath(max_length_paths, net, num_threads);
+	shortest_path_comp = new ShortestPath(net, shortest_path_file_name);
 
 	CompTrajectory* sp_comp;
 	//Adds each trajectory into the tree

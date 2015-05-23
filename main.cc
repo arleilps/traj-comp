@@ -40,7 +40,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int main(int argc, char** argv)
 {
-	PostGisIndex::set_config("../data/sfo_postgis.conf");
+//	PostGisIndex::set_config("../data/sfo_postgis.conf");
 //	test_road_net();
 //	test_database();
 //	test_moving_obj();
@@ -60,6 +60,7 @@ int main(int argc, char** argv)
 	/*Setting the compression algorithms*/
 	std::vector<std::string> compression_algorithms;
 	compression_algorithms.push_back("IND");  	//Index road network
+	compression_algorithms.push_back("INDSP");  	//Index road shortest paths
 	compression_algorithms.push_back("MAP");  	//Map-match trajectories
 	compression_algorithms.push_back("FS");	  	//Frequent subtrajectories
 	compression_algorithms.push_back("SP");	  	//Shortest path
@@ -80,11 +81,26 @@ int main(int argc, char** argv)
 		PostGisIndex::set_config(Parameters::conf_file_name);
 		RoadNet* net;
 
-		if(Parameters::compression_algorithm == "IND")
+		if(Parameters::compression_algorithm == "IND"
+			or Parameters::compression_algorithm == "INDSP")
 		{
-			//Indexing road network
-			net = new RoadNet(Parameters::road_net_file_name,
-				Parameters::output_file_name);
+			if(Parameters::compression_algorithm == "IND")
+			{
+				//Indexing road network
+				net = new RoadNet(Parameters::road_net_file_name,
+					Parameters::output_file_name);
+			}
+			else
+			{
+				net = new RoadNet(Parameters::road_net_file_name);
+				
+				net->write_short_path_struct
+					(
+						Parameters::shortest_path_file_name,
+						Parameters::max_shortest_path, 
+						Parameters::num_threads
+					);
+			}
 		}
 		else
 		{
@@ -99,24 +115,11 @@ int main(int argc, char** argv)
 			}
 			else
 			{
-				if(Parameters::compression_algorithm == "FS")
-				{
-					alg = new FreqSubt(Parameters::min_sup, 
-						Parameters::max_length_subt, net, 
-						Parameters::delay);
-				}
-
-				if(Parameters::compression_algorithm == "SP")
-				{
-					alg = new ShortestPath(Parameters::max_shortest_path, net,
-						Parameters::num_threads, Parameters::delay);
-				}
-
 				if(Parameters::compression_algorithm == "SPFS")
 				{
-					alg = new ShortestPathFreqSubt(Parameters::max_shortest_path, 
+					alg = new ShortestPathFreqSubt(
 						Parameters::min_sup, Parameters::max_length_subt, net,
-						Parameters::num_threads, Parameters::delay);
+						Parameters::shortest_path_file_name, Parameters::delay);
 				}
 
 				if(Parameters::compression_algorithm == "PPM")

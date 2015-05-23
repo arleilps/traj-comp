@@ -1365,10 +1365,63 @@ void RoadNet::precompute_shortest_paths(const double max_length,
 	delete mutex_pool;
 }
 
-void RoadNet::fill_short_path_struct(const double max_length, 
-	std::vector < std::map < unsigned int , unsigned int > * >& short_paths,
-	const unsigned int num_threads)
+void RoadNet::read_short_path_struct
+	(
+		const std::string& input_file_name,
+		std::vector < std::map < unsigned int , unsigned int > * >& short_paths
+	)
 {
+	short_paths.reserve(segments.size());
+	
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		short_paths.push_back
+			(
+				new std::map<unsigned int, unsigned int>
+			);
+	}
+	
+	std::ifstream input_file(input_file_name.c_str(), std::ios::in);
+       	std::string line_str;
+       	std::vector< std:: string > line_vec;
+	unsigned int v1;
+	unsigned int v2;
+	unsigned int v3;
+
+        if(! input_file.is_open())
+       	{
+        	std::cerr << "Error: Could not open shortest path file " 
+			<< input_file_name << std::endl << std::endl;
+	}
+	else
+	{
+		std::getline(input_file, line_str);
+
+		while(! input_file.eof())
+		{
+			line_vec = split(line_str);
+
+			std::getline(input_file, line_str);
+		 	
+			v1 = atoi(line_vec[0].c_str());
+			v2 = atoi(line_vec[1].c_str());
+			v3 = atoi(line_vec[3].c_str());
+			
+			short_paths.at(v1)->insert(std::pair<unsigned int, unsigned int>(v2,v3));
+		}
+	}
+
+	input_file.close();
+}
+
+void RoadNet::write_short_path_struct
+	(
+		const std::string& output_file_name,
+		const double max_length, 
+		const unsigned int num_threads
+	)
+{
+	std::vector < std::map < unsigned int , unsigned int > * > short_paths;
 	short_paths.reserve(segments.size());
 
 	for(unsigned int s = 0; s < segments.size(); s++)
@@ -1405,6 +1458,18 @@ void RoadNet::fill_short_path_struct(const double max_length,
 	 
 	free(threads);
 	delete mutex_pool;
+	std::ofstream output_file(output_file_name.c_str(), std::ios::out);
+	
+	for(unsigned int s = 0; s < segments.size(); s++)
+	{
+		for(std::map<unsigned int, unsigned int>::iterator it = short_paths[s]->begin(); 
+			it != short_paths[s]->end(); ++it)
+		{
+			output_file << s << "," << it->first << "," << it->second << "\n";
+		}
+	}
+
+	output_file.close();
 }
 
 void RoadNet::build_boost_graph()
