@@ -15,4 +15,5 @@ n_threads=8
 map_matched_traj='../../../data/map_matched_cab_stream_beijing'
 road_net='../../../data/road_net_beijing.csv'
 conf_file='../../../data/beijing_postgis.conf'
+short_path_file='../../../data/shortest_paths_beijing.csv'
 traj_comp='../../traj_comp'
