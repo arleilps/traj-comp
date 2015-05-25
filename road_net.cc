@@ -1399,15 +1399,14 @@ void RoadNet::read_short_path_struct
 
 		while(! input_file.eof())
 		{
-			line_vec = split(line_str);
+			line_vec = split(line_str, ',');
 
-			std::getline(input_file, line_str);
-		 	
 			v1 = atoi(line_vec[0].c_str());
 			v2 = atoi(line_vec[1].c_str());
-			v3 = atoi(line_vec[3].c_str());
+			v3 = atoi(line_vec[2].c_str());
 			
 			short_paths.at(v1)->insert(std::pair<unsigned int, unsigned int>(v2,v3));
+			std::getline(input_file, line_str);
 		}
 	}
 
