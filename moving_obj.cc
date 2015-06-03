@@ -302,11 +302,14 @@ void Trajectory::get_emkf_rep
 				error = 0;
 			}
 
-			info = new_emkf_update_info(1, 1, speed, 
-				dist, end_time-start_time, end_time, error);
+			if(end_time > start_time)
+			{
+				info = new_emkf_update_info(1, 1, speed, 
+					dist, end_time-start_time, end_time, error);
 			
-			emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
-				(st->segment, info));
+				emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
+					(st->segment, info));
+			}
 
 			start_time = end_time;
 			
