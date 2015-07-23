@@ -134,9 +134,9 @@ int main(int argc, char** argv)
 
 				if(Parameters::compression_algorithm == "EMKF")
 				{
-					alg = new EMKalman(Parameters::error, net, 
+					alg = new EM(Parameters::error, net, 
 						Parameters::num_iterations, 4.07,
-						Parameters::num_threads, Parameters::output_file_name);
+						Parameters::output_file_name);
 				}
 
 				alg->train(Parameters::training_traj_file_name);

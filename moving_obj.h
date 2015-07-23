@@ -43,26 +43,22 @@ typedef struct t_update
 	unsigned int time;
 } update;
 
-typedef struct t_emkf_update_info
+typedef struct t_em_update_info
 {
-	double frac_begin;
-	double frac_end;
-	double avg_speed;
 	double dist;
+	double total_dist;
 	unsigned int time;
-	double sigma;
 	unsigned int total_time;
-} emkf_update_info;
+	double sigma;
+} em_update_info;
 
-emkf_update_info* new_emkf_update_info
+em_update_info* new_em_update_info
 	(
-		const double frac_begin,
-		const double frac_end,
-		const double avg_speed,
 		const double dist,
+		const double total_dist,
 		const unsigned int time,
-		unsigned int total_time,
-		double sigma
+		const unsigned int total_time,
+		const double sigma
 	);
 
 /**
@@ -214,6 +210,12 @@ class Trajectory
 			) 
 				throw (std::ios_base::failure);
 
+		static void break_trajectories
+			(
+				std::list< Trajectory * >& trajectories,
+				RoadNet* net
+			);
+
 		static void expand_trajectories
 			(
 				std::list< Trajectory * >& trajectories,
@@ -264,10 +266,10 @@ class Trajectory
 			) 
 				const;
 		
-		void get_emkf_rep
+		void get_em_rep
 			(
-				std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >
-					& updates_emkf,
+				std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >
+					& updates_em,
 				const double sigma_gps, 
 				RoadNet* net
 			)
@@ -335,6 +337,12 @@ class Trajectory
 			) const;
 		
 		void append(Trajectory* traj);
+
+		void break_trajectory
+			(
+				std::list< Trajectory * >& trajectories,
+				RoadNet* net
+			);
 		
 		/*PUBLIC VARIABLES*/
 		
@@ -394,6 +402,17 @@ class Trajectory
 		{
 			num_threads = _num_threads;
 		}
+
+		static const inline double max_speed()
+		{
+			return MAXSPEED;
+		}
+
+		static const inline double min_speed()
+		{
+			return MINSPEED;
+		}
+			
 	private:
 		/*OBJECT VARIABLES*/
 
@@ -418,6 +437,7 @@ class Trajectory
 		static const double SIGMA;
 		static const double RADIUS;
 		static const double MAXSPEED;
+		static const double MINSPEED;
 		static const unsigned int MAXCANDMATCHES;
 		static const double MAXLENGTHSHORTESTPATH;
 		

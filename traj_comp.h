@@ -47,8 +47,6 @@ typedef struct t_node_subt
 	t_node_subt* suffix;
 }node_subt;
 
-typedef std::map< unsigned int, std::map < unsigned int, double > * > t_phi;
-
 
 /**
  * Implements functionalities for a compressed trajectory manipulation
@@ -522,21 +520,14 @@ class NSTD: public TrajCompAlgo
 		double max_error;
 };
 
-typedef struct t_emkf_up
-{
-	unsigned int seg;
-	unsigned int time;
-}emkf_up;
-
-class EMKalman: public TrajCompAlgo
+class EM: public TrajCompAlgo
 {
 	public:
-		EMKalman(
+		EM(
 			const double _max_error,
 			RoadNet* net,
 			const unsigned int _num_iterations,
 			const double _sigma_gps,
-			const unsigned int _num_threads,
 			const std::string _output_file_name
 		)
 			:TrajCompAlgo(net)
@@ -544,23 +535,22 @@ class EMKalman: public TrajCompAlgo
 			max_error = _max_error;
 			num_iterations = _num_iterations;
 			sigma_gps = _sigma_gps;
-			num_threads = _num_threads;
 			output_file_name = _output_file_name;
+			avg_speed = 0;
+			sigma_trans = 0;
 		}
 
-		virtual ~EMKalman();
+		virtual ~EM();
 		
 		void train(const std::string training_traj_file_name);
 
 		void test(const std::string test_traj_file_name);
 		
-		std::pair< std::vector< double >*, std::vector<double>* >*
-			kalman_filter(
-				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
-				const std::vector< double >& prev_speeds,
-				const std::vector< double >& prev_sigmas,
-				const t_phi& phi_est, const t_phi& sigma_phi_est,
-				const double sigma_trans
+		std::vector<double>*
+			gaussian_model(
+				const std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
+				const std::vector<double>& _avg_times, 
+				const std::vector<double>& _sigma_times
 			);
 	private:
 		double max_error;
@@ -569,107 +559,53 @@ class EMKalman: public TrajCompAlgo
 		double sigma_speed;
 		double sigma_trans;
 		double sigma_gps;
-		t_phi* phi;
-		t_phi* phi_sigma;
-		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * > updates_emkf;
-		unsigned int num_threads;
+		std::vector<double>* avg_times;
+		std::vector<double>* sigma_times;
+		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * > updates_em;
 		std::string output_file_name;
 		
-		std::pair<t_phi*, t_phi*>*
-			EM();
+		std::pair< std::vector<double>*, std::vector<double> * >*
+			em();
 		
-		std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*	
-			expectation(
-				std::vector< std::vector< double >* >& prev_speeds,
-				std::vector< std::vector< double >* >& prev_sigmas,
-				t_phi& phi_est, t_phi& phi_sigma_est
+		std::vector< std::vector<double>* > * 	expectation(
+				std::vector<double>& _avg_times, 
+				std::vector<double>& _sig_times
 			);
 		
 		
-		std::pair<t_phi*, t_phi*>* maximization
+		std::pair< std::vector<double>*, std::vector<double> * >*
+			maximization
 			(
-				const std::vector< std::vector< double >* >& speeds_est,
-				const std::vector< std::vector< double >* >& speeds_sigma
-			) const;
+				const std::vector< std::vector< double >* >& times
+			) 
+				const;
 		
-		void compress
+		CompTrajectory* compress
 			(
-				std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
-				std::list<emkf_up*>& emkf_comp,
+				std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
 				Trajectory& trajj
 			);
 		
-		std::pair<t_phi*, t_phi*>* start_phi() const;
+		std::pair< std::vector<double>*, std::vector<double>* >* start_model() const;
 
-		std::pair< std::vector< std::vector< double >* >*, std::vector< std::vector< double > * >* >*
-			start_speed () const;
+		std::vector< std::vector< double >* >* start_times () const;
 
 		double log_likelihood
 			(
-				const std::vector< std::vector< double >* >& speeds,
-				const std::vector< std::vector< double >* >& speed_sigmas,
-				const t_phi& phi_est, const t_phi& phi_sigma_est
+				const std::vector< std::vector< double >* >& times,
+				const std::vector<double>& _avg_times, 
+				const std::vector<double>&  _sigma_times
 			) const;
 
 		void avg_sigma_speed();
 
-		void run_cgal_opt
-			(
-				std::vector<double>& speeds, 
-				const double avg_speed_k,
-				const double start_speed,
-				const double start_sigma,
-				const std::vector<double>& prev_speed,
-				const std::vector<double>& prev_sigmas,
-				const unsigned int index,
-				const unsigned int num,
-				const unsigned int time,
-				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
-				const t_phi& phi_est, const t_phi& sigma_phi_est,
-				const std::vector<double>& vars_phi,
-				const double sigma_trans
-			);
-		
-		void set_missing_speeds
-			(
-				std::vector<double>& speeds, 
-				const double avg_speed_k,
-				const double start_speed,
-				const double start_sigma,
-				const std::vector<double>& prev_speed,
-				const std::vector<double>& prev_sigmas,
-				const unsigned int num,
-				const unsigned int time,
-				const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
-				const t_phi& phi_est, const t_phi& sigma_phi_est,
-				const std::vector<double>& vars_phi,
-				const double sigma_trans
-			);
-
-		void kalman_filter_comp
-				(
-					const std::vector< std::pair< unsigned int, emkf_update_info* > * >& traj,
-					const std::vector< double >& prev_speeds,
-					const std::vector< double >& prev_sigmas,
-					const t_phi& phi_est, const t_phi& sigma_phi_est,
-					const double sigma_trans, std::list<emkf_up*>& emkf_comp
-				);
+		double gaussian_model_value(
+				const std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
+				const std::vector<double>& _avg_times,
+				const std::vector<double>& _sigma_times,
+				const std::vector< double >& times
+			) const ;
 };
-
-typedef struct t_pthread_param_emkf
-{
-	std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >* updates_emkf;
-	std::vector< std::vector< double >* >* prev_speeds;
-	std::vector< std::vector< double >* >* prev_sigmas;
-	std::vector< std::vector< double >* >* speeds;
-	std::vector< std::vector< double >* >* sigmas;
-	t_phi* phi_est;
-	t_phi* phi_sigma_est;
-	unsigned int* pointer;
-	pthread_mutex_t* mutex_pool;
-	double sigma_trans;
-	EMKalman* emkf;
-}pthread_param_emkf;
 
 #endif
 

@@ -40,6 +40,7 @@ const double Trajectory::SIGMA = 4.07;
 const double Trajectory::BETACONST = 1;
 const double Trajectory::RADIUS = 30;
 const double Trajectory::MAXSPEED = 40;	//in m/s
+const double Trajectory::MINSPEED = 5;	//in m/s
 const unsigned int Trajectory::MAXCANDMATCHES = 10;
 const double Trajectory::MAXLENGTHSHORTESTPATH = 2000;
 
@@ -100,23 +101,19 @@ update* new_update
 	return up;
 }
 
-emkf_update_info* new_emkf_update_info
+em_update_info* new_em_update_info
 	(
-		const double frac_begin,
-		const double frac_end,
-		const double avg_speed,
 		const double dist,
+		const double total_dist,
 		const unsigned int time,
 		const unsigned int total_time,
-		double sigma
+		const double sigma
 	)
 {
-	emkf_update_info* info = new emkf_update_info;
+	em_update_info* info = new em_update_info;
 
-	info->frac_begin = frac_begin;
-	info->frac_end = frac_end;
-	info->avg_speed = avg_speed;
 	info->dist = dist;
+	info->total_dist = total_dist;
 	info->time = time;
 	info->total_time = total_time;
 	info->sigma = sigma;
@@ -203,6 +200,7 @@ Trajectory::Trajectory(const Trajectory& traj)
 	prob = traj.prob;
 	size_traj = 0;
 	obj = traj.obj;
+	
 	for(std::list< seg_time* >::const_iterator it = traj.seg_time_lst.begin();
 		it != traj.seg_time_lst.end(); ++it)
 	{
@@ -248,32 +246,39 @@ void Trajectory::get_dist_times_uniform
 	}
 }
 
-void Trajectory::get_emkf_rep
+void Trajectory::get_em_rep
 	(
-		std::vector < std::vector< std::pair< unsigned int, emkf_update_info* > * > * >
-			& updates_emkf,
+		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >
+			& updates_em,
 		const double sigma_gps, 
 		RoadNet* net
 	)
 		const
 {
-	updates_emkf.push_back(new std::vector < std::pair < unsigned int, emkf_update_info* > * >);
+	if(size_traj < 2)
+	{
+		return;
+	}
+
+	updates_em.push_back(new std::vector < std::pair < unsigned int, em_update_info* > * >);
 	std::list < seg_time* >::const_iterator it_st = seg_time_lst.begin();
 	seg_time* st = *it_st;
 	
-	std::vector < std::pair < unsigned int, emkf_update_info* > * > * emkf_traj 
-		= updates_emkf.back();
-	emkf_traj->reserve(size_traj);
-
-	emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> (st->segment, NULL));
+	std::vector < std::pair < unsigned int, em_update_info* > * > * em_traj 
+		= updates_em.back();
+	em_traj->reserve(size_traj);
 	
 	double dist = net->segment_length(st->segment);
-	
+	double total_dist = 0;
 	unsigned int start_time = st->time;
 	unsigned int end_time;
 	double speed;
 	double error;
-	emkf_update_info* info;
+	
+	em_update_info* info = new_em_update_info(0, 0, 0, start_time, 0);
+	
+	em_traj->push_back(new std::pair<unsigned int, em_update_info*> (st->segment, info));
+	
 	++it_st;
 	
 	while(it_st != seg_time_lst.end())
@@ -282,7 +287,7 @@ void Trajectory::get_emkf_rep
 
 		if(st->dist == 0 && st->time == 0)
 		{
-			emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
+			em_traj->push_back(new std::pair<unsigned int, em_update_info*> 
 				(st->segment, NULL));
 			dist += net->segment_length(st->segment);
 		}
@@ -294,7 +299,7 @@ void Trajectory::get_emkf_rep
 			if(end_time - start_time > 0)
 			{
 				speed = (double) dist / (end_time - start_time);
-				error = (double) (2 * sigma_gps) / (end_time - start_time);
+				error = (double) (2 * sigma_gps) / speed;
 			}
 			else
 			{
@@ -302,17 +307,13 @@ void Trajectory::get_emkf_rep
 				error = 0;
 			}
 
-			if(end_time > start_time)
-			{
-				info = new_emkf_update_info(1, 1, speed, 
-					dist, end_time-start_time, end_time, error);
+			total_dist += dist;
+			info = new_em_update_info(dist, total_dist, end_time-start_time, end_time, error);
 			
-				emkf_traj->push_back(new std::pair<unsigned int, emkf_update_info*> 
-					(st->segment, info));
-			}
-
+			em_traj->push_back(new std::pair<unsigned int, em_update_info*> 
+				(st->segment, info));
+			
 			start_time = end_time;
-			
 			dist = 0;
 		}
 
@@ -823,6 +824,87 @@ void Trajectory::remove_repeated_segments()
 	}
 }
 
+
+void Trajectory::break_trajectory
+	(
+		std::list< Trajectory * >& trajectories,
+		RoadNet* net
+	)
+{
+	Trajectory* traj = new Trajectory(obj);
+	seg_time* st;
+	seg_time* st_next;
+	std::list< seg_time* >::iterator it_next;
+	double speed = 0;
+
+	for(std::list< seg_time* >::iterator it = seg_time_lst.begin();
+		it != seg_time_lst.end(); ++it)
+	{
+		st = *it;
+		traj->add_update(st->segment, st->time, st->dist, st->up);
+
+		if(st->dist != 0 || st->time != 0)
+		{
+			it_next = it;
+			++it_next;
+			speed = 0;
+
+			while(it_next != seg_time_lst.end())
+			{
+				st_next = *it_next;
+			
+				if(st_next->dist == 0 && st_next->time == 0)
+				{
+					speed += net->segment_length(st_next->segment);
+				}
+				else
+				{
+					speed = (double) speed / (st_next->time - st->time);
+					break;
+				}
+
+				++it_next;
+			}
+
+			if((speed > MAXSPEED || speed < MINSPEED) && it_next != seg_time_lst.end()) 
+			{
+				trajectories.push_back(traj);
+				
+				traj = new Trajectory(obj);
+				traj->add_update(st_next->segment, 
+					st_next->time, st_next->dist, st_next->up);
+
+				it = it_next;
+			}
+		}
+	}
+			
+	trajectories.push_back(traj);
+}
+
+void Trajectory::break_trajectories
+	(
+		std::list< Trajectory * >& trajectories,
+		RoadNet* net
+	)
+{
+	std::list<Trajectory*> new_trajectories;
+	Trajectory* traj;
+
+	for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		it != trajectories.end(); ++it)
+	{
+		traj = *it;
+
+		traj->break_trajectory(new_trajectories, net);
+
+		delete traj;
+	}
+
+	trajectories.clear();
+	trajectories.splice(trajectories.end(), new_trajectories);
+}
+
 const unsigned int Trajectory::read_trajectories
 	(
 		std::list< Trajectory * >& trajectories,
@@ -886,6 +968,7 @@ const unsigned int Trajectory::read_trajectories
 		}
 		
 		i = 1;
+		
 		for(; i < line_vec.size() - 3; i++)
 		{
 			seg_name = line_vec[i];
