@@ -1810,12 +1810,39 @@ std::pair< std::vector<double> *, std::vector<double>* >* EM::em()
 	return (new std::pair<std::vector<double>* , std::vector<double>* >(_avg_times, _sigma_times));
 }
 
+pthread_param_em* new_pthread_param_em
+	(
+		std::vector<double>* avg_times,
+		std::vector<double>* sigma_times,
+		std::vector< std::vector< double >* >* times,
+		unsigned int* pointer,
+		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >* updates_em,
+		pthread_mutex_t* mutex_pool,
+		double sigma_trans,
+		RoadNet* net
+	)
+{
+	pthread_param_em* param = new pthread_param_em;
+	
+	param->avg_times = avg_times;
+	param->sigma_times = sigma_times;
+	param->times = times;
+	param->pointer = pointer;
+	param->updates_em = updates_em;
+	param->mutex_pool = mutex_pool;
+	param->sigma_trans = sigma_trans;
+	param->net = net;
+
+	return param;
+}
 
 std::vector<double>*
 	EM::gaussian_model(
 		const std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
 		const std::vector<double>& _avg_times,
-		const std::vector<double>& _sigma_times
+		const std::vector<double>& _sigma_times,
+		unsigned int sigma_trans,
+		const RoadNet* net
 	)
 {
 	unsigned int seg;
@@ -1926,19 +1953,98 @@ std::vector<double>*
 	IloCplex cplex(model);
 	cplex.setOut(env.getNullStream());
 	model.add(IloMinimize(env, obj));
-	cplex.solve();
-
-	for(unsigned int s = 0; s < traj.size(); s++)
+	
+	try
 	{
-		times->push_back(cplex.getValue(x[s]));
-	}
+		cplex.solve();
 
+		for(unsigned int s = 0; s < traj.size(); s++)
+		{
+			times->push_back(cplex.getValue(x[s]));
+		}
+	}
+	catch (IloException& e)
+	{
+		unsigned int num = 1;
+		double t;
+
+		for(unsigned int s = 1; s < traj.size(); s++)
+		{
+			num++;
+			
+			if(traj.at(s)->second != NULL)
+			{
+				up = traj.at(s)->second;
+				
+				for(unsigned int i = 0; i < num; i++)
+				{
+					seg = traj.at(s-i)->first;
+					t = (double) (up->time * net->segment_length(seg)) / up->dist;
+					times->push_back(t);
+				}
+				
+				num = 0;
+			}
+		}
+	}
+	
 	x.end();
 	obj.end();
 	cplex.end();
 	env.end();
 
 	return times;
+}
+
+
+void run_thread_em	
+	(
+		std::vector<double>* avg_times,
+		std::vector<double>* sigma_times,
+		std::vector< std::vector< double >* >* times,
+		unsigned int* pointer,
+		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >* updates_em,
+		pthread_mutex_t* mutex_pool,
+		double sigma_trans,
+		RoadNet* net
+	)
+{
+	unsigned int s;
+	std::vector< std::pair< unsigned int, em_update_info* > * >* traj;
+	std::vector< double >* t;
+	
+	while(true)
+	{
+		pthread_mutex_lock(mutex_pool);
+	 
+	 	if(*pointer == updates_em->size())
+	 	{
+	 		pthread_mutex_unlock(mutex_pool);
+	 		break;
+	 	}
+	 	else
+	 	{
+			s = *pointer;
+			traj = updates_em->at(s);
+	 		*pointer = *pointer + 1;
+	 		pthread_mutex_unlock(mutex_pool);
+	 	}
+		
+		t = EM::gaussian_model(*traj, *avg_times, *sigma_times, sigma_trans, net);
+		
+		pthread_mutex_lock(mutex_pool);
+	 	times->at(s) = t;
+		pthread_mutex_unlock(mutex_pool);
+	}
+}
+
+void* start_thread_em(void* v_param)
+{
+	pthread_param_em* param = (pthread_param_em*) v_param;
+	run_thread_em(param->avg_times, param->sigma_times, param->times,
+		param->pointer,	param->updates_em, param->mutex_pool, param->sigma_trans, param->net);
+
+	pthread_exit(NULL);
 }
 
 std::vector< std::vector< double >* >*
@@ -1949,13 +2055,49 @@ std::vector< std::vector< double >* >*
 {
 	std::vector< std::vector< double >* >* times = new std::vector< std::vector< double >* >;
 	times->reserve(updates_em.size());
+	
+	/*
 	std::vector< std::pair< unsigned int, em_update_info* > * >* traj;
 
-	for(unsigned int t = 0; t < updates_em.size(); t++)
+	for(unsigned int t = 0; t < sz; t++)
 	{
 		traj = updates_em.at(t);
 		times->push_back(gaussian_model(*traj,  _avg_times, _sigma_times));
 	}
+	*/
+	
+	for(unsigned int t = 0; t < updates_em.size(); t++)
+	{
+		times->push_back(NULL);
+	}
+
+	pthread_t* threads = (pthread_t*) malloc (num_threads * sizeof(pthread_t));
+	pthread_param_em* param;
+	pthread_mutex_t* mutex_pool = new pthread_mutex_t;
+	pthread_mutex_init(mutex_pool, NULL);
+	unsigned int pointer = 0;
+	std::vector<pthread_param_em*> params;
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		param = new_pthread_param_em(&_avg_times, &_sigma_times, times, 
+			&pointer, &updates_em, mutex_pool, sigma_trans, net);
+	 	params.push_back(param);
+	 	pthread_create(&threads[t], NULL, start_thread_em, param);
+	}
+
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		pthread_join(threads[t], NULL);
+	}
+	  
+	for(unsigned int t = 0; t < num_threads; t++)
+	{
+		delete params[t];
+	}
+	
+	free(threads);
+	delete mutex_pool;
 		
 	return times;
 }

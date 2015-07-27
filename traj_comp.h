@@ -520,6 +520,20 @@ class NSTD: public TrajCompAlgo
 		double max_error;
 };
 
+typedef struct t_pthread_param_em
+{
+	std::vector<double>* avg_times;
+	std::vector<double>* sigma_times;
+	std::vector< std::vector< double >* >* times;
+	unsigned int* pointer;
+	std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >* updates_em;
+	pthread_mutex_t* mutex_pool;
+	double sigma_trans;
+	RoadNet* net;
+}pthread_param_em;
+
+
+
 class EM: public TrajCompAlgo
 {
 	public:
@@ -528,7 +542,8 @@ class EM: public TrajCompAlgo
 			RoadNet* net,
 			const unsigned int _num_iterations,
 			const double _sigma_gps,
-			const std::string _output_file_name
+			const std::string _output_file_name,
+			const unsigned int _num_threads
 		)
 			:TrajCompAlgo(net)
 		{
@@ -538,6 +553,7 @@ class EM: public TrajCompAlgo
 			output_file_name = _output_file_name;
 			avg_speed = 0;
 			sigma_trans = 0;
+			num_threads = _num_threads;
 		}
 
 		virtual ~EM();
@@ -546,11 +562,13 @@ class EM: public TrajCompAlgo
 
 		void test(const std::string test_traj_file_name);
 		
-		std::vector<double>*
+		static std::vector<double>*
 			gaussian_model(
 				const std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
 				const std::vector<double>& _avg_times, 
-				const std::vector<double>& _sigma_times
+				const std::vector<double>& _sigma_times,
+				const unsigned int sigma_trans,
+				const RoadNet* net
 			);
 	private:
 		double max_error;
@@ -563,6 +581,7 @@ class EM: public TrajCompAlgo
 		std::vector<double>* sigma_times;
 		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * > updates_em;
 		std::string output_file_name;
+		unsigned int num_threads;
 		
 		std::pair< std::vector<double>*, std::vector<double> * >*
 			em();
