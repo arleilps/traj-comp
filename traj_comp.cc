@@ -1841,7 +1841,7 @@ std::vector<double>*
 		const std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
 		const std::vector<double>& _avg_times,
 		const std::vector<double>& _sigma_times,
-		unsigned int sigma_trans,
+		double sigma_trans,
 		const RoadNet* net
 	)
 {
@@ -1949,8 +1949,10 @@ std::vector<double>*
 	}
 
 	free(D);
-
 	IloCplex cplex(model);
+	
+	cplex.setParam(IloCplex::Threads, 1);
+
 	cplex.setOut(env.getNullStream());
 	model.add(IloMinimize(env, obj));
 	

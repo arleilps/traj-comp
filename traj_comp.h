@@ -567,7 +567,7 @@ class EM: public TrajCompAlgo
 				const std::vector< std::pair< unsigned int, em_update_info* > * >& traj,
 				const std::vector<double>& _avg_times, 
 				const std::vector<double>& _sigma_times,
-				const unsigned int sigma_trans,
+				const double sigma_trans,
 				const RoadNet* net
 			);
 	private:
