@@ -296,7 +296,7 @@ void Trajectory::get_em_rep
 			end_time = st->time;
 			dist += net->segment_length(st->segment);
 			
-			if(end_time - start_time > 0)
+			if(end_time - start_time > 0 && dist > 0)
 			{
 				speed = (double) dist / (end_time - start_time);
 				error = (double) (2 * sigma_gps) / speed;
@@ -304,7 +304,7 @@ void Trajectory::get_em_rep
 			else
 			{
 				speed = 0;
-				error = 0;
+				error = (double) (2 * sigma_gps) / MAXSPEED;
 			}
 
 			total_dist += dist;
