@@ -1122,8 +1122,7 @@ void NSTD::compress
 	{
 		p_i = *it;
 
-		if(fall_inside(R, *p_index, *p_i) 
-			&& p_i_minus_one->time - comp_dist_times.back()->time < max_error)
+		if(fall_inside(R, *p_index, *p_i))
 		{
 			constrain(R, *p_index, *p_i, max_error);
 		}
@@ -1675,13 +1674,16 @@ CompTrajectory* EM::compress
 
 			if(fabs(total_time-fused_time) > max_error)
 			{
-				comp->add_update(seg, fused_time, up->total_dist);
+				comp->add_update(seg, fused_time, 0);
 			}
 
 			time = 0;
 			error = 0;
 		}
 	}
+
+//	trajj.print();
+//	comp->print();
 
 	comp_t->stop();
 	_num_updates_orig += traj.size();
