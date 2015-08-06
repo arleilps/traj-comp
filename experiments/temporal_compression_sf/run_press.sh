@@ -1,5 +1,5 @@
 #!/bin/bash
-#       Runs SP compression
+#       Runs PRESS compression
 #       @Arlei Silva
 
 source settings.sh
