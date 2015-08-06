@@ -40,35 +40,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int main(int argc, char** argv)
 {
-//	PostGisIndex::set_config("../data/sfo_postgis.conf");
-//	test_road_net();
-//	test_database();
-//	test_moving_obj();
-//	test_moving_obj_file();
-//	test_traj_comp_freq_subt_sf_cab();
-//	test_traj_comp_freq_subt();
-//	test_traj_comp_ppm();
-//	test_traj_comp_short_path();
-//	test_traj_comp_short_path_freq_subt();
-//	test_dist_times();
-//	test_moving_obj_traj_file();
-//	test_TSND();
-//	test_least_squares();
-//	test_emkf();
-//	exit(1);
-
 	/*Setting the compression algorithms*/
 	std::vector<std::string> compression_algorithms;
 	compression_algorithms.push_back("IND");  	//Index road network
 	compression_algorithms.push_back("INDSP");  	//Index road shortest paths
 	compression_algorithms.push_back("MAP");  	//Map-match trajectories
-	compression_algorithms.push_back("FS");	  	//Frequent subtrajectories
-	compression_algorithms.push_back("SP");	  	//Shortest path
 	compression_algorithms.push_back("SPFS");	// Shortest path 
 							//+ frequent subtrajectories
 	compression_algorithms.push_back("PPM");	//Prediction by partial matching
 	compression_algorithms.push_back("NSTD");	//Network synchronized time distance
-	compression_algorithms.push_back("EMKF");	//EM+kalman filter
+	compression_algorithms.push_back("EM");		//EM compression
 	
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
@@ -132,7 +113,7 @@ int main(int argc, char** argv)
 					alg = new NSTD(Parameters::error, net);
 				}
 
-				if(Parameters::compression_algorithm == "EMKF")
+				if(Parameters::compression_algorithm == "EM")
 				{
 					alg = new EM(Parameters::error, net, 
 							Parameters::num_iterations, 5.0,
