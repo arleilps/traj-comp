@@ -3,7 +3,7 @@
 #       @Arlei Silva
 
 
-num_folds=10
+num_folds=1
 length_subt_vec=10
 order_vec=(2)
 delay_vec=(30 60 120 240 480 960 1920)
