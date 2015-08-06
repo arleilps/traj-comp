@@ -12,7 +12,7 @@ min_sup=0
 short_path=1000
 n_threads=8
 
-map_matched_traj='../../../data/map_matched_cab_stream_syn_one'
+map_matched_traj='../../../data/map_matched_syn_one'
 road_net='../../../data/road_net_sfo.csv'
 conf_file='../../../data/sfo_postgis.conf'
 traj_comp='../../traj_comp'
