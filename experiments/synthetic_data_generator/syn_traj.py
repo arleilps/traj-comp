@@ -17,12 +17,14 @@ def build_road_network(input_file_name, avg_seg_length):
   
     for i in range(0, num_vertices):
         line = input_file.readline()
+	line = line.rstrip()
         vec = line.rsplit(',')
 	seg_lengths[int(vec[0])] = float(vec[-2])
 	seg_ids[int(vec[0])] = vec[-1]
  
     for j in range(0, num_vertices):
         line = input_file.readline()
+	line = line.rstrip()
         vec = line.rsplit(',')
  
         for i in range(1, len(vec)):
