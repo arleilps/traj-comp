@@ -13,11 +13,13 @@ def build_road_network(input_file_name, avg_seg_length):
     net = networkx.DiGraph()
     seg_lengths = {}
     num_vertices = int(input_file.readline())
+    seg_ids = {}
   
     for i in range(0, num_vertices):
         line = input_file.readline()
         vec = line.rsplit(',')
 	seg_lengths[int(vec[0])] = float(vec[-2])
+	seg_ids[int(vec[0])] = vec[-1]
  
     for j in range(0, num_vertices):
         line = input_file.readline()
@@ -28,7 +30,7 @@ def build_road_network(input_file_name, avg_seg_length):
   
     input_file.close()
     
-    return net, seg_lengths
+    return net, seg_lengths, seg_ids
 
 def smooth_speeds_traj(speeds, window_size):
     new_speeds = []
@@ -310,13 +312,13 @@ def compute_travel_time_ups(updates, seg_lengths):
     
     return times
 
-def write_road_net(roadnet, seg_lengths, output_file_name):
+def write_road_net(roadnet, seg_lengths, seg_ids, output_file_name):
     output_file = open(output_file_name, 'w')
     
     output_file.write(str(len(roadnet.nodes()))+"\n")
     
     for v in roadnet.nodes():
-        output_file.write(str(v)+",0,1,1,1,1.4255e+07,1.41256e+07,5.46093e+06,5.49709e+06,0,"+str(seg_lengths[v])+","+str(v)+"\n")
+        output_file.write(str(v)+",0,1,1,1,1.4255e+07,1.41256e+07,5.46093e+06,5.49709e+06,0,"+str(seg_lengths[v])+","+seg_ids[v]+"\n")
         
     for v in roadnet.nodes():
         output_file.write(str(v))
@@ -327,12 +329,12 @@ def write_road_net(roadnet, seg_lengths, output_file_name):
     
     output_file.close()
 
-def write_updates(updates, output_file_name, seg_lengths):
+def write_updates(updates, seg_ids, output_file_name, seg_lengths):
     output_file = open(output_file_name, 'w')
     
     for i in range(0, len(updates)):
         ups = updates[i]
-        output_file.write(str(i)+","+str(ups[0][0][0])+",1,0\n")
+        output_file.write(str(i)+","+seg_ids[ups[0][0][0]]+",1,0\n")
         
         for j in range(0, len(ups)):
             if j == 0:
@@ -340,14 +342,14 @@ def write_updates(updates, output_file_name, seg_lengths):
                     output_file.write(str(i))
                     
                 for s in range(1, len(ups[j][0])):
-                    output_file.write(","+str(ups[j][0][s]))
+                    output_file.write(","+seg_ids[ups[j][0][s]])
             
                 if len(ups[j][0]) > 1:
                     output_file.write(","+str(int(ups[j][1]))+","+str(seg_lengths[ups[j][0][-1]])+"\n")
             else:
                 output_file.write(str(i))
                 for s in range(0, len(ups[j][0])):
-                    output_file.write(","+str(ups[j][0][s]))
+                    output_file.write(","+seg_ids[ups[j][0][s]])
                 output_file.write(","+str(int(ups[j][1]))+","+str(seg_lengths[ups[j][0][-1]])+"\n")
 
     output_file.close()            
@@ -362,11 +364,14 @@ lambd = 0.00001
 #num_trajectories = 500000
 #lambd = 1
 
-(road_net, seg_lengths) = build_road_network("/home/arlei/trajectory_compression/data/road_net_sfo.csv", 100)
+(road_net, seg_lengths, seg_ids) = build_road_network("/home/arlei/trajectory_compression/data/road_net_sfo.csv", 100)
 (avg_speeds, sig_speeds) = generate_speed_dist(road_net, 15, 10, 5)
 trajs = generate_trajectories2(num_trajectories, road_net, lambd)
 speeds = generate_speeds(trajs, avg_speeds, sig_speeds, 2, 2) 
 ups = generate_updates(trajs, speeds, sig_gps, time_updates, seg_lengths)
 
-write_road_net(road_net, seg_lengths, "road_net_syn_two.csv")
-write_updates(ups, "map_matched_syn_two.csv", seg_lengths)
+write_road_net(road_net, seg_lengths, seg_ids, "road_net_syn_two.csv")
+write_updates(ups, seg_ids, "map_matched_syn_two.csv", seg_lengths)
+
+#write_road_net(road_net, seg_lengths, seg_ids, "road_net_syn_one.csv")
+#write_updates(ups, seg_ids, "map_matched_syn_one.csv", seg_lengths)
