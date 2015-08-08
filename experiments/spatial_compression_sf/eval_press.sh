@@ -47,5 +47,5 @@ done
 results_file_name='press_time.dat'
 rm $results_file_name
 
-echo "$d	$avg_train_time_train_test" >> $results_file_name
-echo "$d	$avg_comp_time_train_test" >> $results_file_name
+echo "0	$avg_train_time_train_test" >> $results_file_name
+echo "0	$avg_comp_time_train_test" >> $results_file_name
