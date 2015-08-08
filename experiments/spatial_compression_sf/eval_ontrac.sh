@@ -37,7 +37,7 @@ do
 	
 	avg_comp_ratio_train_test=`echo "scale=10; $avg_comp_ratio_train_test/$num_folds" | bc`
 	avg_comp_time_train_test=`echo "scale=10; $avg_comp_time_train_test/$num_folds" | bc`
-	avg_train_time_train_train=`echo "scale=10; $avg_train_time_train_train/$num_folds" | bc`
+	avg_train_time_train_test=`echo "scale=10; $avg_train_time_train_test/$num_folds" | bc`
 done
 
 echo "0        $avg_train_time_train_test" >> $results_file_name
