@@ -3,7 +3,7 @@ set style fill solid 1.00 border
 set style data histogram
 set style histogram cluster gap 1
 set encoding iso_8859_1
-set output "comp_ratio_delay_sf.eps"
+set output "comp_ratio_delay_beijing.eps"
 set xlabel "delay (min)"
 set ylabel "compression ratio"
 set key top left
