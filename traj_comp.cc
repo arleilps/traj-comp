@@ -1675,8 +1675,9 @@ CompTrajectory* EM::compress
 			if(fabs(total_time-fused_time) > max_error)
 			{
 				comp->add_update(seg, fused_time, 0);
+				total_time = fused_time;
 			}
-
+			
 			time = 0;
 			error = 0;
 		}
