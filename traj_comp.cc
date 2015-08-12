@@ -1683,9 +1683,6 @@ CompTrajectory* EM::compress
 		}
 	}
 
-//	trajj.print();
-//	comp->print();
-
 	comp_t->stop();
 	_num_updates_orig += traj.size();
 	_num_updates_comp += comp->size();
