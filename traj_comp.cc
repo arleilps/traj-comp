@@ -24,23 +24,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <algorithm>
 #include <iostream>
 #include <math.h>
-
 #include <iostream>
 #include <cassert>
-
-/*
-#include <CGAL/basic.h>
-#include <CGAL/QP_models.h>
-#include <CGAL/QP_functions.h>
-#include <CGAL/MP_Float.h>
-#include <CGAL/Quotient.h>
-#include <CGAL/Gmpzf.h>
-#include <CGAL/Mpzf.h>
-
-typedef CGAL::Gmpzf GT;
-typedef CGAL::Quadratic_program<GT> Program;
-typedef CGAL::Quadratic_program_solution<GT> gSolution;
-*/
 
 #include <ilcplex/ilocplex.h>
 ILOSTLBEGIN
@@ -1624,6 +1609,7 @@ void EM::test(const std::string test_traj_file_name)
 
 	//Compresses each trajectory in the file and computes the total
 	//number of updates
+	comp_t->start();
 	for(std::list<Trajectory*>::iterator it = trajectories.begin();
 		it != trajectories.end(); ++it)
 	{
@@ -1636,6 +1622,8 @@ void EM::test(const std::string test_traj_file_name)
 		delete traj;
 	}
 	
+	comp_t->stop();
+	
 	delete_em_info(updates_em);
 	
 	_compression_time = comp_t->get_seconds();
@@ -1647,7 +1635,6 @@ CompTrajectory* EM::compress
 		Trajectory& trajj
 	) 
 {
-	comp_t->start();
 	em_update_info* up;
 	unsigned int seg;
 	double time = avg_times->at(trajj.front()->segment);
@@ -1683,7 +1670,6 @@ CompTrajectory* EM::compress
 		}
 	}
 
-	comp_t->stop();
 	_num_updates_orig += traj.size();
 	_num_updates_comp += comp->size();
 	_num_traj_comp++;
