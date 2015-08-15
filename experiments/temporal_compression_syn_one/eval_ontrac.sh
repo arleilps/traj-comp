@@ -38,8 +38,9 @@ do
 	avg_comp_ratio_train_test=`echo "scale=10; $avg_comp_ratio_train_test/$num_folds" | bc`
 	avg_comp_time_train_test=`echo "scale=10; $avg_comp_time_train_test/$num_folds" | bc`
 	avg_train_time_train_test=`echo "scale=10; $avg_train_time_train_test/$num_folds" | bc`
-
-	echo "$d        $avg_comp_ratio_train_test" >> $results_file_name
+	
+	delay=`echo "scale=1; $d/60" | bc`
+	echo "$delay        $avg_comp_ratio_train_test" >> $results_file_name
 done
 
 results_file_name='ontrac_time.dat'
