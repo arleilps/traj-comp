@@ -236,7 +236,6 @@ void Trajectory::get_dist_times_uniform
 	double t;
 	double d;
 	
-	dist_times.push_back(new_dist_time(0, 0));
 	double dist = net->segment_length((*iti)->segment);
 	++iti;
 
