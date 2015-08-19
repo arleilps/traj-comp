@@ -226,18 +226,44 @@ void Trajectory::get_dist_times_uniform
 		const
 {
 	std::list< seg_time* >::const_iterator iti = seg_time_lst.begin();
+	std::list< seg_time* >::const_iterator itj = seg_time_lst.begin();
 	seg_time* sti;
+	seg_time* stj;
 	double total_dist = 0;
+	unsigned int num_segs = 1;
+	double time;
+	unsigned int start_time = (*iti)->time;
+	double t;
+	double d;
+	
+	dist_times.push_back(new_dist_time(0, 0));
+	double dist = net->segment_length((*iti)->segment);
+	++iti;
 
 	while(iti != seg_time_lst.end())
 	{
 		sti = (*iti);
-		total_dist+= net->segment_length(sti->segment);
-		
+		dist += net->segment_length(sti->segment);
+		num_segs++;
+
 		if(sti->time != 0 || sti->dist != 0)	//update, i.e. not shortest path completion
 		{
-			dist_times.push_back(new_dist_time(total_dist, 
-				sti->time - seg_time_lst.front()->time));
+			d = 0;
+			time = sti->time - start_time;
+
+			for(unsigned int i = 0; i < num_segs; i++)
+			{
+				stj = (*itj);
+				d += net->segment_length(stj->segment);
+				t = (double) (time * d) / dist;
+				dist_times.push_back(new_dist_time(total_dist + d, sti->time + t));
+				++itj;
+			}
+
+			total_dist += dist;
+			num_segs = 0;
+			dist = 0;
+			start_time = sti->time;
 		}
 		
 		++iti;

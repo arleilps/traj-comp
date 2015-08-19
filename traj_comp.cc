@@ -461,6 +461,68 @@ void FreqSubt::get_freq_subt_ids
 	}
 }
 
+CompTrajectory* CompTrajDB::compress(Trajectory* traj)
+{
+	CompTrajectory* comp_traj = new CompTrajectory();
+	
+	std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * > updates_em;
+	traj->get_em_rep(updates_em, temp_comp->sigma_gps, net);
+	std::vector< std::pair< unsigned int, em_update_info* > * > * traj_em = updates_em.at(0);
+
+	Trajectory::iterator it = traj->begin();
+	comp_traj->add_update((*it)->segment, (*it)->time, (*it)->dist);
+	unsigned int next;
+	em_update_info* up;
+	double time = temp_comp->avg_times->at(traj->front()->segment);
+	double total_time = traj->front()->time + time;
+	double fused_time = traj->front()->time + time;
+	double error = pow(temp_comp->sigma_times->at(traj->front()->segment), 2);
+	double K;
+	unsigned int s = 1;
+	
+	while(it != traj->end())
+	{
+		next = spatial_comp->next_segment(it, traj, spatial_comp->tree);
+		it++;
+		
+		up = traj_em->at(s)->second;
+		time += temp_comp->avg_times->at((*it)->segment);
+		error += pow(temp_comp->sigma_times->at((*it)->segment), 2);
+		
+		if(up == NULL)
+		{
+			if(it != traj->end() && (*it)->segment != next)
+			{
+				comp_traj->add_update
+					(
+						(*it)->segment, 
+						total_time + time, 
+						0
+					);
+			}
+		}
+		else
+		{
+			K = (double) error / (error + pow(up->sigma, 2));
+			fused_time = fused_time + time + K * (up->time - time);
+			total_time += time;
+
+			if(fabs(total_time-fused_time) > temp_comp->max_error)
+			{
+				comp_traj->add_update((*it)->segment, fused_time, 0);
+				total_time = fused_time;
+			}
+			
+			time = 0;
+			error = 0;
+		}
+
+		s++;
+	}
+
+	return comp_traj;
+}
+
 const bool CompTrajDB::insert
 	(       
 		const std::string& obj,
@@ -497,9 +559,7 @@ const bool CompTrajDB::insert(const std::string& input_file_name)
 
 const bool CompTrajDB::insert(const std::string& obj, Trajectory& traj)
 {
-	CompTrajectory* sp_traj = spatial_comp->compress(&traj);
-	CompTrajectory* t_traj = temp_comp->compress(&traj);
-
+	CompTrajectory* comp_traj = compress(&traj);
 
 	n_updates += traj.size();
 

@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 	compression_algorithms.push_back("PPM");	//Prediction by partial matching
 	compression_algorithms.push_back("NSTD");	//Network synchronized time distance
 	compression_algorithms.push_back("EM");		//EM compression
-	
+
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
 	TrajCompAlgo* alg;

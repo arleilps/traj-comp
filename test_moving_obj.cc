@@ -157,5 +157,23 @@ const bool test_moving_obj_traj_file()
 
 const bool test_dist_times()
 {
+	Trajectory* traj = new Trajectory();
+	RoadNet* net = new RoadNet("../data/road_net_sfo.csv");
+
+	traj->add_update(0, 1, 1);
+	traj->add_update(0, 0, 0);
+	traj->add_update(0, 11, 11);
+	traj->add_update(0, 0, 0);
+	traj->add_update(0, 21, 21);
+
+	std::list < dist_time* > dist_times;
+	traj->get_dist_times_uniform(dist_times, net);
+
+	for(std::list<dist_time*>::iterator it = dist_times.begin();
+		it != dist_times.end(); ++it)
+	{
+		std::cout << "dist = " << (*it)->dist << " time = " << (*it)->time << std::endl;
+	}
+
 	return true;
 }

@@ -10,7 +10,7 @@ set key top left
 set xtic 1
 set yrange [0:]
 set format y '%.1e'
-set ytics 80000000
+set ytics 100000000
 set pointsize 2
 plot "conv_beijing.dat" using 1:2 notitle with linespoints lt 1 lc 3 lw 3 pt 7
 

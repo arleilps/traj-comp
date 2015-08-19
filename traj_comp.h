@@ -384,6 +384,7 @@ typedef struct t_node_ppm
 
 class PredPartMatch: public TrajCompAlgo
 {
+	friend class CompTrajDB;
 	public:
 		PredPartMatch
 			(
@@ -534,6 +535,7 @@ typedef struct t_pthread_param_em
 
 class EM: public TrajCompAlgo
 {
+	friend class CompTrajDB;
 	public:
 		EM(
 			const double _max_error,
@@ -634,6 +636,8 @@ class CompTrajDB: public TrajDB
 				temp_comp = _temp_comp;
 				net = _net;
 			}
+
+		CompTrajectory* compress(Trajectory* traj);
 
 		virtual ~CompTrajDB(){};
 		
