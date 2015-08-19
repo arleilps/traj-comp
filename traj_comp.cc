@@ -461,8 +461,7 @@ void FreqSubt::get_freq_subt_ids
 	}
 }
 
-/*
-const bool FreqSubtCompTrajDB::insert
+const bool CompTrajDB::insert
 	(       
 		const std::string& obj,
 		const seg_time& st
@@ -471,7 +470,7 @@ const bool FreqSubtCompTrajDB::insert
 	return false;
 }
 
-const bool FreqSubtCompTrajDB::insert(const std::string& input_file_name)
+const bool CompTrajDB::insert(const std::string& input_file_name)
 {
 	std::list<Trajectory*> trajectories;
 	std::string obj;
@@ -496,13 +495,13 @@ const bool FreqSubtCompTrajDB::insert(const std::string& input_file_name)
 	}
 }
 
-const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
+const bool CompTrajDB::insert(const std::string& obj, Trajectory& traj)
 {
-	CompTrajectory* comp_traj = alg->compress(&traj);
-	n_updates += traj.size();
+	CompTrajectory* sp_traj = spatial_comp->compress(&traj);
+	CompTrajectory* t_traj = temp_comp->compress(&traj);
 
-//	std::cout << "traj-size = " << traj.size() << " comptraj-size = " 
-//		<< comp_traj->size() << std::endl;
+
+	n_updates += traj.size();
 
 	bool status;
 
@@ -518,10 +517,7 @@ const bool FreqSubtCompTrajDB::insert(const std::string& obj, Trajectory& traj)
 	return status;
 }
 
-//TODO: Maybe there is a way to index the hypersegments
-//in the database directly, instead of recovering them
-//from segments. Check multilinestring.
-const bool FreqSubtCompTrajDB::center_radius_query
+const bool CompTrajDB::center_radius_query
 	(
 		const double latit,
 		const double longit,
@@ -532,6 +528,7 @@ const bool FreqSubtCompTrajDB::center_radius_query
 	)
 		const
 {
+	/*
 	std::list<unsigned int> segs;
 	bool status = net->segments_within_distance(segs, latit, longit, dist);
 	std::list<unsigned int> freq_subt_ids;
@@ -572,8 +569,10 @@ const bool FreqSubtCompTrajDB::center_radius_query
 	res.unique();
 
 	return status;
+	*/
+
+	return true;
 }
-*/
 
 NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
 {

@@ -532,8 +532,6 @@ typedef struct t_pthread_param_em
 	RoadNet* net;
 }pthread_param_em;
 
-
-
 class EM: public TrajCompAlgo
 {
 	public:
@@ -624,6 +622,41 @@ class EM: public TrajCompAlgo
 				const std::vector<double>& _sigma_times,
 				const std::vector< double >& times
 			) const ;
+};
+
+class CompTrajDB: public TrajDB
+{
+	public:
+		CompTrajDB(PredPartMatch* _spatial_comp, EM* _temp_comp, RoadNet* _net)
+			:TrajDB(_net)
+			{
+				spatial_comp = _spatial_comp;
+				temp_comp = _temp_comp;
+				net = _net;
+			}
+
+		virtual ~CompTrajDB(){};
+		
+		const bool insert(const std::string& input_file_name);
+
+		const bool insert(const std::string& obj, const seg_time& st);
+
+		const bool insert(const std::string& obj, Trajectory& traj);
+
+		const bool center_radius_query
+			(
+				const double latit,
+		   		const double longit,
+				const double dist,
+				std::list<std::string>& res,
+				const unsigned int time_begin,
+				const unsigned int time_end
+			)
+				const;
+	private:
+		RoadNet* net;
+		PredPartMatch* spatial_comp;
+		EM* temp_comp;
 };
 
 #endif

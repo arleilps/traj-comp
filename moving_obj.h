@@ -544,45 +544,47 @@ class TrajDBStorage
 /**
  * Implements a trajectory database as a PostGis table.
 **/
-//class TrajDBPostGis: public TrajDBStorage
-//{
-//	public:
-//		/*Constructor*/
-//		TrajDBPostGis():TrajDBStorage()
-//		{
-//			connect();
-//		}
+class TrajDBPostGis: public TrajDBStorage
+{
+	public:
+		/*Constructor*/
+		TrajDBPostGis():TrajDBStorage()
+		{
+			connect();
+		}
 		
-//		/*Destructor*/
-//		virtual ~TrajDBPostGis(){};
+		/*Destructor*/
+		virtual ~TrajDBPostGis(){};
 		
-//		const bool create();
+		const bool create();
 		
-//		const bool drop();
+		const bool drop();
 
-//		const bool insert
-//			(
-//				const std::string& obj,
-//				const seg_time& st 
-//			);
+		const bool insert
+			(
+				const std::string& obj,
+				const seg_time& st 
+			);
 		
-//		const bool query_segment_time
-//			(
-//				const unsigned int segment,
-//				std::list<std::string>& objs,
-//				const unsigned int time_begin=0,
-//				const unsigned int time_end=0
-//			)
-//				const;
-//	protected:
+		const bool query_segment_time
+			(
+				const unsigned int segment,
+				std::list<std::string>& objs,
+				const unsigned int time_begin=0,
+				const unsigned int time_end=0
+			)
+				const;
+		
+		static void set_config(const std::string& input_file_name);
+	protected:
 		//PostGis database name, table name, 
 		//host, port, user and password.
-//		static const std::string database_name;
-//		static const std::string table_name;
-//		static const std::string host;
-//		static const std::string port;
-//		static const std::string user;
-//		static const std::string password;
+		static std::string database_name;
+		static const std::string table_name;
+		static std::string host;
+		static std::string port;
+		static std::string user;
+		static std::string password;
 		
 		//Spatial reference and srid
 		//spatial reference is for the 
@@ -593,14 +595,14 @@ class TrajDBStorage
 		//srid is applied for projecting points into a planar
 		//representation and we are applying EPSG 26943
 		//for SF area. http://spatialreference.org/ref/epsg/26943/)
-//		static const std::string srid;
-//		static const std::string spatial_ref;
+		static std::string srid;
+		static std::string spatial_ref;
 
 		//Database connection
-//		pqxx::connection* conn;
+		pqxx::connection* conn;
 
-//		const bool connect();
-//};
+		const bool connect();
+};
 
 /**
  * Implements several functionalities (insert, query etc.) for managing a trajectory database.
@@ -615,7 +617,7 @@ class TrajDB
 		TrajDB(RoadNet* _net)
 		{
 			net = _net;
-			//db = new TrajDBPostGis();
+			db = new TrajDBPostGis();
 			n_updates = 0;
 		}
 		
@@ -684,37 +686,6 @@ class TrajDB
 				const unsigned int time_begin=0,
 				const unsigned int time_end=0
 			) 
-				const;
-		
-		//TODO
-		virtual const bool nearest_neighbor_query
-			(
-				const double lat,
-				const double longit,
-				const std::string& res,
-				const unsigned int time_begin=0,
-				const unsigned int time_end=0
-			)
-				const;
-		
-		//TODO
-		virtual const bool when_at
-			(
-				const std::string& obj,
-				const double lat,
-				const double longit,
-				const unsigned int& timestamp
-			)
-				const;
-		
-		//TODO
-		virtual const bool where_at
-			(
-				const std::string& obj,
-				const unsigned int timestamp,
-				double& lat,
-				double& longit
-			)
 				const;
 		
 		/*INLINES*/

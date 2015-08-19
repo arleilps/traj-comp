@@ -7,9 +7,10 @@ set output "conv_sf.eps"
 set xlabel "iteration"
 set ylabel "log-likelihood"
 set key top left
-set xtics 4
+set xtic 1
 set yrange [0:]
 set format y '%.1e'
+set ytics 40000000
 set pointsize 2
-plot "conv_sf.dat" using 1:2 notitle with points lt 1 lc 3 lw 3 pt 7
+plot "conv_sf.dat" using 1:2 notitle with linespoints lt 1 lc 3 lw 3 pt 7
 

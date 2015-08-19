@@ -51,17 +51,15 @@ double Trajectory::radius = RADIUS;
 unsigned int Trajectory::max_cand_matches = MAXCANDMATCHES;
 unsigned int Trajectory::num_threads = 1;
 
-/*
-const std::string TrajDBPostGis::database_name = "test";
+std::string TrajDBPostGis::database_name = "";
 const std::string TrajDBPostGis::table_name = "traj";
-const std::string TrajDBPostGis::host = "127.0.0.1";
-const std::string TrajDBPostGis::port = "5432";
-const std::string TrajDBPostGis::user = "traj_comp";
-const std::string TrajDBPostGis::password = "traj_comp";
+std::string TrajDBPostGis::host = "";
+std::string TrajDBPostGis::port = "";
+std::string TrajDBPostGis::user = "";
+std::string TrajDBPostGis::password="";
 
-const std::string TrajDBPostGis::srid = "26943";
-const std::string TrajDBPostGis::spatial_ref = "4326";
-*/
+std::string TrajDBPostGis::srid = "";
+std::string TrajDBPostGis::spatial_ref = "";
 
 update* new_update
 	(
@@ -1551,223 +1549,243 @@ const bool TrajDB::center_radius_query
 	return true;
 }
 
-const bool TrajDB::nearest_neighbor_query
+const bool TrajDBPostGis::connect()
+{
+	std::string conn_str = "dbname=" + database_name
+		+ " user=" + user
+		+ " password=" + password
+		+ " hostaddr=" + host
+		+ " port=" + port;
+	       
+	try
+	{
+		conn = new pqxx::connection(conn_str.c_str());
+	   
+		if(conn->is_open())
+		{
+			return true;
+		}
+		else
+	        {
+			return false;
+		}
+	}
+	catch(const pqxx::broken_connection &e)
+	{
+		std::cerr << "Error: Cannot connect to the database "
+			<< database_name << " with user "
+			<< user << " host " << host << " port "
+			<< port << std::endl << std::endl;
+		std::cerr << conn_str << std::endl;
+		std::cerr << e.what() << std::endl;
+			
+		return false;
+	}
+				        
+	return true;
+}
+
+const bool TrajDBPostGis::create()
+{
+	std::string sql;
+	  
+	try
+	{
+		//CREATE TABLE table_name (obj varchar(60) PRIMARY KEY, 
+		//	time timestamp(5), 
+		//	seg integer;
+		//CREATE INDEX traj_obj_idx_table_name ON table_name USING HASH(obj);
+		//CREATE INDEX traj_seg_idx_table_name ON table_name USING HASH(linkid);
+		//CREATE INDEX traj_time_idx_table_name ON table_name(time);
+		sql = "CREATE TABLE " + table_name +
+			"(obj varchar(60), time timestamp(5),\
+			seg integer);\
+			CREATE INDEX traj_obj_idx_" + table_name + " ON " + table_name + " USING HASH(obj);\
+			CREATE INDEX traj_seg_idx_" + table_name + " ON " + table_name + " USING HASH(seg);\
+			CREATE INDEX traj_time_idx_" + table_name +" ON " + table_name + "(time);";
+		
+		pqxx::work work (*conn);
+		work.exec(sql.c_str());
+		work.commit();
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+
+		return false;
+	}
+
+	return true;
+}
+
+const bool TrajDBPostGis::drop()
+{
+	std::string sql = "DROP TABLE " + table_name + ";";
+
+	try
+	{
+		sql = "DROP TABLE " + table_name + ";";
+		pqxx::work work (*conn);
+		work.exec(sql.c_str());
+		work.commit();
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query: " << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+		
+		return false;
+	}
+
+	return true;
+}
+
+const bool TrajDBPostGis::insert
 	(
-		const double lat,
-		const double longit,
-		const std::string& res,
+		const std::string& obj,
+		const seg_time& st
+	)
+{
+	std::string sql;
+	n_updates++;
+
+	try
+	{
+		sql = "INSERT INTO " + table_name +
+			"(obj, time, seg)\
+			VALUES ('" + obj + "'," +
+			"TO_TIMESTAMP(" + to_string(st.time) + ")," +
+			to_string(st.segment) + ");";
+		
+		pqxx::work work (*conn);
+		work.exec(sql.c_str());
+		work.commit();
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+ 
+		return false;
+	}
+	
+	return true;
+}
+
+const bool TrajDBPostGis::query_segment_time
+	(
+		const unsigned int segment,
+		std::list<std::string>& objs,
 		const unsigned int time_begin,
 		const unsigned int time_end
 	)
 	const
 {
-	return false;
-}
+	std::string sql;
 
-const bool TrajDB::when_at
-	(
-		const std::string& obj,
-		const double lat,
-		const double longit,
-		const unsigned int& timestamp
-	)
-		const
-{
-	return false;
-}
+	try
+	{
+		if(time_begin != 0 && time_end != 0)
+		{
+			sql = "SELECT obj FROM " + table_name + 
+				" WHERE seg=" + to_string(segment) +
+				" AND time < TO_TIMESTAMP(" + to_string(time_end) + ")" +
+				 " AND time > TO_TIMESTAMP(" + to_string(time_begin) + ")';";
+		} 
+		else
+		{
+			sql = "SELECT obj FROM " + table_name + 
+				" WHERE seg=" + to_string(segment) + ";";
+		}
 
-const bool TrajDB::where_at
-	(
-		const std::string& obj,
-		const unsigned int timestamp,
-		double& lat,
-		double& longit
-	)
-	const
-{
-	return false;
-}
-
-//const bool TrajDBPostGis::connect()
-//{
-//	std::string conn_str = "dbname=" + database_name
-//		+ " user=" + user
-//		+ " password=" + password
-//		+ " hostaddr=" + host
-//		+ " port=" + port;
-	       
-//	try
-//	{
-//		conn = new pqxx::connection(conn_str.c_str());
-	   
-//		if(conn->is_open())
-//		{
-//			return true;
-//		}
-//		else
-//	        {
-//			return false;
-//		}
-//	}
-//	catch(const pqxx::broken_connection &e)
-//	{
-//		std::cerr << "Error: Cannot connect to the database "
-//			<< database_name << " with user "
-//			<< user << " host " << host << " port "
-//			<< port << std::endl << std::endl;
-//		std::cerr << conn_str << std::endl;
-//		std::cerr << e.what() << std::endl;
-			
-//		return false;
-//	}
-				        
-//	return true;
-//}
-
-//const bool TrajDBPostGis::create()
-//{
-//	std::string sql;
-	  
-//	try
-//	{
-		//CREATE TABLE table_name (modid varchar(60) PRIMARY KEY, 
-		//	startime timestamp(5), endtime timestamp(5), 
-		//	flag smallint, linkid integer
-		//	speed real, anchorpoint geography(POINT,4326));
-		//CREATE INDEX traj_modid_idx_table_name ON table_name USING HASH(modid);
-		//CREATE INDEX traj_linkid_idx_table_name ON table_name USING HASH(linkid);
-		//CREATE INDEX traj_startendtime_idx_table_name ON table_name(starttime,endtime);
-//		sql = "CREATE TABLE " + table_name +
-/*			"(modid varchar(60), starttime timestamp(5),\
-			endtime timestamp(5), flag smallint, linkid integer, speed real,\
-			anchorpoint geography(POINT," + spatial_ref + "));\
-			CREATE INDEX traj_modid_idx_" + table_name + " ON " + table_name + " USING HASH(modid);\
-			CREATE INDEX traj_linkid_idx_" + table_name + " ON " + table_name + " USING HASH(linkid);\
-			CREATE INDEX traj_startendtime_idx_" + table_name +" ON " + table_name + "(starttime,endtime);";
-*/		
-//		pqxx::work work (*conn);
-//		work.exec(sql.c_str());
-//		work.commit();
-//	}
-//	catch(const pqxx::sql_error& e)
-//	{
-//		std::cerr << "Error: Failed query:" << std::endl;
-//		std::cerr << sql << std::endl;
-//		std::cerr << e.what() << std::endl;
-
-//		return false;
-//	}
-
-//	return true;
-//}
-
-//const bool TrajDBPostGis::drop()
-//{
-//	std::string sql = "DROP TABLE " + table_name + ";";
-
-//	try
-//	{
-//		sql = "DROP TABLE " + table_name + ";";
-//		pqxx::work work (*conn);
-//		work.exec(sql.c_str());
-//		work.commit();
-//	}
-//	catch(const pqxx::sql_error& e)
-//	{
-//		std::cerr << "Error: Failed query: " << std::endl;
-//		std::cerr << sql << std::endl;
-//		std::cerr << e.what() << std::endl;
-		
-//		return false;
-//	}
-
-//	return true;
-//}
-
-//const bool TrajDBPostGis::insert
-//	(
-//		const std::string& obj,
-//		const seg_time& st
-//	)
-//{
-//	std::string sql;
-//	n_updates++;
-	//FIXME: Some variables need to be set properly
-//	unsigned int flag = 0;
-//	double speed = 0;
-
-//	try
-//	{
-//		sql = "INSERT INTO " + table_name +
-/*			"(modid, starttime, endtime, flag, linkid, speed, anchorpoint)\
-			VALUES ('" + obj + "'," +
-			"TO_TIMESTAMP(" + to_string(st.start_time) + ")," +
-			"TO_TIMESTAMP(" + to_string(st.end_time) + ")," +
-			to_string(flag) + "," +
-			to_string(st.segment) + "," +
-			to_string(speed) + "," +
-			"NULL);";
-*/		
-//		pqxx::work work (*conn);
-//		work.exec(sql.c_str());
-//		work.commit();
-//	}
-//	catch(const pqxx::sql_error& e)
-//	{
-//		std::cerr << "Error: Failed query:" << std::endl;
-//		std::cerr << sql << std::endl;
-//		std::cerr << e.what() << std::endl;
- 
-//		return false;
-//	}
-	
-//	return true;
-//}
-
-//const bool TrajDBPostGis::query_segment_time
-//	(
-//		const unsigned int segment,
-//		std::list<std::string>& objs,
-//		const unsigned int time_begin,
-//		const unsigned int time_end
-//	)
-//	const
-//{
-//	std::string sql;
-
-//	try
-//	{
-//		if(time_begin != 0 && time_end != 0)
-//		{
-//			sql = "SELECT modid FROM " + table_name + 
-//				" WHERE linkid=" + to_string(segment) +
-//				" AND starttime < TO_TIMESTAMP(" + to_string(time_end) + ")" +
-//				 " AND endtime > TO_TIMESTAMP(" + to_string(time_begin) + ")';";
-//		} 
-//		else
-//		{
-//			sql = "SELECT modid FROM " + table_name + 
-//				" WHERE linkid=" + to_string(segment) + ";";
-//		}
-
-//		pqxx::nontransaction work(*conn);
-//		pqxx::result res(work.exec(sql.c_str()));
-//		objs.clear();
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+		objs.clear();
 		       
-//		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
-//		{
-//			objs.push_back(r[0].as<std::string>());
-//		}
-//	}
-//	catch(const pqxx::sql_error& e)
-//	{
-//		std::cerr << "Error: Failed query: " << std::endl;
-//		std::cerr << sql << std::endl;
-//		std::cerr << e.what() << std::endl;
-//
-//		return false;
-//	}
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
+		{
+			objs.push_back(r[0].as<std::string>());
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query: " << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
 
-//	return true;
-//}
+		return false;
+	}
+
+	return true;
+}
+
+void TrajDBPostGis::set_config(const std::string& input_file_name)
+{
+	std::ifstream conf_file(input_file_name.c_str(), std::ios::in);
+	std::string line_str;
+	std::vector< std:: string > line_vec;
+			
+	if(! conf_file.is_open())
+	{
+		std::cerr << "Error: Could not open configuration file " 
+			<< input_file_name << std::endl << std::endl;
+	}
+	else
+	{
+		std::getline(conf_file, line_str);
+	
+		while(! conf_file.eof())
+		{
+			line_vec = split(line_str);
+			
+			if(line_vec.size() != 2)
+			{
+	     			std::cerr << "Error: Invalid PostGIS config file format, check the README file -- " 
+					<< input_file_name << std::endl << std::endl;
+				return;
+			}
+
+			if(line_vec[0] == "database")
+			{
+				database_name = line_vec[1];
+			}
+
+			if(line_vec[0] == "host")
+			{
+				host = line_vec[1];
+			}
+
+			if(line_vec[0] == "port")
+			{
+				port = line_vec[1];
+			}
+
+			if(line_vec[0] == "user")
+			{
+				user = line_vec[1];
+			}
+
+			if(line_vec[0] == "password")
+			{
+				password = line_vec[1];
+			}
+	
+			if(line_vec[0] == "srid")
+			{
+				srid = line_vec[1];
+			}
+	
+			if(line_vec[0] == "spatialref")
+			{
+				spatial_ref = line_vec[1];
+			}
+
+			std::getline(conf_file, line_str);
+		}
+	}
+}
 
