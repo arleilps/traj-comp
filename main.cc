@@ -50,16 +50,21 @@ int main(int argc, char** argv)
 	compression_algorithms.push_back("PPM");	//Prediction by partial matching
 	compression_algorithms.push_back("NSTD");	//Network synchronized time distance
 	compression_algorithms.push_back("EM");		//EM compression
+	compression_algorithms.push_back("ONTRAC-FULL");	//ONTRAC with full decompression
+	compression_algorithms.push_back("ONTRAC-PART");	//ONTRAC with partial decompression
+	compression_algorithms.push_back("NONE");	//No compression
 
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
 	TrajCompAlgo* alg;
+	TrajDB* traj_db;
 
 	/*Reading the input parameters*/
 	if(Parameters::read(argc,argv))
 	{
 		Trajectory::set_num_threads(Parameters::num_threads);
 		PostGisIndex::set_config(Parameters::conf_file_name);
+		TrajDBPostGis::set_config(Parameters::conf_file_name);
 		RoadNet* net;
 
 		if(Parameters::compression_algorithm == "IND"
@@ -122,13 +127,65 @@ int main(int argc, char** argv)
 						);
 				}
 
-				alg->train(Parameters::training_traj_file_name);
+				if(Parameters::compression_algorithm == "ONTRAC-FULL")
+				{
+					traj_db = new OntracFull(Parameters::order,
+							Parameters::error, 
+							net, Parameters::num_iterations, 5.0,
+							Parameters::output_file_name,
+							Parameters::num_threads
+						);
+					
+					traj_db->create();
+					traj_db->train(Parameters::training_traj_file_name);
+					traj_db->insert(Parameters::test_traj_file_name);
+					traj_db->where_at(Parameters::query_file_name,
+						Parameters::output_file_name);
+					print_statistics(traj_db);
+					traj_db->drop();
+					delete traj_db;
+				}
+				
+				if(Parameters::compression_algorithm == "ONTRAC-PART")
+				{
+					traj_db = new OntracPart(Parameters::order, Parameters::error, 
+							net, Parameters::num_iterations, 5.0,
+							Parameters::output_file_name,
+							Parameters::num_threads
+						);
+					
+					traj_db->create();
+					traj_db->train(Parameters::training_traj_file_name);
+					traj_db->insert(Parameters::test_traj_file_name);
+					traj_db->where_at(Parameters::query_file_name, 
+						Parameters::output_file_name);
+					print_statistics(traj_db);
+					traj_db->drop();
+					delete traj_db;
+				}
+				
+				if(Parameters::compression_algorithm == "NONE")
+				{
+					traj_db = new TrajDB(net);
+					traj_db->create();
+					traj_db->insert(Parameters::test_traj_file_name);
+					traj_db->where_at(Parameters::query_file_name,
+						Parameters::output_file_name);
+					print_statistics(traj_db);
+					traj_db->drop();
+					delete traj_db;
+				}
 
-				alg->test(Parameters::test_traj_file_name);
+				if(Parameters::compression_algorithm != "ONTRAC-FULL"
+					&& Parameters::compression_algorithm != "ONTRAC-PART"
+					&& Parameters::compression_algorithm != "NONE"
+					)
+				{
+					alg->test(Parameters::test_traj_file_name);
+					print_statistics(alg);
+					delete alg;
+				}
 
-				print_statistics(alg);
-
-				delete alg;
 			}
 		}
 

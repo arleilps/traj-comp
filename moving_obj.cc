@@ -132,6 +132,7 @@ seg_time* new_seg_time
 	st->time = time;
 	st->dist = dist;
 	st->up = up;
+	st->id = 0;
 
 	return st;
 }
@@ -269,6 +270,22 @@ void Trajectory::get_dist_times_uniform
 	}
 }
 
+void Trajectory::set_times_uniform(RoadNet* net)
+{
+	std::list < dist_time* > dist_times;
+	get_dist_times_uniform(dist_times, net);
+
+	std::list<dist_time*>::iterator itd = dist_times.begin();
+	
+	for(std::list<seg_time*>::iterator its = seg_time_lst.begin();
+		its != seg_time_lst.end(); ++its)
+	{
+		(*its)->time = (*itd)->time;
+		delete *itd;
+		++itd;
+	}
+} 
+
 void Trajectory::get_em_rep
 	(
 		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >
@@ -364,6 +381,7 @@ void Trajectory::add_update
 	)
 {
 	seg_time* st = new_seg_time(segment, time, dist, up);
+	st->id = size_traj;
 	seg_time_lst.push_back(st);
 	size_traj++;
 
@@ -1520,9 +1538,23 @@ const bool TrajDB::insert(const std::string& input_file_name)
 		for(std::list<Trajectory*>::iterator it = trajectories.begin();
 			it != trajectories.end(); ++it)
 		{
+			(*it)->set_times_uniform(net);
+		}
+		
+		insert_t->start();
+		
+		_num_traj_inserted++;
+		for(std::list<Trajectory*>::iterator it = trajectories.begin();
+			it != trajectories.end(); ++it)
+		{
 			traj = *it;
+			_num_updates_orig += traj->size();
 			insert(traj->object(), *traj);
 		}
+		
+		insert_t->stop();
+
+		_insert_time = insert_t->get_seconds();
 
 		Trajectory::delete_trajectories(&trajectories);
 		
@@ -1540,38 +1572,198 @@ const bool TrajDB::insert
 		const seg_time& st
 	)
 {
-	n_updates++;
+	_num_updates_inserted++;
 	return db->insert(obj, st);
 }
 
-const bool TrajDB::center_radius_query
-	(
-		const double latit,
-		const double longit,
-		const double dist,
-		std::list<std::string>& res,
-		const unsigned int time_begin,
-		const unsigned int time_end
-	)
+seg_time* TrajDB::where_at(const std::string& obj, const unsigned int time)
 	const
 {
-	std::list<unsigned int> segs;
-	net->segments_within_distance(segs, latit, longit, dist);
-	res.clear();
+	return db->where_at(obj, time);
+}
 
-	std::list<std::string> objs;
+void TrajDB::read_queries
+	(
+		std::list<query*>& queries,
+		const std::string query_file_name
+	) const
+{
+	std::ifstream query_file(query_file_name.c_str(), std::ios::in);
+	std::string line_str;
+	std::vector< std:: string > line_vec;
 
-	for(std::list<unsigned int>::iterator it = segs.begin();
-		it != segs.end(); ++it)
+	if(! query_file.is_open())
 	{
-		db->query_segment_time(*it, objs, time_begin, time_end);
-		res.splice(res.end(), objs);
+		std::cerr << "Error: Could not open query file "
+			<< query_file_name << std::endl << std::endl;
+		
+		return;
 	}
 
-	res.sort();
-	res.unique();
+	std::getline(query_file, line_str);
+	query* q;
+	
+	while(! query_file.eof())
+	{
+		line_vec = split(line_str,',');
 
-	return true;
+		if(line_vec.size() < 2)
+		{
+			 std::cerr << "Error: Invalid query file format, check the README file: "
+			 	<< query_file_name << std::endl << std::endl;
+
+			 std::cerr << line_str << std::endl;
+			 query_file.close();
+
+			 return;
+		}
+		
+		q = new query;
+
+		q->obj = line_vec[0];
+		
+		std::stringstream ss(line_vec[1]);
+		ss >> (q->time);
+		std::getline(query_file, line_str);
+
+		queries.push_back(q);
+	}
+
+	query_file.close();
+}
+
+void TrajDB::write_query_results
+	(
+		const std::list<query*>& queries,
+		const std::list<seg_time*>& results,
+		const std::string& output_file_name
+	) const
+{
+	std::ofstream output_file(output_file_name.c_str(), std::ios::out);
+
+	if(! output_file.is_open())
+	{
+		std::cerr << "Error: Could not open query results file for writing: "
+			<< output_file_name << std::endl << std::endl;
+	     	
+		return;
+	}
+	
+	std::list<query*>::const_iterator itq = queries.begin();
+	std::list<seg_time*>::const_iterator itr = results.begin();
+
+	while(itq != queries.end())
+	{
+		output_file << (*itq)->obj << "," << (*itq)->time 
+			<< "," << (*itr)->segment << "," << (*itr)->time << "\n";
+		++itq;
+		++itr;
+	}
+
+	output_file.close();
+}
+
+void TrajDB::where_at(const std::string& query_file_name, 
+	const std::string& output_file_name)
+{
+	std::list<query*> queries;
+	read_queries(queries, query_file_name);	
+	std::list<seg_time*> res;
+	
+	query_t->start();
+	for(std::list<query*>::iterator q = queries.begin(); q != queries.end(); ++q)
+	{
+		res.push_back(db->where_at((*q)->obj, (*q)->time));
+		_num_queries++;
+	}
+	
+	query_t->stop();
+	_query_time = query_t->get_seconds();
+
+	write_query_results(queries, res, output_file_name);
+}
+
+
+seg_time* TrajDBPostGis::where_at(const std::string& obj, const unsigned int time)
+	const
+{
+	std::string sql;
+	seg_time* st = NULL;
+
+	try
+	{
+		sql =  "SELECT seg, EXTRACT(EPOCH FROM time), id FROM " + table_name + 
+			" WHERE obj='" + obj +
+			"' AND time <= TO_TIMESTAMP(" + to_string(time) + ")" +
+			 " ORDER BY time DESC LIMIT 1;";
+		
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+		    
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
+		{
+			st = new_seg_time(
+					r[0].as<unsigned int>(),
+					r[1].as<unsigned int>(),
+					0
+				);
+			st->id = r[2].as<unsigned int>();
+		}
+
+		if(res.size() == 0)
+		{
+			st = new_seg_time(0, 0, 0);
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+	}
+
+	return st;
+}
+
+Trajectory* TrajDBPostGis::get_traj
+	(
+		const std::string& obj,
+		const unsigned int time
+	) const
+{
+	std::string sql;
+	Trajectory* traj = new Trajectory(obj);
+	
+	try
+	{
+		sql =  "SELECT seg, EXTRACT(EPOCH FROM time), id FROM " + table_name + 
+			" WHERE obj=" + obj + 
+			" AND time > " + to_string(time) +
+			" ORDER BY time DESC;";
+	
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+		    
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
+		{
+			traj->add_update(
+				r[0].as<unsigned int>(),
+				r[1].as<unsigned int>(),
+				0);
+			traj->back()->id = r[2].as<unsigned int>();
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+		delete traj;
+		
+		return NULL;
+	}
+
+	return traj;
 }
 
 const bool TrajDBPostGis::connect()
@@ -1618,16 +1810,17 @@ const bool TrajDBPostGis::create()
 	{
 		//CREATE TABLE table_name (obj varchar(60) PRIMARY KEY, 
 		//	time timestamp(5), 
-		//	seg integer;
+		//	seg integer, id integer;
 		//CREATE INDEX traj_obj_idx_table_name ON table_name USING HASH(obj);
 		//CREATE INDEX traj_seg_idx_table_name ON table_name USING HASH(linkid);
 		//CREATE INDEX traj_time_idx_table_name ON table_name(time);
 		sql = "CREATE TABLE " + table_name +
 			"(obj varchar(60), time timestamp(5),\
-			seg integer);\
+			seg integer, id integer);\
 			CREATE INDEX traj_obj_idx_" + table_name + " ON " + table_name + " USING HASH(obj);\
 			CREATE INDEX traj_seg_idx_" + table_name + " ON " + table_name + " USING HASH(seg);\
-			CREATE INDEX traj_time_idx_" + table_name +" ON " + table_name + "(time);";
+			CREATE INDEX traj_time_idx_" + table_name +" ON " + table_name + "(time);\
+			CREATE INDEX traj_id_idx_" + table_name +" ON " + table_name + "(id);";
 		
 		pqxx::work work (*conn);
 		work.exec(sql.c_str());
@@ -1675,15 +1868,13 @@ const bool TrajDBPostGis::insert
 	)
 {
 	std::string sql;
-	n_updates++;
 
 	try
 	{
 		sql = "INSERT INTO " + table_name +
-			"(obj, time, seg)\
-			VALUES ('" + obj + "'," +
+			"(obj, time, seg, id) VALUES ('" + obj + "'," +
 			"TO_TIMESTAMP(" + to_string(st.time) + ")," +
-			to_string(st.segment) + ");";
+			to_string(st.segment) + ","+ to_string(st.id) +");";
 		
 		pqxx::work work (*conn);
 		work.exec(sql.c_str());
@@ -1698,53 +1889,6 @@ const bool TrajDBPostGis::insert
 		return false;
 	}
 	
-	return true;
-}
-
-const bool TrajDBPostGis::query_segment_time
-	(
-		const unsigned int segment,
-		std::list<std::string>& objs,
-		const unsigned int time_begin,
-		const unsigned int time_end
-	)
-	const
-{
-	std::string sql;
-
-	try
-	{
-		if(time_begin != 0 && time_end != 0)
-		{
-			sql = "SELECT obj FROM " + table_name + 
-				" WHERE seg=" + to_string(segment) +
-				" AND time < TO_TIMESTAMP(" + to_string(time_end) + ")" +
-				 " AND time > TO_TIMESTAMP(" + to_string(time_begin) + ")';";
-		} 
-		else
-		{
-			sql = "SELECT obj FROM " + table_name + 
-				" WHERE seg=" + to_string(segment) + ";";
-		}
-
-		pqxx::nontransaction work(*conn);
-		pqxx::result res(work.exec(sql.c_str()));
-		objs.clear();
-		       
-		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
-		{
-			objs.push_back(r[0].as<std::string>());
-		}
-	}
-	catch(const pqxx::sql_error& e)
-	{
-		std::cerr << "Error: Failed query: " << std::endl;
-		std::cerr << sql << std::endl;
-		std::cerr << e.what() << std::endl;
-
-		return false;
-	}
-
 	return true;
 }
 

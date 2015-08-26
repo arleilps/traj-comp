@@ -60,6 +60,15 @@ class CompTrajectory: public Trajectory
 		CompTrajectory(const CompTrajectory& traj):Trajectory(traj){};
 
 		virtual ~CompTrajectory(){};
+
+		void add_update
+			(
+				const unsigned int segment,
+		                const unsigned int time,
+		                const double dist,
+				const unsigned int id=0
+			);
+
 };
 
 typedef struct t_angle
@@ -384,7 +393,8 @@ typedef struct t_node_ppm
 
 class PredPartMatch: public TrajCompAlgo
 {
-	friend class CompTrajDB;
+	friend class OntracFull;
+	friend class OntracPart;
 	public:
 		PredPartMatch
 			(
@@ -417,10 +427,33 @@ class PredPartMatch: public TrajCompAlgo
 		void add_trajectory(Trajectory* traj);
 
 		CompTrajectory* compress(Trajectory* traj);
+
+		Trajectory* decompress(Trajectory* comp_traj, const std::vector<double>& avg_times);
+
+		void extend(Trajectory* traj, const std::vector<double>& avg_times);
+		
+		const unsigned int count_next_paths
+			(
+				Trajectory::iterator it,
+				Trajectory* traj,
+				NodePPM* tree,
+		     		const unsigned int dest,
+				const unsigned int n,
+		       		const unsigned int num_hops
+			) const;
+		
+		void next_segment_set
+			(
+				Trajectory::iterator it,
+				Trajectory* traj,
+				NodePPM* tree,
+				std::list<unsigned int>& set
+			) const;
+
+		NodePPM* tree;
 	private:
 		unsigned int order;
 		unsigned int size_tree;
-		NodePPM* tree;
 
 		NodePPM* new_node_ppm
 			(
@@ -535,7 +568,8 @@ typedef struct t_pthread_param_em
 
 class EM: public TrajCompAlgo
 {
-	friend class CompTrajDB;
+	friend class OntracFull;
+	friend class OntracPart;
 	public:
 		EM(
 			const double _max_error,
@@ -570,6 +604,8 @@ class EM: public TrajCompAlgo
 				const double sigma_trans,
 				const RoadNet* net
 			);
+
+		void fill_times_and_dists(Trajectory* traj);
 	private:
 		double max_error;
 		unsigned int num_iterations;
@@ -626,20 +662,38 @@ class EM: public TrajCompAlgo
 			) const ;
 };
 
-class CompTrajDB: public TrajDB
+class OntracFull: public TrajDB
 {
 	public:
-		CompTrajDB(PredPartMatch* _spatial_comp, EM* _temp_comp, RoadNet* _net)
-			:TrajDB(_net)
-			{
-				spatial_comp = _spatial_comp;
-				temp_comp = _temp_comp;
-				net = _net;
-			}
+		OntracFull
+			(
+				const unsigned int _order, const double _max_error,
+				RoadNet* _net, const unsigned int _num_iterations, 
+				const double _sigma_gps, const std::string& _output_file_name,
+				const unsigned int _num_threads
+			):TrajDB(_net)
+		{
+			ppm = new PredPartMatch(_order, _net);
+			em = new EM(_max_error, _net, _num_iterations, _sigma_gps,
+				"conv.txt", _num_threads);
+			order = _order;
+			max_error = _max_error;
+			net = _net;
+			num_iterations = _num_iterations;
+			sigma_gps = _sigma_gps;
+			output_file_name = _output_file_name;
+			num_threads = _num_threads;
+		}
+
+		void train(const std::string training_traj_file_name);
 
 		CompTrajectory* compress(Trajectory* traj);
 
-		virtual ~CompTrajDB(){};
+		virtual ~OntracFull()
+			{
+				delete ppm;
+				delete em;
+			}
 		
 		const bool insert(const std::string& input_file_name);
 
@@ -647,21 +701,59 @@ class CompTrajDB: public TrajDB
 
 		const bool insert(const std::string& obj, Trajectory& traj);
 
-		const bool center_radius_query
-			(
-				const double latit,
-		   		const double longit,
-				const double dist,
-				std::list<std::string>& res,
-				const unsigned int time_begin,
-				const unsigned int time_end
-			)
-				const;
-	private:
+		virtual seg_time* where_at(const std::string& obj, const unsigned int time) const;
+
+		inline double training_time() const
+			{
+				return ppm->training_time() + em->training_time();
+			}
+
+		inline unsigned int num_updates_train() const
+			{
+				return ppm->num_updates_train();
+			}
+
+		virtual inline unsigned int num_traj_train() const
+			{
+				return ppm->num_traj_train();
+			}
+	protected:
+		PredPartMatch* ppm;
+		EM* em;
+		unsigned int order;
+		double max_error;
 		RoadNet* net;
-		PredPartMatch* spatial_comp;
-		EM* temp_comp;
+		unsigned int num_iterations;
+		double sigma_gps; 
+		std::string output_file_name; 
+		unsigned int num_threads;
 };
 
-#endif
+class OntracPart: public OntracFull
+{
+	public:
+		OntracPart
+			(
+				const unsigned int _order, const double _max_error,
+				RoadNet* _net, const unsigned int _num_iterations, 
+				const double _sigma_gps, const std::string& _output_file_name,
+				const unsigned int _num_threads
+			):OntracFull(_order, _max_error, _net, _num_iterations, 
+				_sigma_gps, _output_file_name, _num_threads){};
+		
+		virtual ~OntracPart()
+			{
+				delete ppm;
+				delete em;
+			}
 
+		seg_time* where_at(const std::string& obj, const unsigned int time) const;
+	private:
+		Trajectory* get_context
+			(
+				const std::string& obj,
+				const unsigned int time
+			) const;
+
+};
+#endif

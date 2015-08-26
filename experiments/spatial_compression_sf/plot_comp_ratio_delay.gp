@@ -9,6 +9,7 @@ set ylabel "compression ratio"
 set key top left
 set ytics 5
 set yrange [0:19]
+set xrange[:8]
 set logscale x 2
 set boxwidth .9 absolute
 plot "ontrac_delay.dat" using 1:2 title "ONTRAC" with linespoints lt 1 lc 1 lw 4 pt 2 ps 3, "press_delay.dat" using 1:2 title "PRESS" with linespoints lt 1 lc 3 lw 4 pt 7 ps 3

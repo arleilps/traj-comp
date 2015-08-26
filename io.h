@@ -70,6 +70,8 @@ const double string_to_double(const std::string& s);
 
 void print_statistics(TrajCompAlgo* algo);
 
+void print_statistics(TrajDB* traj_db);
+
 /**
  * Simple handler for the input parameters
 **/
@@ -85,6 +87,7 @@ class Parameters
 		static std::string gps_file_name;
 		static std::string conf_file_name;
 		static std::string shortest_path_file_name;
+		static std::string query_file_name;
 		static unsigned int max_length_subt;
 		static unsigned int order;
 		static unsigned int min_sup;

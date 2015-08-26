@@ -27,6 +27,7 @@ std::string Parameters::compression_algorithm;
 std::string Parameters::gps_file_name;
 std::string Parameters::conf_file_name;
 std::string Parameters::shortest_path_file_name;
+std::string Parameters::query_file_name;
 unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
 unsigned int Parameters::min_sup;
@@ -74,6 +75,22 @@ const std::vector<std::string> split(const std::string &s)
         return elems;
 }
 
+void print_statistics(TrajDB* traj_db)
+{
+	std::cout << "inserts_second = " << traj_db->inserts_second() << std::endl;
+	std::cout << "queries_second = " << traj_db->queries_second() << std::endl;
+	std::cout << "insert_time = " << traj_db->insert_time() << std::endl;
+	std::cout << "training_time = " << traj_db->training_time() << std::endl;
+	std::cout << "query_time = " << traj_db->query_time() << std::endl;
+	std::cout << "num_updates_orig = " << traj_db->num_updates_orig() << std::endl;
+	std::cout << "num_updates_inserted = " << traj_db->num_updates_inserted() << std::endl;
+	std::cout << "num_updates_train = " << traj_db->num_updates_train() << std::endl;
+	std::cout << "num_queries = " << traj_db->num_queries() << std::endl;
+	std::cout << "num_traj_inserted = " << traj_db->num_traj_inserted() << std::endl;
+	std::cout << "num_traj_train = " << traj_db->num_traj_train() << std::endl;
+	std::cout << "compression_ratio = " << traj_db->compression_ratio() << std::endl;
+}
+
 void print_statistics(TrajCompAlgo* algo)
 {
 	std::cout << "compression_time = " << algo->compression_time() << std::endl;
@@ -100,6 +117,7 @@ void Parameters::print_usage()
 	std::cout << " -t, --train		training trajectories file" << std::endl;
 	std::cout << " -e, --test		test trajectories file" << std::endl;
 	std::cout << " -o, --output		output file" << std::endl;
+	std::cout << " -q, --query		output file" << std::endl;
 	std::cout << " -c, --compression	compression algorithm [MAP,FS,SP,SPFS,PPM]" << std::endl;
 	std::cout << " -u, --length-subt	max length subtrajectory [in segments]" << std::endl;
 	std::cout << " -r, --order		order" << std::endl;
@@ -112,6 +130,7 @@ void Parameters::print_usage()
 	std::cout << " -a, --delay		delay for late update compression" << std::endl;
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -i, --num-iter		number of iterations EM" << std::endl;
+	std::cout << " -f, --postgis-conf	postgis configuration file" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
 }
 
@@ -150,6 +169,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('t', "train", training_traj_file_name, "")
 		>> GetOpt::Option('e', "test", test_traj_file_name, "")
 		>> GetOpt::Option('o', "output", output_file_name, "")
+		>> GetOpt::Option('q', "query", query_file_name, "")
 		>> GetOpt::Option('c', "compression", compression_algorithm, "")
 		>> GetOpt::Option('d', "gps-updates", gps_file_name, "")
 		>> GetOpt::Option('f', "postgis-conf", conf_file_name, "../data/sfo_postgis.conf")
@@ -185,6 +205,7 @@ void Parameters::print()
 	std::cout << "road_network = " << road_net_file_name << std::endl;
 	std::cout << "training_trajectories = " << training_traj_file_name << "\n";
 	std::cout << "test_trajectories = " << test_traj_file_name << "\n";
+	std::cout << "query_file_name = " << test_traj_file_name << "\n";
 	std::cout << "compression_algorithm = " << compression_algorithm << std::endl;
 	std::cout << "output = " << output_file_name << std::endl;
 	std::cout << "length_subtrajectories = " << max_length_subt << std::endl;

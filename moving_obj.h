@@ -29,6 +29,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <pthread.h>
 
 #include "road_net.h"
+#include "perf.h"
 
 /**
  * GPS update
@@ -99,6 +100,7 @@ typedef struct t_seg_time
 	unsigned int time;
 	double dist;
 	const update* up;
+	unsigned int id;
 } seg_time;
 
 /**
@@ -266,6 +268,8 @@ class Trajectory
 			) 
 				const;
 		
+		void set_times_uniform(RoadNet* net);
+
 		void get_em_rep
 			(
 				std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >
@@ -282,7 +286,7 @@ class Trajectory
 		 * @param end_time time when object ended segment
 		 * @param update update that was matched (optional)
 		**/
-		void add_update
+		virtual void add_update
 			(
 				const unsigned int segment, 
 				const unsigned int time, 
@@ -531,6 +535,22 @@ class TrajDBStorage
 		{
 			return false;
 		}
+		
+		virtual seg_time* where_at(const std::string& obj, 
+			const unsigned int time)
+			const
+		{
+			return NULL;
+		}
+		
+		virtual Trajectory* get_traj
+			(
+				const std::string& obj,
+				const unsigned int time=0
+			) const
+		{
+			return NULL;
+		}
 
 		/*Returns number of udpates made to the database*/
 		const unsigned int updates() const
@@ -566,14 +586,14 @@ class TrajDBPostGis: public TrajDBStorage
 				const seg_time& st 
 			);
 		
-		const bool query_segment_time
+		virtual seg_time* where_at(const std::string& obj, const unsigned int time)
+			const;
+		
+		virtual Trajectory* get_traj
 			(
-				const unsigned int segment,
-				std::list<std::string>& objs,
-				const unsigned int time_begin=0,
-				const unsigned int time_end=0
-			)
-				const;
+				const std::string& obj,
+				const unsigned int time=0
+			) const;
 		
 		static void set_config(const std::string& input_file_name);
 	protected:
@@ -604,6 +624,12 @@ class TrajDBPostGis: public TrajDBStorage
 		const bool connect();
 };
 
+typedef struct t_query
+{
+	std::string obj;
+	unsigned int time;
+}query;
+
 /**
  * Implements several functionalities (insert, query etc.) for managing a trajectory database.
 **/
@@ -618,13 +644,20 @@ class TrajDB
 		{
 			net = _net;
 			db = new TrajDBPostGis();
-			n_updates = 0;
+			_num_updates_orig = 0;
+			_num_updates_inserted = 0;
+			_num_traj_inserted = 0;
+			_num_queries = 0;
+			query_t = new ExecTime();
+			insert_t = new ExecTime();
 		}
 		
 		/* Destructor */
 		virtual ~TrajDB()
 		{
 			delete db;
+			delete query_t;
+			delete insert_t;
 		};
 		
 		/*Creates a new database*/
@@ -645,7 +678,7 @@ class TrajDB
 		 * @param input_file_name input file name
 		 * @return true in case of success, false otherwise
 		**/
-		virtual const bool insert(const std::string& input_file_name);
+		const bool insert(const std::string& input_file_name);
 		
 		/**
 		 * Inserts a trajectory into the database.
@@ -660,51 +693,113 @@ class TrajDB
 		 * @param obj object id
 		 * @param st seg_time update
 		**/
-		virtual const bool insert
+		const bool insert
 			(
 				const std::string& obj,
 				const seg_time& st
 			);
 		
-		/**
-		 * Center-radius query. Returns all objects within radius distance from a center
-		 * (lat-long) point during a given time range. If no range is provided, consider
-		 * the whole span of the database.
-		 * @param latit center latitude
-		 * @param longit center longit
-		 * @param dist radius distance
-		 * @param res query results to be updated
-		 * @param time_begin start time of the range (optional)
-		 * @param time_end end time of the range (optional)
-		**/
-		virtual const bool center_radius_query
+		virtual seg_time* where_at
 			(
-				const double latit, 
-				const double longit,
-				const double dist,
-				std::list<std::string>& res,
-				const unsigned int time_begin=0,
-				const unsigned int time_end=0
-			) 
-				const;
+				const std::string& obj,
+				const unsigned int time
+			) const;
+
+		void where_at
+			(
+				const std::string& query_file_name,
+				const std::string& output_file_name
+			);
+
+		 void read_queries
+		 	(
+		 		std::list<query*>& queries,
+		 		const std::string query_file_name
+		 	) const;
 		
+		void train(const std::string& training_traj_file_name){};
+
+		void write_query_results
+			(
+				const std::list<query*>& queries,
+				const std::list<seg_time*>& results,
+				const std::string& output_file_name
+			) const;
+
 		/*INLINES*/
 		
-		/*Gets how many updates were processed*/
-		inline const unsigned int updates() const
+		/*Statistics*/
+		inline double inserts_second() const
 		{
-			return n_updates;
+			return (double)  _num_updates_orig / _insert_time;
 		}
 
-		/*Gets how many actual updates were made to the database*/
-		inline const unsigned int db_updates() const
+		inline double queries_second() const
 		{
-			return db->updates();
+			return (double) _num_queries / _query_time;
+		}
+
+		inline unsigned int num_queries() const
+		{
+			return _num_queries;
+		}
+
+		inline double query_time() const
+		{
+			return _query_time;
+		}
+		
+		inline double insert_time() const
+		{
+			return _insert_time;
+		}
+
+		virtual double training_time() const
+		{
+			return 0;
+		}
+
+		inline unsigned int num_updates_orig() const
+		{
+			return _num_updates_orig;
+		}
+
+		inline unsigned int num_updates_inserted() const
+		{
+			return _num_updates_inserted;
+		}
+
+		virtual inline unsigned int num_updates_train() const
+		{
+			return 0;
+		}
+
+		inline unsigned int num_traj_inserted() const
+		{
+			return _num_traj_inserted;
+		}
+
+		virtual inline unsigned int num_traj_train() const
+		{
+			return 0;
+		}
+
+		inline double compression_ratio() const
+		{
+			return (double) _num_updates_orig / _num_updates_inserted;
 		}
 	protected:
 		RoadNet* net;
 		TrajDBStorage* db;
-		unsigned int n_updates;
+		double _query_time;
+		double _insert_time;
+		unsigned int _num_updates_orig;
+		unsigned int _num_updates_inserted;
+		unsigned int _num_traj_inserted;
+		unsigned int _num_queries;
+		double _compression_ratio;
+		ExecTime* query_t;
+		ExecTime* insert_t;
 };
 
 #endif
