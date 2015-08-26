@@ -1,0 +1,10 @@
+python gen_queries.py ../../../data/map_matched_syn_one_test_1 > ../../../data/queries_syn_one_test_1
+python gen_queries.py ../../../data/map_matched_syn_one_test_2 > ../../../data/queries_syn_one_test_2
+python gen_queries.py ../../../data/map_matched_syn_one_test_3 > ../../../data/queries_syn_one_test_3
+python gen_queries.py ../../../data/map_matched_syn_one_test_4 > ../../../data/queries_syn_one_test_4
+python gen_queries.py ../../../data/map_matched_syn_one_test_5 > ../../../data/queries_syn_one_test_5
+python gen_queries.py ../../../data/map_matched_syn_one_test_6 > ../../../data/queries_syn_one_test_6
+python gen_queries.py ../../../data/map_matched_syn_one_test_7 > ../../../data/queries_syn_one_test_7
+python gen_queries.py ../../../data/map_matched_syn_one_test_8 > ../../../data/queries_syn_one_test_8
+python gen_queries.py ../../../data/map_matched_syn_one_test_9 > ../../../data/queries_syn_one_test_9
+python gen_queries.py ../../../data/map_matched_syn_one_test_10 > ../../../data/queries_syn_one_test_10
