@@ -26,7 +26,7 @@ def  generate_queries(objs, times, num_queries):
 	queries = []
 
 	for i in range(num_queries):
-		r = random.randint(0, len(objs))
+		r = random.randint(0, len(objs)-1)
 		queries.append([objs[r], times[r]])
 
 	return queries
