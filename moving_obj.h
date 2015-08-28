@@ -678,7 +678,7 @@ class TrajDB
 		 * @param input_file_name input file name
 		 * @return true in case of success, false otherwise
 		**/
-		const bool insert(const std::string& input_file_name);
+		virtual const bool insert(const std::string& input_file_name);
 		
 		/**
 		 * Inserts a trajectory into the database.
@@ -717,7 +717,7 @@ class TrajDB
 		 		const std::string query_file_name
 		 	) const;
 		
-		void train(const std::string& training_traj_file_name){};
+		virtual void train(const std::string& training_traj_file_name){};
 
 		void write_query_results
 			(

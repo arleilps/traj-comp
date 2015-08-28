@@ -428,7 +428,7 @@ class PredPartMatch: public TrajCompAlgo
 
 		CompTrajectory* compress(Trajectory* traj);
 
-		Trajectory* decompress(Trajectory* comp_traj, const std::vector<double>& avg_times);
+		Trajectory* decompress(Trajectory* comp_traj);
 
 		void extend(Trajectory* traj, const std::vector<double>& avg_times);
 		
@@ -605,7 +605,7 @@ class EM: public TrajCompAlgo
 				const RoadNet* net
 			);
 
-		void fill_times_and_dists(Trajectory* traj);
+		void decompress(Trajectory* traj) const;
 	private:
 		double max_error;
 		unsigned int num_iterations;
@@ -685,7 +685,7 @@ class OntracFull: public TrajDB
 			num_threads = _num_threads;
 		}
 
-		void train(const std::string training_traj_file_name);
+		void train(const std::string& training_traj_file_name);
 
 		CompTrajectory* compress(Trajectory* traj);
 
@@ -746,6 +746,7 @@ class OntracPart: public OntracFull
 				delete ppm;
 				delete em;
 			}
+		
 
 		seg_time* where_at(const std::string& obj, const unsigned int time) const;
 	private:

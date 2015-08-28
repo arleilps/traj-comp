@@ -314,7 +314,7 @@ void Trajectory::get_em_rep
 	unsigned int end_time;
 	double speed;
 	double error;
-	
+
 	em_update_info* info = new_em_update_info(0, 0, 0, start_time, 0);
 	
 	em_traj->push_back(new std::pair<unsigned int, em_update_info*> (st->segment, info));
@@ -1021,6 +1021,13 @@ const unsigned int Trajectory::read_trajectories
 		seg = net->seg_ID(seg_name);
 		std::stringstream ss(line_vec[i+1]);
 		ss >> time;
+
+		//FIXME: Quick fix for experiments with synthetic data
+		if(time < 86400)
+		{
+			time = time + 86400;
+		}					                 
+
 		std::stringstream se_dist(line_vec[i+2]);
 		se_dist >> dist;
 		traj->add_update(seg, time, dist);
@@ -1626,6 +1633,12 @@ void TrajDB::read_queries
 		ss >> (q->time);
 		std::getline(query_file, line_str);
 
+		//FIXME: Quick fix for experiments with synthetic data
+		if(q->time < 86400)
+		{
+			q->time = q->time + 86400;
+		}							                
+
 		queries.push_back(q);
 	}
 
@@ -1815,7 +1828,7 @@ const bool TrajDBPostGis::create()
 		//CREATE INDEX traj_seg_idx_table_name ON table_name USING HASH(linkid);
 		//CREATE INDEX traj_time_idx_table_name ON table_name(time);
 		sql = "CREATE TABLE " + table_name +
-			"(obj varchar(60), time timestamp(5),\
+			"(obj varchar(60), time timestamp(6),\
 			seg integer, id integer);\
 			CREATE INDEX traj_obj_idx_" + table_name + " ON " + table_name + " USING HASH(obj);\
 			CREATE INDEX traj_seg_idx_" + table_name + " ON " + table_name + " USING HASH(seg);\

@@ -152,7 +152,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 	lambda = 0;
 	error = 0;
 	delay =  std::numeric_limits<unsigned int>::max();
-	num_iterations = 10;
+	num_iterations = 1;
 
 	try
 	{

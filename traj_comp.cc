@@ -473,10 +473,44 @@ void FreqSubt::get_freq_subt_ids
 	}
 }
 
-void OntracFull::train(const std::string training_traj_file_name)
+void OntracFull::train(const std::string& training_traj_file_name)
 {
 	ppm->train(training_traj_file_name);
 	em->train(training_traj_file_name);
+}
+
+const bool OntracFull::insert(const std::string& input_file_name)
+{
+	std::list<Trajectory*> trajectories;
+	std::string obj;
+	Trajectory* traj;
+
+	if(Trajectory::read_trajectories(trajectories, input_file_name, net))
+	{
+		insert_t->start();
+		 
+		_num_traj_inserted++;
+		 
+		for(std::list<Trajectory*>::iterator it = trajectories.begin();
+		 	it != trajectories.end(); ++it)
+		{
+		 	traj = *it;
+		 	_num_updates_orig += traj->size();
+			insert(traj->object(), *traj);
+		}
+		 
+		insert_t->stop();
+		  
+		_insert_time = insert_t->get_seconds();
+		  
+		Trajectory::delete_trajectories(&trajectories);
+		
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 CompTrajectory* OntracFull::compress(Trajectory* traj)
@@ -497,45 +531,84 @@ CompTrajectory* OntracFull::compress(Trajectory* traj)
 	double error = pow(em->sigma_times->at(traj->front()->segment), 2);
 	double K;
 	unsigned int s = 1;
-	
+	std::list<unsigned int> segs;
+	std::list<unsigned int> ids;
+	std::list<unsigned int>::iterator itd;
+	double t;
+	double d = 0;
+	bool added = false;
+
+	next = ppm->next_segment(it, traj, ppm->tree);
+	++it;
+
 	while(it != traj->end())
 	{
-		next = ppm->next_segment(it, traj, ppm->tree);
-		it++;
-		
 		up = traj_em->at(s)->second;
-		time += em->avg_times->at((*it)->segment);
-		error += pow(em->sigma_times->at((*it)->segment), 2);
+		time += em->avg_times->at(traj_em->at(s)->first);
+		error += pow(em->sigma_times->at(traj_em->at(s)->first), 2);
+		d = d + net->segment_length(traj_em->at(s)->first);
 		
-		if(up == NULL)
-		{
-			if(it != traj->end() && (*it)->segment != next)
+		if(it != traj->end() && (*it)->segment != next)
+		{	
+			segs.push_back((*it)->segment);
+			ids.push_back(s);
+
+			if(up != NULL)
 			{
-				comp_traj->add_update
-					(
-						(*it)->segment, 
-						total_time + time, 
-						0, s
-					);
+				added = true;
 			}
 		}
-		else
+		
+		if(up != NULL)
 		{
 			K = (double) error / (error + pow(up->sigma, 2));
 			fused_time = fused_time + time + K * (up->time - time);
-			total_time += time;
-
-			if(fabs(total_time-fused_time) > max_error)
+			
+			if(fabs(total_time+time-fused_time) > max_error || s == traj_em->size()-1)
 			{
-				comp_traj->add_update((*it)->segment, fused_time, 0);
+				itd = ids.begin();
+				for(std::list<unsigned int>::iterator its = segs.begin();
+					its != segs.end(); ++its)
+				{
+					t = (double) total_time + ((time + K * (up->time - time)) * net->segment_length(*its))
+						/ d;
+					comp_traj->add_update(*its, t, 0, *itd);
+					++itd;
+				}
+
+				if(! added)
+				{
+					comp_traj->add_update((*it)->segment, fused_time, 0, s);
+				}
+
 				total_time = fused_time;
 			}
+			else
+			{
+				itd = ids.begin();
+				for(std::list<unsigned int>::iterator its = segs.begin();
+					its != segs.end(); ++its)
+				{
+					t = total_time + (double) (time * net->segment_length(*its)) / d;
+					comp_traj->add_update(*its, t, 0, *itd);
+					++itd;
+				}
+				
+				total_time += time;
+			}
+
+			segs.clear();
+			ids.clear();
+			d = 0;
 			
 			time = 0;
 			error = 0;
+			added = false;
 		}
 
-		s++;
+		s++;  
+		next = ppm->next_segment(it, traj, ppm->tree);
+		++it;
 	}
 
 	return comp_traj;
@@ -550,7 +623,7 @@ const bool OntracFull::insert(const std::string& obj, Trajectory& traj)
 	for(Trajectory::iterator it = comp_traj->begin();
 		it != comp_traj->end(); ++it)
 	{
-		if(! db->insert(obj, *(*it)))
+		if(! TrajDB::insert(obj, *(*it)))
 		{
 			status = false;
 		}
@@ -593,13 +666,9 @@ seg_time* OntracFull::where_at
 	) const
 {
 	Trajectory* traj = ppm->decompress
-		(db->get_traj(obj), 
-		*(em->avg_times));
+		(db->get_traj(obj));
 
-	while(traj->back()->time < time)
-	{
-		ppm->extend(traj, *(em->avg_times));
-	}
+	em->decompress(traj);
 
 	Trajectory::iterator it = traj->end();
 	--it;
@@ -680,7 +749,7 @@ void PredPartMatch::add_trajectory
 		const unsigned int r
 	)
 {
-	if(itj != traj->begin() && r <= order)
+	if(r <= order)
 	{
 		std::map<unsigned int, NodePPM*>::iterator node_it = tree->children.find((*itj)->segment);
 		NodePPM* node;
@@ -693,7 +762,7 @@ void PredPartMatch::add_trajectory
 
 			if(next != node->freq.end())
 			{
-				next->second++;
+				(next->second)++;
 				
 				if(next->second > node->freq_next)
 				{
@@ -712,7 +781,10 @@ void PredPartMatch::add_trajectory
 				}
 			}
 
-			add_trajectory(iti, --itj, traj, node, r+1);
+			if(itj != traj->begin())
+			{
+				add_trajectory(iti, --itj, traj, node, r+1);
+			}
 		}
 		else
 		{
@@ -721,8 +793,11 @@ void PredPartMatch::add_trajectory
 			node->freq.insert(std::pair<unsigned int, double>((*iti)->segment, 1));
 			node->freq_next = 1;
 			node->next = (*iti)->segment;
-
-			add_trajectory(iti, --itj, traj, node, r+1);
+		
+			if(itj != traj->begin())
+			{
+				add_trajectory(iti, --itj, traj, node, r+1);
+			}
 		}
 	}
 }
@@ -754,11 +829,18 @@ const unsigned int PredPartMatch::next_segment
 	std::map<unsigned int, NodePPM*>::iterator node_it = tree->children.find((*it)->segment);
 	NodePPM* node;
 
-	if(node_it != tree->children.end() && it != traj->begin())
+	if(node_it != tree->children.end())
 	{
 		node = node_it->second;
 
-		return next_segment(--it, traj, node);
+		if(it != traj->begin())
+		{
+			return next_segment(--it, traj, node);
+		}
+		else
+		{
+			return node->next;
+		}
 	}
 	else
 	{
@@ -954,8 +1036,7 @@ CompTrajectory* PredPartMatch::compress(Trajectory* traj)
 
 Trajectory* PredPartMatch::decompress
 	(
-		Trajectory* comp_traj,
-		const std::vector<double>& avg_times
+		Trajectory* comp_traj
 	)
 {
 	Trajectory* traj = new Trajectory;
@@ -969,26 +1050,25 @@ Trajectory* PredPartMatch::decompress
 			(*iti)->segment, 
 			(*iti)->time, (*iti)->dist
 		);
-
+	
 	traj->back()->id = (*iti)->id;
 	
 	++iti;
-
 	while(iti != comp_traj->end())
 	{
 		itj = traj->end();
 		--itj;
-
-		if((*itj)->id - (*iti)->id == 1)
+		
+		if((*iti)->id - (*itj)->id == 1)
 		{
 			traj->add_update
 			(
 				(*iti)->segment, 
 				(*iti)->time, (*iti)->dist
 			);
-
-			traj->back()->id = (*iti)->id;
 			
+			traj->back()->id = (*iti)->id;
+
 			++iti;
 		}
 		else
@@ -1935,6 +2015,48 @@ CompTrajectory* EM::compress
 	return comp;
 }
 
+void EM::decompress(Trajectory* traj) const
+{
+	Trajectory::iterator itj;
+	Trajectory::iterator iti = traj->begin(); 
+	double time;
+	double pred_time = 0;
+	double total_time;
+	
+	while(iti != traj->end())
+	{
+		std::cout << (*iti)->segment << std::endl;
+		itj = iti;
+		pred_time = 0;
+		
+		++itj;
+
+		if(itj != traj->end())
+		{
+			while((*itj)->dist == 0 && (*itj)->time == 0)
+			{
+				pred_time += avg_times->at((*itj)->segment);
+				++itj;
+			}
+
+			time = (*itj)->time - (*iti)->time;
+			total_time = (*iti)->time;
+	
+			++iti;
+
+			while((*iti)->dist == 0 && (*iti)->time == 0)
+			{
+				(*iti)->time = total_time + (double) (time * avg_times->at((*iti)->segment)) / pred_time; 
+				++iti;
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
 std::vector< std::vector< double >* >* EM::start_times() const
 {
 	std::vector< std::vector< double >* >*
@@ -2401,7 +2523,7 @@ std::pair< std::vector<double>*, std::vector<double> * >*
 		}
 		else
 		{
-			_sigma_times->at(s) = sqrt(std::numeric_limits<double>::max());
+			_sigma_times->at(s) = (double) net->segment_length(s) / Trajectory::min_speed();
 		}
 	}
 
