@@ -4,7 +4,7 @@
 
 source settings.sh
 
-mkdir ONTRAC/
+mkdir ONTRACPART/
 
 for a in ${delay_vec[@]}
 do
