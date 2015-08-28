@@ -639,12 +639,10 @@ seg_time* OntracPart::where_at
 		const unsigned int time
 	) const
 {
-	Trajectory* traj = get_context(obj, time);
-	
-	while(traj->back()->time < time)
-	{
-		ppm->extend(traj, *(em->avg_times));
-	}
+	Trajectory* traj = decompress_partial
+		(obj, time);
+
+	em->decompress(traj);
 
 	Trajectory::iterator it = traj->end();
 	--it;
@@ -655,7 +653,6 @@ seg_time* OntracPart::where_at
 	}
 
 	++it;
-
 	return (*it);
 }
 
@@ -931,7 +928,7 @@ const unsigned int PredPartMatch::count_next_paths
 	}
 }
 
-Trajectory* OntracPart::get_context
+Trajectory* OntracPart::decompress_partial
 	(
 		const std::string& obj,
 		const unsigned int time
@@ -944,7 +941,7 @@ Trajectory* OntracPart::get_context
 	if(prev == NULL)
 	{
 		traj = db->get_traj(obj);
-		return traj;
+		return ppm->decompress(traj);
 	}
 	else
 	{
@@ -971,12 +968,12 @@ Trajectory* OntracPart::get_context
 			if(num > 1)
 			{
 				st = prev;
-				prev = db->where_at(obj, prev->time-1);
+				prev = db->where_at(obj, (prev->time)-1);
 				
 				if(prev == NULL)
 				{
 					traj = db->get_traj(obj);
-					return traj;
+					return ppm->decompress(traj);
 				}
 				else
 				{
