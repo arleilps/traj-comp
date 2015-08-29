@@ -909,7 +909,15 @@ void Trajectory::break_trajectory
 
 			if((speed > MAXSPEED || speed < MINSPEED) && it_next != seg_time_lst.end()) 
 			{
-				trajectories.push_back(traj);
+				//FIXME: Filtering some poor map-matching for beijing data
+				if(traj->size() < 1000)
+				{
+					trajectories.push_back(traj);
+				}
+				else
+				{
+					delete traj;
+				}
 				
 				traj = new Trajectory(obj);
 				traj->add_update(st_next->segment, 
@@ -1686,7 +1694,7 @@ void TrajDB::where_at(const std::string& query_file_name,
 	query_t->start();
 	for(std::list<query*>::iterator q = queries.begin(); q != queries.end(); ++q)
 	{
-		res.push_back(db->where_at((*q)->obj, (*q)->time));
+		res.push_back(where_at((*q)->obj, (*q)->time));
 		_num_queries++;
 	}
 	
@@ -1750,13 +1758,13 @@ Trajectory* TrajDBPostGis::get_traj
 	try
 	{
 		sql =  "SELECT seg, EXTRACT(EPOCH FROM time), id FROM " + table_name + 
-			" WHERE obj=" + obj + 
-			" AND time > " + to_string(time) +
-			" ORDER BY time DESC;";
+			" WHERE obj='" + obj + 
+			"' AND time >= TO_TIMESTAMP(" + to_string(time) +
+			") ORDER BY time ASC;";
 	
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
-		    
+		
 		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
 		{
 			traj->add_update(
@@ -1775,7 +1783,7 @@ Trajectory* TrajDBPostGis::get_traj
 		
 		return NULL;
 	}
-
+	
 	return traj;
 }
 
@@ -1828,7 +1836,7 @@ const bool TrajDBPostGis::create()
 		//CREATE INDEX traj_seg_idx_table_name ON table_name USING HASH(linkid);
 		//CREATE INDEX traj_time_idx_table_name ON table_name(time);
 		sql = "CREATE TABLE " + table_name +
-			"(obj varchar(60), time timestamp(6),\
+			"(obj varchar(60), time timestamp with time zone,\
 			seg integer, id integer);\
 			CREATE INDEX traj_obj_idx_" + table_name + " ON " + table_name + " USING HASH(obj);\
 			CREATE INDEX traj_seg_idx_" + table_name + " ON " + table_name + " USING HASH(seg);\

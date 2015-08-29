@@ -135,14 +135,12 @@ int main(int argc, char** argv)
 							Parameters::output_file_name,
 							Parameters::num_threads
 						);
-					
 					traj_db->create();
 					traj_db->train(Parameters::training_traj_file_name);
 					traj_db->insert(Parameters::test_traj_file_name);
 					traj_db->where_at(Parameters::query_file_name,
 						Parameters::output_file_name);
 					print_statistics(traj_db);
-					traj_db->drop();
 					delete traj_db;
 				}
 				
@@ -154,9 +152,6 @@ int main(int argc, char** argv)
 							Parameters::num_threads
 						);
 					
-					traj_db->create();
-					traj_db->train(Parameters::training_traj_file_name);
-					traj_db->insert(Parameters::test_traj_file_name);
 					traj_db->where_at(Parameters::query_file_name, 
 						Parameters::output_file_name);
 					print_statistics(traj_db);

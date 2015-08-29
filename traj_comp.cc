@@ -652,7 +652,6 @@ seg_time* OntracPart::where_at
 		--it;
 	}
 
-	++it;
 	return (*it);
 }
 
@@ -669,13 +668,11 @@ seg_time* OntracFull::where_at
 
 	Trajectory::iterator it = traj->end();
 	--it;
-	
+
 	while(it != traj->begin() && (*it)->time > time)
 	{
 		--it;
 	}
-
-	++it;
 
 	return (*it);
 }
@@ -850,30 +847,35 @@ void PredPartMatch::next_segment_set
 		Trajectory::iterator it, 
 		Trajectory* traj,
 		NodePPM* tree,
-		std::list<unsigned int>& set
+		std::map<unsigned int, bool>& set,
+		bool all
 	) const
 {
-	NodePPM* node;
 	std::map<unsigned int, NodePPM*>::iterator node_it;
-
-	if(it != traj->begin())
+	NodePPM* node;
+	
+	if(all)
 	{
-		std::map<unsigned int, NodePPM*>::iterator node_it = tree->children.find((*it)->segment);
-
-		if(node_it != tree->children.end())
+		for(node_it = tree->children.begin(); node_it != tree->children.end(); ++node_it)
 		{
+			set.insert(std::pair<unsigned, bool>(node_it->second->next, true));
 			node = node_it->second;
-			next_segment_set(--it, traj, node, set);
+			next_segment_set(it, traj, node, set, true);
 		}
 	}
 	else
 	{
-		set.push_back(tree->next);
-
-		for(node_it = tree->children.begin(); node_it != tree->children.end(); ++node_it)
+		node_it = tree->children.find((*it)->segment);
+	
+		if(node_it != tree->children.end())
 		{
-			node = node_it->second;
-			next_segment_set(it, traj, node, set);
+			set.insert(std::pair<unsigned, bool>(node_it->second->next, true));
+		
+			if(it != traj->begin())
+			{
+				node = node_it->second;
+				next_segment_set(--it, traj, node, set, false);
+			}
 		}
 	}
 }
@@ -883,49 +885,49 @@ const unsigned int PredPartMatch::count_next_paths
 		Trajectory::iterator it,
 		Trajectory* traj,
 		NodePPM* tree,
-		const unsigned int dest,
+		const unsigned int target,
 		const unsigned int n,
-		const unsigned int num_hops
+		const unsigned int num_hops,
+		std::map<unsigned int, bool>& new_target
 	) const
 {
-	if(n >= num_hops)
+	if(n > num_hops)
 	{
-		if(n > num_hops)
-		{
-			return 0;
-		}
-
-		if(traj->back()->segment == dest)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		return 0;
 	}
-	else
+
+	if(n == num_hops && traj->back()->segment == target)
 	{
-		unsigned int s = 0;
-		std::list<unsigned int> nexts;
-		Trajectory* new_traj;
-		Trajectory::iterator new_it;
-		next_segment_set(it, traj, tree, nexts);
+		return 1;
+	}
+		
+	unsigned int num;
+	unsigned int total = 0;
+	std::map<unsigned int, bool> nexts;
+	Trajectory* new_traj;
+	Trajectory::iterator new_it;
+	next_segment_set(it, traj, tree, nexts, false);
 
-		for(std::list<unsigned int>::iterator it = nexts.begin();
-			it != nexts.end(); ++it)
+	for(std::map<unsigned int, bool>::iterator itj = nexts.begin();
+		itj != nexts.end(); ++itj)
+	{
+		new_traj = new Trajectory(*traj);
+		new_traj->add_update(itj->first, 0, 0);
+		new_it = new_traj->end();
+		--new_it;
+
+		num = count_next_paths(new_it, new_traj, tree, target, n+1, num_hops, new_target);
+		
+		if(n == order)
 		{
-			new_traj = new Trajectory(*traj);
-			new_traj->add_update(*it, 0, 0);
-			new_it = new_traj->end();
-			--new_it;
-
-			s += count_next_paths(new_it, new_traj, tree, dest, n+1, num_hops);
-			delete new_traj;
+			new_target.insert(std::pair<unsigned int, bool>((*it)->segment, true));
 		}
 
-		return s;
+		total += num;
+		delete new_traj;
 	}
+
+	return total;
 }
 
 Trajectory* OntracPart::decompress_partial
@@ -937,61 +939,56 @@ Trajectory* OntracPart::decompress_partial
 	Trajectory* traj = new Trajectory();
 	const seg_time* st = db->where_at(obj, time);
 	const seg_time* prev = db->where_at(obj, st->time-1);
+	std::map<unsigned int, bool>* target = new std::map<unsigned int, bool>;
+	std::map<unsigned int, bool>* new_target = new std::map<unsigned int, bool>;
 	
-	if(prev == NULL)
-	{
-		traj = db->get_traj(obj);
-		return ppm->decompress(traj);
-	}
-	else
-	{
-		unsigned int num_hops = st->id - prev->id;
-		traj->add_update(prev->segment, prev->time, 0);
-		Trajectory::iterator it = traj->begin();
-		++it;
-		std::list<unsigned int> dest;
-		dest.push_back(st->segment);
-		unsigned int num;
+	unsigned int num_hops = st->id - prev->id;
+	traj->add_update(prev->segment, prev->time, 0);
+	Trajectory::iterator it = traj->begin();
+	target->insert(std::pair<unsigned int, bool>(st->segment,true));
+	unsigned int num;
 
-		while(true)
+	while(true)
+	{
+		num = 0;
+		for(std::map<unsigned int,bool>::iterator jt = target->begin(); 
+			jt != target->end(); ++jt)
 		{
-			num = 0;
+			num += ppm->count_next_paths
+				(it, traj, ppm->tree, jt->first, 0,
+				num_hops, *new_target);
+		}
 
-			for(std::list<unsigned int>::iterator jt = dest.begin(); 
-				jt != dest.end(); ++jt)
-			{
-				num += ppm->count_next_paths
-					(it, traj, ppm->tree, *jt, 0,
-					num_hops);
-			}
-
-			if(num > 1)
-			{
-				st = prev;
-				prev = db->where_at(obj, (prev->time)-1);
+		if(num > 1)
+		{
+			st = prev;
+			prev = db->where_at(obj, (prev->time)-1);
 				
-				if(prev == NULL)
-				{
-					traj = db->get_traj(obj);
-					return ppm->decompress(traj);
-				}
-				else
-				{
-					num_hops = st->id - prev->id + 1;
-					dest.clear();
-					ppm->next_segment_set(it, traj, ppm->tree, dest);
-					delete traj;
-					traj->add_update(prev->segment, prev->time, 0);
-					it = traj->begin();
-					++it;
-				}
+			if(prev == NULL)
+			{
+				traj = db->get_traj(obj);
+				return ppm->decompress(traj);
 			}
 			else
 			{
-				traj = db->get_traj(obj, prev->time);
+				num_hops = st->id - prev->id + 1;
+				target->clear();
+				delete target;
+				target = new_target;
+				new_target = new std::map<unsigned int, bool>;
+				delete traj;
+				traj->add_update(prev->segment, prev->time, 0);
+				it = traj->begin();
 			}
 		}
+		else
+		{
+			traj = db->get_traj(obj, prev->time);
+			break;
+		}
 	}
+
+	return traj;
 }
 
 CompTrajectory* PredPartMatch::compress(Trajectory* traj)
@@ -2022,7 +2019,6 @@ void EM::decompress(Trajectory* traj) const
 	
 	while(iti != traj->end())
 	{
-		std::cout << (*iti)->segment << std::endl;
 		itj = iti;
 		pred_time = 0;
 		
@@ -2035,6 +2031,8 @@ void EM::decompress(Trajectory* traj) const
 				pred_time += avg_times->at((*itj)->segment);
 				++itj;
 			}
+				
+			pred_time += avg_times->at((*itj)->segment);
 
 			time = (*itj)->time - (*iti)->time;
 			total_time = (*iti)->time;
@@ -2043,7 +2041,8 @@ void EM::decompress(Trajectory* traj) const
 
 			while((*iti)->dist == 0 && (*iti)->time == 0)
 			{
-				(*iti)->time = total_time + (double) (time * avg_times->at((*iti)->segment)) / pred_time; 
+				total_time += (double) (time * avg_times->at((*iti)->segment)) / pred_time; 
+				(*iti)->time = total_time;
 				++iti;
 			}
 		}
@@ -2497,7 +2496,7 @@ std::pair< std::vector<double>*, std::vector<double> * >*
 		}
 		else
 		{
-			_avg_times->at(s) = 0;
+			_avg_times->at(s) = (double) net->segment_length(s) / avg_speed;
 		}
 	}
 

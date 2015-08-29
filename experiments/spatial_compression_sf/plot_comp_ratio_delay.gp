@@ -1,4 +1,4 @@
-set term postscript eps 35 enhanced color solid
+set term postscript eps 40 enhanced color solid
 set style fill solid 1.00 border
 set style data histogram
 set style histogram cluster gap 1

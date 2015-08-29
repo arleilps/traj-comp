@@ -437,9 +437,10 @@ class PredPartMatch: public TrajCompAlgo
 				Trajectory::iterator it,
 				Trajectory* traj,
 				NodePPM* tree,
-		     		const unsigned int dest,
+		     		const unsigned int target,
 				const unsigned int n,
-		       		const unsigned int num_hops
+		       		const unsigned int num_hops,
+				std::map<unsigned int, bool>& new_target
 			) const;
 		
 		void next_segment_set
@@ -447,7 +448,8 @@ class PredPartMatch: public TrajCompAlgo
 				Trajectory::iterator it,
 				Trajectory* traj,
 				NodePPM* tree,
-				std::list<unsigned int>& set
+				std::map<unsigned int, bool>& set,
+				bool all
 			) const;
 
 		NodePPM* tree;
@@ -739,18 +741,14 @@ class OntracPart: public OntracFull
 				const double _sigma_gps, const std::string& _output_file_name,
 				const unsigned int _num_threads
 			):OntracFull(_order, _max_error, _net, _num_iterations, 
-				_sigma_gps, _output_file_name, _num_threads){};
+				_sigma_gps, _output_file_name, _num_threads){}
 		
-		virtual ~OntracPart()
-			{
-				delete ppm;
-				delete em;
-			}
+		virtual ~OntracPart(){};
 		
 
 		seg_time* where_at(const std::string& obj, const unsigned int time) const;
 	private:
-		Trajectory* get_context
+		Trajectory* decompress_partial
 			(
 				const std::string& obj,
 				const unsigned int time
