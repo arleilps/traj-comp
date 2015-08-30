@@ -689,6 +689,12 @@ class OntracFull: public TrajDB
 
 		void train(const std::string& training_traj_file_name);
 
+		void set_models(PredPartMatch* _ppm, EM* _em)
+		{
+			ppm = _ppm;
+			em = _em;
+		}
+
 		CompTrajectory* compress(Trajectory* traj);
 
 		virtual ~OntracFull()
@@ -704,6 +710,8 @@ class OntracFull: public TrajDB
 		const bool insert(const std::string& obj, Trajectory& traj);
 
 		virtual seg_time* where_at(const std::string& obj, const unsigned int time) const;
+		
+		seg_time* where_at_part(const std::string& obj, const unsigned int time) const;
 
 		inline double training_time() const
 			{
@@ -719,9 +727,8 @@ class OntracFull: public TrajDB
 			{
 				return ppm->num_traj_train();
 			}
+		
 	protected:
-		PredPartMatch* ppm;
-		EM* em;
 		unsigned int order;
 		double max_error;
 		RoadNet* net;
@@ -729,6 +736,14 @@ class OntracFull: public TrajDB
 		double sigma_gps; 
 		std::string output_file_name; 
 		unsigned int num_threads;
+		PredPartMatch* ppm;
+		EM* em;
+		
+		Trajectory* decompress_partial
+			(
+				const std::string& obj,
+				const unsigned int time
+			) const;
 };
 
 class OntracPart: public OntracFull
@@ -747,12 +762,5 @@ class OntracPart: public OntracFull
 		
 
 		seg_time* where_at(const std::string& obj, const unsigned int time) const;
-	private:
-		Trajectory* decompress_partial
-			(
-				const std::string& obj,
-				const unsigned int time
-			) const;
-
 };
 #endif

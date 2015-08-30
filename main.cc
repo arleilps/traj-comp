@@ -57,7 +57,6 @@ int main(int argc, char** argv)
 	Parameters::set_compression_algorithms(compression_algorithms);
 	unsigned int num_updates;	
 	TrajCompAlgo* alg;
-	TrajDB* traj_db;
 
 	/*Reading the input parameters*/
 	if(Parameters::read(argc,argv))
@@ -129,39 +128,30 @@ int main(int argc, char** argv)
 
 				if(Parameters::compression_algorithm == "ONTRAC-FULL")
 				{
-					traj_db = new OntracFull(Parameters::order,
+					TrajDB* traj_db = new OntracFull(Parameters::order,
 							Parameters::error, 
 							net, Parameters::num_iterations, 5.0,
 							Parameters::output_file_name,
 							Parameters::num_threads
 						);
+					
 					traj_db->create();
 					traj_db->train(Parameters::training_traj_file_name);
 					traj_db->insert(Parameters::test_traj_file_name);
 					traj_db->where_at(Parameters::query_file_name,
 						Parameters::output_file_name);
 					print_statistics(traj_db);
-					delete traj_db;
-				}
-				
-				if(Parameters::compression_algorithm == "ONTRAC-PART")
-				{
-					traj_db = new OntracPart(Parameters::order, Parameters::error, 
-							net, Parameters::num_iterations, 5.0,
-							Parameters::output_file_name,
-							Parameters::num_threads
-						);
 					
-					traj_db->where_at(Parameters::query_file_name, 
+					traj_db->where_at_part(Parameters::query_file_name, 
 						Parameters::output_file_name);
 					print_statistics(traj_db);
+					
 					traj_db->drop();
-					delete traj_db;
 				}
 				
 				if(Parameters::compression_algorithm == "NONE")
 				{
-					traj_db = new TrajDB(net);
+					TrajDB* traj_db = new TrajDB(net);
 					traj_db->create();
 					traj_db->insert(Parameters::test_traj_file_name);
 					traj_db->where_at(Parameters::query_file_name,

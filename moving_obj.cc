@@ -1691,7 +1691,9 @@ void TrajDB::where_at(const std::string& query_file_name,
 	read_queries(queries, query_file_name);	
 	std::list<seg_time*> res;
 	
+	query_t->reset();
 	query_t->start();
+	_num_queries = 0;
 	for(std::list<query*>::iterator q = queries.begin(); q != queries.end(); ++q)
 	{
 		res.push_back(where_at((*q)->obj, (*q)->time));

@@ -629,6 +629,8 @@ const bool OntracFull::insert(const std::string& obj, Trajectory& traj)
 		}
 	}
 
+	delete comp_traj;
+
 	return status;
 }
 
@@ -652,6 +654,32 @@ seg_time* OntracPart::where_at
 		--it;
 	}
 
+	delete traj;
+
+	return (*it);
+}
+
+seg_time* OntracFull::where_at_part
+	(
+		const std::string& obj,
+		const unsigned int time
+	) const
+{
+	Trajectory* traj = decompress_partial
+		(obj, time);
+
+	em->decompress(traj);
+
+	Trajectory::iterator it = traj->end();
+	--it;
+	
+	while(it != traj->begin() && (*it)->time > time)
+	{
+		--it;
+	}
+
+	delete traj;
+
 	return (*it);
 }
 
@@ -673,6 +701,8 @@ seg_time* OntracFull::where_at
 	{
 		--it;
 	}
+
+	delete traj;
 
 	return (*it);
 }
@@ -930,7 +960,7 @@ const unsigned int PredPartMatch::count_next_paths
 	return total;
 }
 
-Trajectory* OntracPart::decompress_partial
+Trajectory* OntracFull::decompress_partial
 	(
 		const std::string& obj,
 		const unsigned int time
@@ -977,6 +1007,7 @@ Trajectory* OntracPart::decompress_partial
 				target = new_target;
 				new_target = new std::map<unsigned int, bool>;
 				delete traj;
+				traj = new Trajectory();
 				traj->add_update(prev->segment, prev->time, 0);
 				it = traj->begin();
 			}
@@ -2023,7 +2054,7 @@ void EM::decompress(Trajectory* traj) const
 		pred_time = 0;
 		
 		++itj;
-
+		
 		if(itj != traj->end())
 		{
 			while((*itj)->dist == 0 && (*itj)->time == 0)
@@ -2033,10 +2064,10 @@ void EM::decompress(Trajectory* traj) const
 			}
 				
 			pred_time += avg_times->at((*itj)->segment);
-
+			
 			time = (*itj)->time - (*iti)->time;
 			total_time = (*iti)->time;
-	
+			
 			++iti;
 
 			while((*iti)->dist == 0 && (*iti)->time == 0)
