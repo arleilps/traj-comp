@@ -1763,7 +1763,9 @@ Trajectory* TrajDBPostGis::get_traj
 			" WHERE obj='" + obj + 
 			"' AND time >= TO_TIMESTAMP(" + to_string(time) +
 			") ORDER BY id ASC;";
-	
+
+		std::cout << sql << std::endl;
+
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
 		
