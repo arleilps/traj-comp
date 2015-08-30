@@ -12,5 +12,5 @@ set yrange [0:]
 set format y '%.1e'
 set ytics 40000000
 set pointsize 2
-plot "conv_sf.dat" using 1:2 notitle with linespoints lt 1 lc 3 lw 3 pt 7
+plot "conv_sf.dat" using 1:2 notitle with linespoints lt 1 lc 1 lw 4 pt 2 ps 3
 

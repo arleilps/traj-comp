@@ -1762,7 +1762,7 @@ Trajectory* TrajDBPostGis::get_traj
 		sql =  "SELECT seg, EXTRACT(EPOCH FROM time), id FROM " + table_name + 
 			" WHERE obj='" + obj + 
 			"' AND time >= TO_TIMESTAMP(" + to_string(time) +
-			") ORDER BY time ASC;";
+			") ORDER BY id ASC;";
 	
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));
