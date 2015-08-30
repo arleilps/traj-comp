@@ -513,6 +513,29 @@ const bool OntracFull::insert(const std::string& input_file_name)
 	}
 }
 
+void delete_em_info
+	(
+		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >& updates_em
+	)
+{
+	std::vector< std::pair< unsigned int, em_update_info* > * >* traj;
+
+	for(unsigned int t = 0; t < updates_em.size(); t++)
+	{
+		traj = updates_em.at(t);
+
+		for(unsigned int i = 0; i < traj->size(); i++)
+		{
+			delete traj->at(i)->second;
+			delete traj->at(i);
+		}
+
+		delete traj;
+	}
+
+	updates_em.clear();
+}
+
 CompTrajectory* OntracFull::compress(Trajectory* traj)
 {
 	CompTrajectory* comp_traj = new CompTrajectory();
@@ -610,6 +633,8 @@ CompTrajectory* OntracFull::compress(Trajectory* traj)
 		next = ppm->next_segment(it, traj, ppm->tree);
 		++it;
 	}
+	
+	delete_em_info(updates_em);
 
 	return comp_traj;
 }
@@ -689,8 +714,12 @@ seg_time* OntracFull::where_at
 		const unsigned int time
 	) const
 {
+	seg_time* res = new seg_time;
+	Trajectory* db_traj = db->get_traj(obj);
 	Trajectory* traj = ppm->decompress
-		(db->get_traj(obj));
+		(db_traj);
+
+	delete db_traj;
 
 	em->decompress(traj);
 
@@ -701,10 +730,13 @@ seg_time* OntracFull::where_at
 	{
 		--it;
 	}
+	
+	res->segment = (*it)->segment;
+	res->time = (*it)->time;
 
 	delete traj;
 
-	return (*it);
+	return res;
 }
 
 NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
@@ -1783,28 +1815,6 @@ void NSTD::constrain
 }
 
 
-void delete_em_info
-	(
-		std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * >& updates_em
-	)
-{
-	std::vector< std::pair< unsigned int, em_update_info* > * >* traj;
-
-	for(unsigned int t = 0; t < updates_em.size(); t++)
-	{
-		traj = updates_em.at(t);
-
-		for(unsigned int i = 0; i < traj->size(); i++)
-		{
-			delete traj->at(i)->second;
-			delete traj->at(i);
-		}
-
-		delete traj;
-	}
-
-	updates_em.clear();
-}
 
 void print_model(std::vector<double>* avg_times, std::vector<double>* sigma_times, RoadNet* net)
 {
