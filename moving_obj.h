@@ -763,7 +763,7 @@ class TrajDB
 			return _insert_time;
 		}
 
-		virtual inline double training_time() const
+		virtual double training_time() const
 		{
 			return 0;
 		}

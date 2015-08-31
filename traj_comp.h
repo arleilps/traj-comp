@@ -713,17 +713,17 @@ class OntracFull: public TrajDB
 		
 		seg_time* where_at_part(const std::string& obj, const unsigned int time) const;
 
-		inline double training_time() const
+		double training_time() const
 			{
 				return ppm->training_time() + em->training_time();
 			}
 
-		inline unsigned int num_updates_train() const
+		unsigned int num_updates_train() const
 			{
 				return ppm->num_updates_train();
 			}
 
-		virtual inline unsigned int num_traj_train() const
+		unsigned int num_traj_train() const
 			{
 				return ppm->num_traj_train();
 			}
