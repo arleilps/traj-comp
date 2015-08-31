@@ -763,7 +763,7 @@ class TrajDB
 			return _insert_time;
 		}
 
-		virtual double training_time() const
+		virtual inline double training_time() const
 		{
 			return 0;
 		}
@@ -778,7 +778,7 @@ class TrajDB
 			return _num_updates_inserted;
 		}
 
-		virtual inline unsigned int num_updates_train() const
+		virtual unsigned int num_updates_train() const
 		{
 			return 0;
 		}
@@ -788,7 +788,7 @@ class TrajDB
 			return _num_traj_inserted;
 		}
 
-		virtual inline unsigned int num_traj_train() const
+		virtual unsigned int num_traj_train() const
 		{
 			return 0;
 		}
