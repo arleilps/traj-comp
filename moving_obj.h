@@ -704,6 +704,16 @@ class TrajDB
 				const std::string& obj,
 				const unsigned int time
 			) const;
+		
+		virtual seg_time* where_at_part
+			(
+				const std::string& obj,
+				const unsigned int time
+			) const
+		{
+			return NULL;
+		}
+
 
 		void where_at
 			(
@@ -711,14 +721,11 @@ class TrajDB
 				const std::string& output_file_name
 			);
 		
-		virtual void where_at_part
+		void where_at_part
 			(
 				const std::string& query_file_name,
 				const std::string& output_file_name
-			)
-		{
-			return where_at(query_file_name, output_file_name);
-		}
+			); 
 
 		 void read_queries
 		 	(

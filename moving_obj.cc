@@ -1706,6 +1706,27 @@ void TrajDB::where_at(const std::string& query_file_name,
 	write_query_results(queries, res, output_file_name);
 }
 
+void TrajDB::where_at_part(const std::string& query_file_name, 
+	const std::string& output_file_name)
+{
+	std::list<query*> queries;
+	read_queries(queries, query_file_name);	
+	std::list<seg_time*> res;
+	
+	query_t->reset();
+	query_t->start();
+	_num_queries = 0;
+	for(std::list<query*>::iterator q = queries.begin(); q != queries.end(); ++q)
+	{
+		res.push_back(where_at_part((*q)->obj, (*q)->time));
+		_num_queries++;
+	}
+	
+	query_t->stop();
+	_query_time = query_t->get_seconds();
+
+	write_query_results(queries, res, output_file_name);
+}
 
 seg_time* TrajDBPostGis::where_at(const std::string& obj, const unsigned int time)
 	const
