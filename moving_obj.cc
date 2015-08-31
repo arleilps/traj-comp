@@ -1828,7 +1828,7 @@ Trajectory* TrajDBPostGis::get_traj
 			" WHERE obj='" + obj + 
 			"' AND time >= TO_TIMESTAMP(" + to_string(start_time) +")" +
 			" AND time <= TO_TIMESTAMP(" + to_string(end_time) + ")" +
-			"ORDER BY id ASC;";
+			" ORDER BY id ASC;";
 
 
 		pqxx::nontransaction work(*conn);

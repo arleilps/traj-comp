@@ -1028,19 +1028,33 @@ Trajectory* OntracFull::decompress_partial
 	) const
 {
 	Trajectory* traj = new Trajectory();
+	Trajectory* full_traj = new Trajectory();
+	Trajectory* dec_traj;
 	const seg_time* st = db->where_at(obj, time);
 	const seg_time* prev;
+
+	full_traj->add_update_front(st->segment, st->time, st->dist);
+	full_traj->front()->id = st->id;
 	
 	if(st->id > ppm->order)
 	{
 		prev = db->where_at_id(obj, st->id-(ppm->order));
+		
+		if(prev->time > 0)
+		{
+			full_traj->add_update_front(prev->segment, prev->time, prev->dist);
+			full_traj->front()->id = prev->id;
+		}
 	}
 	else
 	{
 		delete st;
 		traj = db->get_traj(obj, time);
-		
-		return ppm->decompress(traj);
+		dec_traj = ppm->decompress(traj);
+
+		delete traj;
+
+		return dec_traj;
 	}
 	
 	std::map<unsigned int, bool>* target = new std::map<unsigned int, bool>;
@@ -1071,12 +1085,16 @@ Trajectory* OntracFull::decompress_partial
 			if(prev->id > 0)
 			{
 				prev = db->where_at_id(obj, (prev->id)-1);
+				full_traj->add_update_front(prev->segment, prev->time, prev->dist);
+				full_traj->front()->id = prev->id;
 			}
 			else
 			{
 				delete st;
-				traj = db->get_traj(obj, time);
-				return ppm->decompress(traj);
+				dec_traj = ppm->decompress(full_traj);
+				delete full_traj;
+
+				return dec_traj;
 			}
 				
 			num_hops = st->id - prev->id + 1;
@@ -1091,14 +1109,15 @@ Trajectory* OntracFull::decompress_partial
 		}
 		else
 		{
-			traj = db->get_traj(obj, time, prev->time);
+			dec_traj = ppm->decompress(full_traj);
+			delete full_traj;
 			delete st;
 			delete prev;
 			break;
 		}
 	}
 
-	return traj;
+	return dec_traj;
 }
 
 CompTrajectory* PredPartMatch::compress(Trajectory* traj)
