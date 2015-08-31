@@ -726,7 +726,7 @@ seg_time* OntracFull::where_at
 	) const
 {
 	seg_time* res = new seg_time;
-	Trajectory* db_traj = db->get_traj(obj);
+	Trajectory* db_traj = db->get_traj(obj, time);
 
 	if(! db_traj->size())
 	{
@@ -1038,7 +1038,7 @@ Trajectory* OntracFull::decompress_partial
 	else
 	{
 		delete st;
-		traj = db->get_traj(obj);
+		traj = db->get_traj(obj, time);
 		
 		return ppm->decompress(traj);
 	}
@@ -1075,7 +1075,7 @@ Trajectory* OntracFull::decompress_partial
 			else
 			{
 				delete st;
-				traj = db->get_traj(obj);
+				traj = db->get_traj(obj, time);
 				return ppm->decompress(traj);
 			}
 				
@@ -1091,7 +1091,7 @@ Trajectory* OntracFull::decompress_partial
 		}
 		else
 		{
-			traj = db->get_traj(obj, prev->time);
+			traj = db->get_traj(obj, time, prev->time);
 			delete st;
 			delete prev;
 			break;

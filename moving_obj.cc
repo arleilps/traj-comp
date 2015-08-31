@@ -1815,7 +1815,8 @@ seg_time* TrajDBPostGis::where_at(const std::string& obj, const unsigned int tim
 Trajectory* TrajDBPostGis::get_traj
 	(
 		const std::string& obj,
-		const unsigned int time
+		const unsigned int end_time,
+		const unsigned int start_time
 	) const
 {
 	std::string sql;
@@ -1825,8 +1826,10 @@ Trajectory* TrajDBPostGis::get_traj
 	{
 		sql =  "SELECT seg, EXTRACT(EPOCH FROM time), id FROM " + table_name + 
 			" WHERE obj='" + obj + 
-			"' AND time >= TO_TIMESTAMP(" + to_string(time) +
-			") ORDER BY id ASC;";
+			"' AND time >= TO_TIMESTAMP(" + to_string(start_time) +")" +
+			" AND time <= TO_TIMESTAMP(" + to_string(end_time) + ")" +
+			"ORDER BY id ASC;";
+
 
 		pqxx::nontransaction work(*conn);
 		pqxx::result res(work.exec(sql.c_str()));

@@ -553,7 +553,8 @@ class TrajDBStorage
 		virtual Trajectory* get_traj
 			(
 				const std::string& obj,
-				const unsigned int time=0
+				const unsigned int end_time,
+				const unsigned int start_time=0
 			) const
 		{
 			return NULL;
@@ -602,7 +603,8 @@ class TrajDBPostGis: public TrajDBStorage
 		virtual Trajectory* get_traj
 			(
 				const std::string& obj,
-				const unsigned int time=0
+				const unsigned int end_time,
+				const unsigned int start_time=0
 			) const;
 		
 		static void set_config(const std::string& input_file_name);
