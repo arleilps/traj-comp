@@ -1757,6 +1757,7 @@ seg_time* TrajDBPostGis::where_at_id(const std::string& obj, const unsigned int 
 		if(res.size() == 0)
 		{
 			st = new_seg_time(0, 0, 0);
+			st->id = 0;
 		}
 	}
 	catch(const pqxx::sql_error& e)
@@ -1798,6 +1799,7 @@ seg_time* TrajDBPostGis::where_at(const std::string& obj, const unsigned int tim
 		if(res.size() == 0)
 		{
 			st = new_seg_time(0, 0, 0);
+			st->id = 0;
 		}
 	}
 	catch(const pqxx::sql_error& e)
