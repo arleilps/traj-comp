@@ -765,7 +765,16 @@ NodePPM* PredPartMatch::new_node_ppm(const unsigned int segment)
 	
 	node->segment = segment;
 	node->id = size_tree++;
-	node->next = net->neighbors(segment)->front();		
+	
+	if(net->neighbors(segment)->size() > 0)
+	{
+		node->next = net->neighbors(segment)->front();		
+	}
+	else
+	{
+		node->next = 0;
+	}
+
 	node->freq_next = 0;
 
 	return node;
@@ -1020,7 +1029,20 @@ Trajectory* OntracFull::decompress_partial
 {
 	Trajectory* traj = new Trajectory();
 	const seg_time* st = db->where_at(obj, time);
-	const seg_time* prev = db->where_at_id(obj, st->id-(ppm->order));
+	const seg_time* prev;
+	
+	if(st->id > ppm->order)
+	{
+		prev = db->where_at_id(obj, st->id-(ppm->order));
+	}
+	else
+	{
+		delete st;
+		traj = db->get_traj(obj);
+		
+		return ppm->decompress(traj);
+	}
+	
 	std::map<unsigned int, bool>* target = new std::map<unsigned int, bool>;
 	std::map<unsigned int, bool>* new_target = new std::map<unsigned int, bool>;
 	
@@ -1043,30 +1065,35 @@ Trajectory* OntracFull::decompress_partial
 
 		if(num > 1)
 		{
+			delete st;
 			st = prev;
-			prev = db->where_at(obj, (prev->time)-1);
-				
-			if(prev->time == 0)
+
+			if(prev->id > 0)
 			{
-				traj = db->get_traj(obj);
-				return ppm->decompress(traj);
+				prev = db->where_at_id(obj, (prev->id)-1);
 			}
 			else
 			{
-				num_hops = st->id - prev->id + 1;
-				target->clear();
-				delete target;
-				target = new_target;
-				new_target = new std::map<unsigned int, bool>;
-				delete traj;
-				traj = new Trajectory();
-				traj->add_update(prev->segment, prev->time, 0);
-				it = traj->begin();
+				delete st;
+				traj = db->get_traj(obj);
+				return ppm->decompress(traj);
 			}
+				
+			num_hops = st->id - prev->id + 1;
+			target->clear();
+			delete target;
+			target = new_target;
+			new_target = new std::map<unsigned int, bool>;
+			delete traj;
+			traj = new Trajectory();
+			traj->add_update(prev->segment, prev->time, 0);
+			it = traj->begin();
 		}
 		else
 		{
 			traj = db->get_traj(obj, prev->time);
+			delete st;
+			delete prev;
 			break;
 		}
 	}
