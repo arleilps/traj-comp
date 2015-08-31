@@ -1020,7 +1020,7 @@ Trajectory* OntracFull::decompress_partial
 {
 	Trajectory* traj = new Trajectory();
 	const seg_time* st = db->where_at(obj, time);
-	const seg_time* prev = db->where_at(obj, st->time-1);
+	const seg_time* prev = db->where_at_id(obj, st->id-1);
 	std::map<unsigned int, bool>* target = new std::map<unsigned int, bool>;
 	std::map<unsigned int, bool>* new_target = new std::map<unsigned int, bool>;
 	
@@ -1046,7 +1046,7 @@ Trajectory* OntracFull::decompress_partial
 			st = prev;
 			prev = db->where_at(obj, (prev->time)-1);
 				
-			if(prev == NULL)
+			if(prev->time == 0)
 			{
 				traj = db->get_traj(obj);
 				return ppm->decompress(traj);

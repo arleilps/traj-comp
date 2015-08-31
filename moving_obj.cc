@@ -1728,6 +1728,47 @@ void TrajDB::where_at_part(const std::string& query_file_name,
 	write_query_results(queries, res, output_file_name);
 }
 
+seg_time* TrajDBPostGis::where_at_id(const std::string& obj, const unsigned int id)
+	const
+{
+	std::string sql;
+	seg_time* st = NULL;
+
+	try
+	{
+		sql =  "SELECT seg, EXTRACT(EPOCH FROM time), id FROM " + table_name + 
+			" WHERE obj='" + obj +
+			"' AND id <= " + to_string(id) + "" +
+			 " ORDER BY id DESC LIMIT 1;";
+		
+		pqxx::nontransaction work(*conn);
+		pqxx::result res(work.exec(sql.c_str()));
+		    
+		for (pqxx::result::const_iterator r = res.begin(); r != res.end(); ++r)
+		{
+			st = new_seg_time(
+					r[0].as<unsigned int>(),
+					r[1].as<unsigned int>(),
+					0
+				);
+			st->id = r[2].as<unsigned int>();
+		}
+
+		if(res.size() == 0)
+		{
+			st = new_seg_time(0, 0, 0);
+		}
+	}
+	catch(const pqxx::sql_error& e)
+	{
+		std::cerr << "Error: Failed query:" << std::endl;
+		std::cerr << sql << std::endl;
+		std::cerr << e.what() << std::endl;
+	}
+
+	return st;
+}
+
 seg_time* TrajDBPostGis::where_at(const std::string& obj, const unsigned int time)
 	const
 {

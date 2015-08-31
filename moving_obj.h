@@ -543,6 +543,13 @@ class TrajDBStorage
 			return NULL;
 		}
 		
+		virtual seg_time* where_at_id(const std::string& obj, 
+			const unsigned int time)
+			const
+		{
+			return NULL;
+		}
+		
 		virtual Trajectory* get_traj
 			(
 				const std::string& obj,
@@ -586,7 +593,10 @@ class TrajDBPostGis: public TrajDBStorage
 				const seg_time& st 
 			);
 		
-		virtual seg_time* where_at(const std::string& obj, const unsigned int time)
+		seg_time* where_at(const std::string& obj, const unsigned int time)
+			const;
+		
+		seg_time* where_at_id(const std::string& obj, const unsigned int time)
 			const;
 		
 		virtual Trajectory* get_traj
@@ -713,7 +723,6 @@ class TrajDB
 		{
 			return NULL;
 		}
-
 
 		void where_at
 			(
