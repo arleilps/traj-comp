@@ -28,6 +28,7 @@ std::string Parameters::gps_file_name;
 std::string Parameters::conf_file_name;
 std::string Parameters::shortest_path_file_name;
 std::string Parameters::query_file_name;
+std::string Parameters::trajectory_folder;
 unsigned int Parameters::max_length_subt;
 unsigned int Parameters::order;
 unsigned int Parameters::min_sup;
@@ -131,6 +132,7 @@ void Parameters::print_usage()
 	std::cout << " -n, --num-threads	number of threads" << std::endl;
 	std::cout << " -i, --num-iter		number of iterations EM" << std::endl;
 	std::cout << " -f, --postgis-conf	postgis configuration file" << std::endl;
+	std::cout << " -j, --traj-folder	folder to output trajectories" << std::endl;
 	std::cout << " -h, --help		shows this help" << std::endl;
 }
 
@@ -182,6 +184,7 @@ bool Parameters::read(int argc, char** argv) throw (InvalidParameterSettingExcep
 		>> GetOpt::Option('a', "delay", delay)
 		>> GetOpt::Option('n', "num-threads", num_threads)
 		>> GetOpt::Option('i', "num_iter", num_iterations)
+		>> GetOpt::Option('j', "traj-folder", trajectory_folder, "")
 		;
 	}
 	catch(GetOpt::GetOptEx& e)

@@ -66,9 +66,9 @@ class CompTrajectory: public Trajectory
 				const unsigned int segment,
 		                const unsigned int time,
 		                const double dist,
-				const unsigned int id=0
+				const unsigned int id=0,
+				const update* up=NULL
 			);
-
 };
 
 typedef struct t_angle

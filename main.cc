@@ -135,6 +135,12 @@ int main(int argc, char** argv)
 							Parameters::num_threads
 						);
 					
+					if(Parameters::trajectory_folder != "")
+					{
+						traj_db->set_trajectory_folder
+							(Parameters::trajectory_folder);
+					}
+
 					traj_db->create();
 					traj_db->train(Parameters::training_traj_file_name);
 					traj_db->insert(Parameters::test_traj_file_name);
@@ -142,8 +148,8 @@ int main(int argc, char** argv)
 						Parameters::output_file_name);
 					print_statistics(traj_db);
 					
-					traj_db->where_at_part(Parameters::query_file_name, 
-						Parameters::output_file_name);
+//					traj_db->where_at_part(Parameters::query_file_name, 
+//						Parameters::output_file_name);
 					print_statistics(traj_db);
 					
 					traj_db->drop();

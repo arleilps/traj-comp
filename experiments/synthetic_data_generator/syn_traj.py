@@ -366,7 +366,7 @@ lambd = 0.00001
 #num_trajectories = 500000
 #lambd = 1
 
-(road_net, seg_lengths, seg_ids) = build_road_network("/home/arlei/trajectory_compression/data/road_net_sfo.csv", 100)
+(road_net, seg_lengths, seg_ids) = build_road_network("/local/home/student/arlei/trajectory_compression/data/road_net_sfo.csv", 100)
 (avg_speeds, sig_speeds) = generate_speed_dist(road_net, 15, 10, 5)
 trajs = generate_trajectories2(num_trajectories, road_net, lambd)
 speeds = generate_speeds(trajs, avg_speeds, sig_speeds, 2, 2) 

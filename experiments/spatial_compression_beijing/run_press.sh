@@ -7,7 +7,7 @@ source settings.sh
 mkdir SPFS/
 
 echo "$traj_comp -c INDSP -g $road_net -f $conf_file -n $n_threads -p $short_path -l $short_path_file > SPFS/short_path_time"
-$traj_comp -c INDSP -g $road_net -f $conf_file -n $n_threads -p $short_path -l $short_path_file > SPFS/short_path_time
+#$traj_comp -c INDSP -g $road_net -f $conf_file -n $n_threads -p $short_path -l $short_path_file > SPFS/short_path_time
 
 for a in ${delay_vec[@]}
 do

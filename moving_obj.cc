@@ -272,17 +272,20 @@ void Trajectory::get_dist_times_uniform
 
 void Trajectory::set_times_uniform(RoadNet* net)
 {
-	std::list < dist_time* > dist_times;
-	get_dist_times_uniform(dist_times, net);
-
-	std::list<dist_time*>::iterator itd = dist_times.begin();
-	
-	for(std::list<seg_time*>::iterator its = seg_time_lst.begin();
-		its != seg_time_lst.end(); ++its)
+	if(size_traj > 1)
 	{
-		(*its)->time = (*itd)->time;
-		delete *itd;
-		++itd;
+		std::list < dist_time* > dist_times;
+		get_dist_times_uniform(dist_times, net);
+
+		std::list<dist_time*>::iterator itd = dist_times.begin();
+	
+		for(std::list<seg_time*>::iterator its = seg_time_lst.begin();
+		its != seg_time_lst.end(); ++its)
+		{
+			(*its)->time = (*itd)->time;
+			delete *itd;
+			++itd;
+		}
 	}
 } 
 
@@ -1453,6 +1456,24 @@ void Trajectory::print() const
 	}
 
 	std::cout << std::endl;
+}
+
+void Trajectory::print(const std::string& output_file_name) const
+{
+	std::ofstream output_file(output_file_name.c_str(), std::ios::out);
+
+	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
+		it != seg_time_lst.end(); ++it)
+	{
+		if((*it)->up != NULL)
+		{
+			output_file << (*it)->up->longit << "," << (*it)->up->latit << ",1," << (*it)->time << "\n";
+		}
+	}
+
+	output_file << std::endl;
+	
+	output_file.close();
 }
 
 void Trajectory::decompose_online(std::list<Trajectory*>& decomp) const

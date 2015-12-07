@@ -88,6 +88,7 @@ class Parameters
 		static std::string conf_file_name;
 		static std::string shortest_path_file_name;
 		static std::string query_file_name;
+		static std::string trajectory_folder;
 		static unsigned int max_length_subt;
 		static unsigned int order;
 		static unsigned int min_sup;

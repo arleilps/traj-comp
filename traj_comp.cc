@@ -73,10 +73,11 @@ void CompTrajectory::add_update
 		const unsigned int segment,
                 const unsigned int time,
                 const double dist,
-                const unsigned int id
+                const unsigned int id,
+		const update* up
         )
 {
-	Trajectory::add_update(segment, time, dist);
+	Trajectory::add_update(segment, time, dist, up);
 	back()->id = id;
 }
 
@@ -539,13 +540,13 @@ void delete_em_info
 CompTrajectory* OntracFull::compress(Trajectory* traj)
 {
 	CompTrajectory* comp_traj = new CompTrajectory();
-	
+
 	std::vector < std::vector< std::pair< unsigned int, em_update_info* > * > * > updates_em;
 	traj->get_em_rep(updates_em, sigma_gps, net);
 	std::vector< std::pair< unsigned int, em_update_info* > * > * traj_em = updates_em.at(0);
 
 	Trajectory::iterator it = traj->begin();
-	comp_traj->add_update((*it)->segment, (*it)->time, (*it)->dist, 0);
+	comp_traj->add_update((*it)->segment, (*it)->time, (*it)->dist, 0, NULL);
 	unsigned int next;
 	em_update_info* up;
 	double time = em->avg_times->at(traj->front()->segment);
@@ -563,7 +564,7 @@ CompTrajectory* OntracFull::compress(Trajectory* traj)
 
 	next = ppm->next_segment(it, traj, ppm->tree);
 	++it;
-
+	
 	while(it != traj->end())
 	{
 		up = traj_em->at(s)->second;
@@ -595,13 +596,13 @@ CompTrajectory* OntracFull::compress(Trajectory* traj)
 				{
 					t = (double) total_time + ((time + K * (up->time - time)) * net->segment_length(*its))
 						/ d;
-					comp_traj->add_update(*its, t, 0, *itd);
+					comp_traj->add_update(*its, t, 0, *itd, (*it)->up);
 					++itd;
 				}
-
+				
 				if(! added)
 				{
-					comp_traj->add_update((*it)->segment, fused_time, 0, s);
+					comp_traj->add_update((*it)->segment, fused_time, 0, s, (*it)->up);
 				}
 
 				total_time = fused_time;
@@ -613,7 +614,7 @@ CompTrajectory* OntracFull::compress(Trajectory* traj)
 					its != segs.end(); ++its)
 				{
 					t = total_time + (double) (time * net->segment_length(*its)) / d;
-					comp_traj->add_update(*its, t, 0, *itd);
+					comp_traj->add_update(*its, t, 0, *itd, (*it)->up);
 					++itd;
 				}
 				
@@ -641,20 +642,48 @@ CompTrajectory* OntracFull::compress(Trajectory* traj)
 
 const bool OntracFull::insert(const std::string& obj, Trajectory& traj)
 {
-	CompTrajectory* comp_traj = compress(&traj);
-
+	CompTrajectory* comp_traj;
 	bool status;
-
-	for(Trajectory::iterator it = comp_traj->begin();
-		it != comp_traj->end(); ++it)
+	
+	if(traj.size() > 1)
 	{
-		if(! TrajDB::insert(obj, *(*it)))
+ 		if(print_traj)
 		{
-			status = false;
+			std::string file_name = trajectory_folder + "/" + obj + "_orig";
+			traj.print();
 		}
-	}
+		
+		comp_traj = compress(&traj);
 
-	delete comp_traj;
+ 		if(print_traj)
+		{
+			std::string file_name = trajectory_folder + "/" + obj + "_comp";
+			comp_traj->print();
+		}
+
+		for(Trajectory::iterator it = comp_traj->begin();
+			it != comp_traj->end(); ++it)
+		{
+			if(! TrajDB::insert(obj, *(*it)))
+			{
+				status = false;
+			}
+		}
+
+		delete comp_traj;
+	}
+	else
+	{
+		for(Trajectory::iterator it = traj.begin();
+			it != traj.end(); ++it)
+		{
+			if(! TrajDB::insert(obj, *(*it)))
+			{
+				status = false;
+			}
+		}
+
+	}
 
 	return status;
 }
@@ -2133,6 +2162,7 @@ void EM::decompress(Trajectory* traj) const
 		
 		if(itj != traj->end())
 		{
+			
 			while((*itj)->dist == 0 && (*itj)->time == 0)
 			{
 				pred_time += avg_times->at((*itj)->segment);

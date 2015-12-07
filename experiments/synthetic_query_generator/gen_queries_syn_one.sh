@@ -1,3 +1,4 @@
+python gen_queries.py ../../../data/map_matched_syn_one_test_0 > ../../../data/queries_syn_one_test_0
 python gen_queries.py ../../../data/map_matched_syn_one_test_1 > ../../../data/queries_syn_one_test_1
 python gen_queries.py ../../../data/map_matched_syn_one_test_2 > ../../../data/queries_syn_one_test_2
 python gen_queries.py ../../../data/map_matched_syn_one_test_3 > ../../../data/queries_syn_one_test_3
@@ -7,4 +8,3 @@ python gen_queries.py ../../../data/map_matched_syn_one_test_6 > ../../../data/q
 python gen_queries.py ../../../data/map_matched_syn_one_test_7 > ../../../data/queries_syn_one_test_7
 python gen_queries.py ../../../data/map_matched_syn_one_test_8 > ../../../data/queries_syn_one_test_8
 python gen_queries.py ../../../data/map_matched_syn_one_test_9 > ../../../data/queries_syn_one_test_9
-python gen_queries.py ../../../data/map_matched_syn_one_test_10 > ../../../data/queries_syn_one_test_10

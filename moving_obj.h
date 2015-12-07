@@ -317,6 +317,8 @@ class Trajectory
 		/**
 		 * Prints a trajectory on the screen (for testing).
 		**/
+		void print(const std::string& output_file_name)  const;
+		
 		void print()  const;
 		
 		/**
@@ -662,6 +664,8 @@ class TrajDB
 			_num_queries = 0;
 			query_t = new ExecTime();
 			insert_t = new ExecTime();
+			trajectory_folder = "";
+			print_traj = false;
 		}
 		
 		/* Destructor */
@@ -815,6 +819,12 @@ class TrajDB
 		{
 			return (double) _num_updates_orig / _num_updates_inserted;
 		}
+
+		inline void set_trajectory_folder(const std::string& _traj_folder)
+		{
+			trajectory_folder = _traj_folder;
+			print_traj = true;
+		}
 	protected:
 		RoadNet* net;
 		TrajDBStorage* db;
@@ -827,6 +837,8 @@ class TrajDB
 		double _compression_ratio;
 		ExecTime* query_t;
 		ExecTime* insert_t;
+		std::string trajectory_folder;
+		bool print_traj;
 };
 
 #endif
