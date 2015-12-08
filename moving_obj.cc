@@ -1458,20 +1458,16 @@ void Trajectory::print() const
 	std::cout << std::endl;
 }
 
-void Trajectory::print(const std::string& output_file_name) const
+void Trajectory::print(const std::string& output_file_name, RoadNet* _net) const
 {
 	std::ofstream output_file(output_file_name.c_str(), std::ios::out);
 
 	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
 		it != seg_time_lst.end(); ++it)
 	{
-		if((*it)->up != NULL)
-		{
-			output_file << (*it)->up->longit << "," << (*it)->up->latit << ",1," << (*it)->time << "\n";
-		}
+		output_file << _net->seg_name((*it)->segment) << "," << (*it)->time << "\n";
 	}
 
-	output_file << std::endl;
 	
 	output_file.close();
 }

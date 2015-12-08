@@ -650,7 +650,7 @@ const bool OntracFull::insert(const std::string& obj, Trajectory& traj)
  		if(print_traj)
 		{
 			std::string file_name = trajectory_folder + "/" + obj + "_orig";
-			traj.print(file_name);
+			traj.print(file_name, net);
 		}
 		
 		comp_traj = compress(&traj);
@@ -658,7 +658,7 @@ const bool OntracFull::insert(const std::string& obj, Trajectory& traj)
  		if(print_traj)
 		{
 			std::string file_name = trajectory_folder + "/" + obj + "_comp";
-			comp_traj->print(file_name);
+			comp_traj->print(file_name, net);
 		}
 
 		for(Trajectory::iterator it = comp_traj->begin();

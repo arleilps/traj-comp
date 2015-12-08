@@ -317,7 +317,7 @@ class Trajectory
 		/**
 		 * Prints a trajectory on the screen (for testing).
 		**/
-		void print(const std::string& output_file_name)  const;
+		void print(const std::string& output_file_name, RoadNet* _net)  const;
 		
 		void print()  const;
 		
