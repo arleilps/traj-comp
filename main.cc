@@ -144,13 +144,13 @@ int main(int argc, char** argv)
 					traj_db->create();
 					traj_db->train(Parameters::training_traj_file_name);
 					traj_db->insert(Parameters::test_traj_file_name);
-					traj_db->where_at(Parameters::query_file_name,
-						Parameters::output_file_name);
-					print_statistics(traj_db);
-					
+//					traj_db->where_at(Parameters::query_file_name,
+//						Parameters::output_file_name);
+//					print_statistics(traj_db);
+//					
 //					traj_db->where_at_part(Parameters::query_file_name, 
 //						Parameters::output_file_name);
-					print_statistics(traj_db);
+//					print_statistics(traj_db);
 					
 					traj_db->drop();
 				}
