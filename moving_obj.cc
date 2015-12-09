@@ -1465,7 +1465,7 @@ void Trajectory::print(const std::string& output_file_name, RoadNet* _net) const
 	for(std::list< seg_time* >::const_iterator it = seg_time_lst.begin();
 		it != seg_time_lst.end(); ++it)
 	{
-		output_file << _net->seg_name((*it)->segment) << "," << (*it)->time << "\n";
+		output_file << _net->seg_name((*it)->segment) << "," << (*it)->time << "," << (*it)->id << "\n";
 	}
 
 	
